@@ -1,38 +1,27 @@
-# sv
+# AGRI-BOT Hydro NFT Studio
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+## About the Project
+AGRI-BOT Hydro NFT Studio is an advanced web-based platform designed for managing **Hydroponic Nutrient Film Technique (NFT) systems**. This version introduces new interactive features, including:
 
-## Creating a project
+- **Setup Spray Control**
+- **Live Camera Of Robot**
+- **User Authentication (Login & Registration)**
+- **Records Management**
 
-If you're seeing this, you've probably already done this step. Congrats!
+This project is built to assist researchers, students, and professionals in understanding and optimizing hydroponic farming.
 
-```bash
-# create a new project in the current directory
-npx sv create
+## Technologies Used
+- **Svelte** (Frontend Framework)
+- **Tailwind CSS** (Styling)
 
-# create a new project in my-app
-npx sv create my-app
-```
+## License
+This project is **open-source for educational purposes only** under the conditions outlined in the [LICENSE](LICENSE.md) file.
 
-## Developing
+## Contributors
+- **John Dave Pega** – Programmer, Researcher, Documentation
+- **Baby Joy Maquilla** – Frontend Developer, Documentation
+- **Twinnie Hipolito** – Researcher, Paper & Documentation, Tracking
+- **Lowella Marie Golez** – Researcher, Interviewer, Tracking
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```bash
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```bash
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+## Contact
+For questions or academic evaluation, reach out to us via email or our academic institution.
