@@ -82,7 +82,7 @@
 </script>
 
 <div
-	class="relative flex min-h-[calc(100vh-95px)] flex-col bg-gray-200 p-4 lg:px-16 dark:bg-gray-700 transition-all duration-500 ease-out "
+	class="relative flex min-h-[calc(100vh-95px)] flex-col bg-gray-200 p-4 lg:px-16 dark:bg-gray-700 ease-out "
 >
 	<div class="relative z-10 mb-4 flex flex-col gap-4 md:flex-row">
 		<Camera {showCamera} closeCamera={() => (showCamera = false)} />

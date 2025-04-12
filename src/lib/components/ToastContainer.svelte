@@ -2,7 +2,7 @@
 	import { removeToast, toasts } from '$lib/stores/toast';
 	import { onDestroy } from 'svelte';
 
-	import { CheckCircle, XCircle, Info } from 'lucide-svelte';
+	import { CheckCircle, XCircle, Info, Loader } from 'lucide-svelte';
 
 	let currentToasts;
 
@@ -20,12 +20,14 @@
 			class:border-green-500={toast.type === 'success'}
 			class:border-red-500={toast.type === 'error'}
 			class:border-blue-500={toast.type === 'info'}
+			class:border-yellow-500={toast.type === 'loading'}
 		>
 			<div
 				class="mr-3 rounded-lg p-4 text-2xl"
 				class:bg-green-600={toast.type === 'success'}
 				class:bg-red-600={toast.type === 'error'}
 				class:bg-blue-600={toast.type === 'info'}
+				class:bg-yellow-600={toast.type === 'loading'}
 			>
 				{#if toast.type === 'success'}
 					<CheckCircle class="text-white" />
@@ -33,17 +35,21 @@
 					<XCircle class="text-white" />
 				{:else if toast.type === 'info'}
 					<Info class="text-white" />
+				{:else if toast.type === 'loading'}
+					<Loader class="text-white animate-spin" />
 				{/if}
 			</div>
 
 			<span class="flex-1 p-4">{toast.message}</span>
 
-			<button
-				class="ml-4 p-4 text-xl font-bold text-gray-900 transition-colors hover:text-gray-300 dark:text-white"
-				on:click={() => removeToast(toast.id)}
-			>
-				×
-			</button>
+			{#if toast.type !== 'loading'}
+				<button
+					class="ml-4 p-4 text-xl font-bold text-gray-900 transition-colors hover:text-gray-300 dark:text-white"
+					on:click={() => removeToast(toast.id)}
+				>
+					×
+				</button>
+			{/if}
 		</div>
 	{/each}
 </div>

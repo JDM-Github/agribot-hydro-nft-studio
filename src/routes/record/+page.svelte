@@ -44,10 +44,14 @@
 	}
 </script>
 
-<main class="min-h-[calc(100vh-95px)] bg-gray-100 py-4 dark:bg-gray-800 transition-all duration-500 ease-out ">
+<main
+	class="relative flex min-h-[calc(100vh-95px)] flex-col 
+	bg-gradient-to-b from-gray-200 to-gray-300 
+	p-4 ease-out lg:px-16 dark:from-gray-700 dark:to-gray-800"
+>
 	<div class="container mx-auto rounded-2xl bg-white p-4 px-4 dark:bg-gray-900">
 		<div
-			class="flex flex-col gap-2 rounded-xl border border-gray-200 bg-[#fafffc] p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:p-3 dark:border-gray-700 dark:bg-gray-900"
+			class="flex flex-col gap-2 rounded-xl border border-gray-200 bg-[#fafffc] p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:p-3 dark:border-gray-700 dark:bg-gray-800"
 		>
 			<div class="flex items-center gap-2">
 				<span class="text-xl sm:text-2xl">📁</span>
@@ -64,25 +68,34 @@
 			</div>
 		</div>
 
-		<div
-			class="mt-4 flex min-h-[250px] flex-wrap items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-gray-100 p-2 dark:border-gray-700 dark:bg-gray-800"
-		>
+		<div class="mt-2 flex min-h-[180px] flex-wrap items-center justify-center gap-6">
 			{#each $paginatedRecords as record, index}
 				<div class="flex flex-col items-center">
 					<button
-						class="relative flex h-[80px] w-[80px] items-center justify-center overflow-hidden rounded-2xl border border-gray-200 shadow-md sm:h-[100px] sm:w-[100px] md:h-[160px] md:w-[160px] lg:h-[100px] lg:w-[180px] dark:border-gray-700"
+						class="group relative flex h-[100px] w-[100px] cursor-pointer items-center justify-center rounded-3xl
+					   bg-gray-200 hover:bg-gray-300 sm:h-[120px] sm:w-[120px]
+					   md:h-[140px] md:w-[140px] lg:h-[120px] lg:w-[160px] dark:bg-gray-800 dark:hover:bg-gray-700"
 						style="animation-delay: {index * 50}ms;"
+						aria-label="but"
 						on:click={() => readMore(record.slug)}
 					>
-						<img
-							src={'https://placehold.co/600x400/000000/FFF'}
-							alt="Record"
-							class="absolute inset-0 h-full w-full object-cover"
-						/>
-
-						<div
-							class="dark:inline-block hidden absolute inset-0 bg-gradient-to-t from-white/80 via-white/50 to-transparent dark:from-gray-900/80 dark:via-gray-900/50 dark:to-transparent"
-						></div>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke-width="1.5"
+							stroke="currentColor"
+						class="h-16 w-16 text-green-300 transition-colors
+						   duration-300 group-hover:text-green-600
+						   sm:h-20 sm:w-20
+						   md:h-24 md:w-24 dark:text-gray-300 dark:group-hover:text-green-400"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M2.25 12.75v6.75a2.25 2.25 0 002.25 2.25h15a2.25 2.25 0 002.25-2.25V9.75a2.25 2.25 0 00-2.25-2.25h-7.5l-2.25-2.25H4.5a2.25 2.25 0 00-2.25 2.25v9z"
+							/>
+						</svg>
 					</button>
 
 					<h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-400">
