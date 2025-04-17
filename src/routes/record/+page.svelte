@@ -1,23 +1,17 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import Footer from '$lib/components/Footer.svelte';
 	import { writable, derived } from 'svelte/store';
 
-	let records = writable([
-		{ date: 'January 6, 2025', slug: '2025-01-06' },
-		{ date: 'January 5, 2025', slug: '2025-01-05' },
-		{ date: 'January 4, 2025', slug: '2025-01-04' },
-		{ date: 'January 3, 2025', slug: '2025-01-03' },
-		{ date: 'January 2, 2025', slug: '2025-01-02' },
-		{ date: 'January 1, 2025', slug: '2025-01-01' }
-	]);
+	export let data;
+	let records = writable(data.records);
 
 	let searchQuery = writable('');
-
 	let currentPage = writable(1);
 	const itemsPerPage = 12;
 
 	const filteredRecords = derived([records, searchQuery], ([$records, $searchQuery]) => {
-		return $records.filter((record) =>
+		return $records.filter((record: any) =>
 			record.date.toLowerCase().includes($searchQuery.toLowerCase())
 		);
 	});
@@ -36,7 +30,7 @@
 	);
 
 	function readMore(slug: string) {
-		window.location.href = `/folder/${slug}`;
+		goto(`/folder/${slug}`);
 	}
 
 	function goToPage(page: number) {
@@ -45,8 +39,8 @@
 </script>
 
 <main
-	class="relative flex min-h-[calc(100vh-95px)] flex-col 
-	bg-gradient-to-b from-gray-200 to-gray-300 
+	class="relative flex min-h-[calc(100vh-95px)] flex-col
+	bg-gradient-to-b from-gray-200 to-gray-300
 	p-4 ease-out lg:px-16 dark:from-gray-700 dark:to-gray-800"
 >
 	<div class="container mx-auto rounded-2xl bg-white p-4 px-4 dark:bg-gray-900">
@@ -68,45 +62,45 @@
 			</div>
 		</div>
 
-		<div class="mt-2 flex min-h-[180px] flex-wrap items-center justify-center gap-6">
-			{#each $paginatedRecords as record, index}
-				<div class="flex flex-col items-center">
-					<button
-						class="group relative flex h-[100px] w-[100px] cursor-pointer items-center justify-center rounded-3xl
+		{#if $paginatedRecords.length === 0}
+			<p class="mt-3 py-8 text-center text-sm text-gray-600 dark:text-gray-400">No records found.</p>
+		{:else}
+			<div class="mt-2 flex min-h-[180px] flex-wrap items-center justify-center gap-6">
+				{#each $paginatedRecords as record, index}
+					<div class="flex flex-col items-center">
+						<button
+							class="group relative flex h-[100px] w-[100px] cursor-pointer items-center justify-center rounded-3xl
 					   bg-gray-200 hover:bg-gray-300 sm:h-[120px] sm:w-[120px]
 					   md:h-[140px] md:w-[140px] lg:h-[120px] lg:w-[160px] dark:bg-gray-800 dark:hover:bg-gray-700"
-						style="animation-delay: {index * 50}ms;"
-						aria-label="but"
-						on:click={() => readMore(record.slug)}
-					>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke-width="1.5"
-							stroke="currentColor"
-						class="h-16 w-16 text-green-300 transition-colors
+							style="animation-delay: {index * 50}ms;"
+							aria-label="but"
+							on:click={() => readMore(record.slug)}
+						>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke-width="1.5"
+								stroke="currentColor"
+								class="h-16 w-16 text-green-300 transition-colors
 						   duration-300 group-hover:text-green-600
 						   sm:h-20 sm:w-20
-						   md:h-24 md:w-24 dark:text-gray-300 dark:group-hover:text-green-400"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								d="M2.25 12.75v6.75a2.25 2.25 0 002.25 2.25h15a2.25 2.25 0 002.25-2.25V9.75a2.25 2.25 0 00-2.25-2.25h-7.5l-2.25-2.25H4.5a2.25 2.25 0 00-2.25 2.25v9z"
-							/>
-						</svg>
-					</button>
+						   md:h-24 md:w-24 dark:text-green-300 dark:group-hover:text-green-400"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									d="M2.25 12.75v6.75a2.25 2.25 0 002.25 2.25h15a2.25 2.25 0 002.25-2.25V9.75a2.25 2.25 0 00-2.25-2.25h-7.5l-2.25-2.25H4.5a2.25 2.25 0 00-2.25 2.25v9z"
+								/>
+							</svg>
+						</button>
 
-					<h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-400">
-						{record.date}
-					</h3>
-				</div>
-			{/each}
-		</div>
-
-		{#if $filteredRecords.length === 0}
-			<p class="mt-3 text-center text-sm text-gray-600 dark:text-gray-400">No records found.</p>
+						<h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-400">
+							{record.date}
+						</h3>
+					</div>
+				{/each}
+			</div>
 		{/if}
 
 		{#if $filteredRecords.length > itemsPerPage}

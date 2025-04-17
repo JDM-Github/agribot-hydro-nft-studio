@@ -6,8 +6,7 @@
 	function toggleDiseaseDetails(index: any) {
 		expandedDisease.update((current: any) => (current === index ? null : index));
 	}
-
-	export let plant;
+	export let selectedPlant;
 	export let showModal = false;
 	export let closeModal = () => {};
 	export let deleteRecord = () => {};
@@ -53,21 +52,21 @@
 	}
 </script>
 
-{#if showModal}
+{#if selectedPlant && showModal}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-2">
 		<div
 			class="relative w-full max-w-3xl overflow-hidden rounded-xl border border-gray-300 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900"
 		>
 			<div class="h-48 w-full bg-gray-100 dark:bg-gray-700">
-				<img src={plant.image} alt={plant.name} class="h-full w-full object-cover" />
+				<img src={selectedPlant.image} alt={selectedPlant.name} class="h-full w-full object-cover" />
 			</div>
 
 			<div class="space-y-3 p-4">
-				<h3 class="text-3xl font-bold text-gray-800 dark:text-gray-200">{plant.name}</h3>
-				<p class="leading-relaxed text-gray-600 dark:text-gray-400">{plant.description}</p>
+				<h3 class="text-3xl font-bold text-gray-800 dark:text-gray-200">{selectedPlant.name}</h3>
+				<p class="leading-relaxed text-gray-600 dark:text-gray-400">{selectedPlant.description}</p>
 
 				<div class="max-h-[300px] space-y-6 overflow-y-auto">
-					{#each plant.diseases as disease, index}
+					{#each selectedPlant.diseases as disease, index}
 						<div class="rounded-lg bg-gray-100 p-4 shadow-md dark:bg-gray-800">
 							<div class="flex items-center justify-between">
 								<h4 class="text-lg font-semibold text-gray-700 dark:text-gray-300">
@@ -137,12 +136,12 @@
 				</div>
 
 				<div class="flex justify-end gap-2">
-					<button
+					<!-- <button
 						on:click={deleteRecord}
 						class="rounded-lg bg-red-700 px-5 py-2 text-white transition hover:bg-red-800"
 					>
-						Delete Record
-					</button>
+						Disabled
+					</button> -->
 
 					<button
 						on:click={closeModal}

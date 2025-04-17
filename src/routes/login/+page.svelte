@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Footer from '$lib/components/Footer.svelte';
-	import { login } from '$lib/stores/auth';
+	import { addToast, removeToast } from '$lib/stores/toast';
+	import RequestHandler from '$lib/utils/request';
 	import Loginform from './loginform.svelte';
 
 	let isRegister = false;
@@ -8,16 +9,41 @@
 	function toggleForm() {
 		isRegister = !isRegister;
 	}
+	let fullName = '';
+	let prototypeIP = '';
+	let email = '';
+	let password = '';
+	let confirmPassword = '';
 
-	function loginTest(event: Event) {
-		event.preventDefault();
-		const formData = new FormData(event.target as HTMLFormElement);
-
-		alert(JSON.stringify(event));
-		const email = formData.get('email');
-		const password = formData.get('password');
-		alert(`Email: ${email}, Password: ${password}`);
-	}
+	const registerSubmit = async (e: Event) => {
+		e.preventDefault();
+		const toastId = addToast('Creating account...', 'loading');
+		try {
+			const response = await RequestHandler.fetchData('post', 'user/create', {
+				fullName,
+				prototypeIP,
+				email,
+				password,
+				confirmPassword
+			});
+			if (response.success) {
+				removeToast(toastId);
+				addToast('Registered successfully!', 'success', 3000);
+				fullName = '';
+				prototypeIP = '';
+				email = '';
+			} else {
+				removeToast(toastId);
+				addToast(response.message || 'Registration failed.', 'error', 3000);
+			}
+			password = '';
+			confirmPassword = '';
+		} catch (error) {
+			console.error('Registration error:', error);
+			removeToast(toastId);
+			addToast('An unexpected error occurred.', 'error', 3000);
+		}
+	};
 </script>
 
 <svelte:head>
@@ -46,75 +72,89 @@
 		</div>
 
 		<div class="relative z-20 flex flex-1">
-			<Loginform toggleForm={toggleForm} isRegister={isRegister}/>
+			<Loginform {toggleForm} {isRegister} />
 
 			<div
 				class={`absolute inset-0 flex w-1/2 flex-col justify-center space-y-6 bg-white p-12 transition-transform duration-700 ease-in-out dark:bg-gray-800 ${isRegister ? 'translate-x-0 opacity-100' : 'pointer-events-none translate-x-full opacity-0'}`}
 			>
 				<h3 class="text-3xl font-bold text-green-700 dark:text-green-400">Create Your Account</h3>
-				<form class="space-y-4">
+				<form class="space-y-4" on:submit={registerSubmit}>
 					<div>
-						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="fname"
-							>Full Name</label
-						>
+						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="fname">
+							Full Name
+						</label>
 						<input
 							id="fname"
 							type="text"
 							placeholder="Your Full Name"
+							bind:value={fullName}
 							class="w-full rounded-md border p-3 focus:border-green-500 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-700 dark:text-white"
 						/>
 					</div>
+
 					<div>
-						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="pip"
-							>Prototype IP</label
-						>
+						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="pip">
+							Prototype IP
+						</label>
 						<input
 							id="pip"
 							type="text"
 							placeholder="Your Prototype ID"
+							bind:value={prototypeIP}
 							class="w-full rounded-md border p-3 focus:border-green-500 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-700 dark:text-white"
 						/>
 					</div>
+
 					<div>
-						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="remail"
-							>Email</label
-						>
+						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="remail">
+							Email
+						</label>
 						<input
 							id="remail"
 							type="email"
 							placeholder="Your Email"
+							bind:value={email}
 							class="w-full rounded-md border p-3 focus:border-green-500 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-700 dark:text-white"
 						/>
 					</div>
+
 					<div class="grid grid-cols-2 gap-4">
 						<div>
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="rpass"
-								>Password</label
-							>
+							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="rpass">
+								Password
+							</label>
 							<input
 								id="rpass"
 								type="password"
 								placeholder="Create Password"
+								bind:value={password}
 								class="w-full rounded-md border p-3 focus:border-green-500 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-700 dark:text-white"
 							/>
 						</div>
+
 						<div>
-							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="crpass"
-								>Confirm Password</label
+							<label
+								class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+								for="crpass"
 							>
+								Confirm Password
+							</label>
 							<input
 								id="crpass"
 								type="password"
 								placeholder="Confirm Password"
+								bind:value={confirmPassword}
 								class="w-full rounded-md border p-3 focus:border-green-500 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-700 dark:text-white"
 							/>
 						</div>
 					</div>
+
 					<button
 						type="submit"
 						class="w-full rounded-md bg-green-600 py-3 font-semibold text-white transition hover:bg-green-700"
-						>Register</button
 					>
+						Register
+					</button>
 				</form>
 				<p class="text-center text-sm text-gray-600 dark:text-gray-300">
 					Already have an account?

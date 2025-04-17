@@ -49,7 +49,7 @@
 					href={item.path}
 					class="font-medium hover:text-green-500 {page.route.id === item.path
 						? 'font-bold text-green-600'
-						: 'text-gray-800 dark:text-gray-300'}"
+						: 'text-gray-800 dark:text-gray-300'} {$user ? '' : 'hidden'}"
 				>
 					{item.name}
 				</a>

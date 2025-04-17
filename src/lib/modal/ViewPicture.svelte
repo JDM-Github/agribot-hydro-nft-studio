@@ -1,8 +1,30 @@
-<script>
+<script lang="ts">
+	import { addToast, removeToast } from "$lib/stores/toast";
+
 	export let modalOpen;
 	export let closeModal;
 	export let downloadImage;
 	export let selectedImage;
+
+	async function deleteImage(public_id: string) {
+		const toastId = addToast("Deleting image...", "loading");
+		const res = await fetch('/api/delete-image', {
+			method: 'DELETE',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ public_id })
+		});
+		if (!res.ok) {
+			removeToast(toastId);
+			addToast("Failed to delete image", "error");
+			console.error('Failed to delete image');
+			return false;
+		}
+
+		removeToast(toastId);
+		addToast("Successfully deleted image.", "error");
+		const result = await res.json();
+		return result.success;
+	}
 </script>
 
 {#if modalOpen}
@@ -18,7 +40,7 @@
 			</button>
 
 			<div class="relative">
-				<img class="w-full rounded-t-lg object-cover" src={selectedImage.src} alt="Zoomed" />
+				<img class="w-full rounded-t-lg object-cover max-h-100" src={selectedImage.src} alt="Zoomed" />
 				<div
 					class="absolute bottom-0 left-0 w-full bg-gray-300/50 p-2 text-center text-sm text-white dark:bg-gray-900/50"
 				>
@@ -58,6 +80,7 @@
 
 				<button
 					class="w-full rounded-lg bg-red-500 px-4 py-2 text-white hover:bg-red-600 dark:bg-red-800 dark:hover:bg-red-900"
+					on:click={() => deleteImage(selectedImage.id)}
 				>
 					Delete Image
 				</button>

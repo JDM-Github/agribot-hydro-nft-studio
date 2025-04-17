@@ -50,20 +50,9 @@
 			}
 
 			data.forEach((plant: any) => {
-				const imageBase64 = plant.src.split(',')[1];
-				const byteCharacters = atob(imageBase64);
-				const byteArray = new Uint8Array(byteCharacters.length);
-
-				for (let i = 0; i < byteCharacters.length; i++) {
-					byteArray[i] = byteCharacters.charCodeAt(i);
-				}
-
-				const blob = new Blob([byteArray], { type: 'image/jpeg' });
-				const imageUrl = URL.createObjectURL(blob);
-
 				const newPlant = {
 					id: Date.now(),
-					src: imageUrl,
+					src: plant.src,
 					timestamp: plant.timestamp,
 					plantName: plant.plantName,
 					diseaseName: plant.diseaseName,
@@ -71,7 +60,6 @@
 					location: plant.location,
 					generatedDescription: plant.generatedDescription
 				};
-
 				plantHistory = [newPlant, ...plantHistory].slice(0, 6);
 			});
 

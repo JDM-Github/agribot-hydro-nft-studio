@@ -2,6 +2,7 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import FolderInfo from '$lib/modal/FolderInfo.svelte';
 	import ViewPicture from '$lib/modal/ViewPicture.svelte';
+	import { user } from '$lib/stores/auth';
 	import { derived, writable } from 'svelte/store';
 
 	let folderInfo = false;
@@ -27,87 +28,10 @@
 		document.body.removeChild(link);
 	}
 
-	let folder = writable({
-		id: 'folder-123',
-		name: 'Project Files',
-		createdAt: 'March 22, 2025, 10:30 AM',
-		lastModified: 'March 25, 2025, 3:15 PM',
-		size: '250MB',
-		fileCount: 12,
-		owner: 'John Doe',
-		access: 'Private',
-		thumbnail: 'https://placehold.co/600x400/000000/FFF',
-		tags: ['Design', 'Development'],
-		permissions: {
-			canEdit: true,
-			canShare: true,
-			canDelete: true
-		}
-	});
+	export let data;
 
-	let images = writable([
-		{
-			id: 1,
-			src: 'https://placehold.co/600x400/000000/FFF',
-			timestamp: new Date().toLocaleString(),
-			plantName: 'Tomato Plant',
-			diseaseName: 'Late Blight',
-			location: {
-				address: 'Greenhouse #3, Farmville',
-				latitude: 37.7749,
-				longitude: -122.4194
-			},
-			imageSize: '600x400',
-			generatedDescription:
-				'A tomato plant showing symptoms of Late Blight, characterized by dark lesions on leaves.'
-		},
-		{
-			id: 2,
-			src: 'https://placehold.co/600x400/000000/FFF',
-			timestamp: new Date().toLocaleString(),
-			plantName: 'Cucumber Plant',
-			diseaseName: 'Powdery Mildew',
-			location: {
-				address: 'Field #7, Rural Area',
-				latitude: 34.0522,
-				longitude: -118.2437
-			},
-			imageSize: '600x400',
-			generatedDescription:
-				'Cucumber plant affected by Powdery Mildew, displaying white powder-like spots on leaves.'
-		},
-		{
-			id: 3,
-			src: 'https://placehold.co/600x400/000000/FFF',
-			timestamp: new Date().toLocaleString(),
-			plantName: 'Strawberry Plant',
-			diseaseName: 'Bacterial Spot',
-			location: {
-				address: 'Backyard Garden, Springville',
-				latitude: 40.7128,
-				longitude: -74.006
-			},
-			imageSize: '600x400',
-			generatedDescription:
-				'Strawberry plant infected with Bacterial Spot, showing small black spots on fruit and leaves.'
-		},
-		{
-			id: 4,
-			src: 'https://placehold.co/600x400/000000/FFF',
-			timestamp: new Date().toLocaleString(),
-			plantName: 'Lettuce Plant',
-			diseaseName: 'Downy Mildew',
-			location: {
-				address: 'Organic Farm, Riverside',
-				latitude: 51.5074,
-				longitude: -0.1278
-			},
-			imageSize: '600x400',
-			generatedDescription:
-				'Lettuce plant showing signs of Downy Mildew, with yellow patches and gray fungal growth underneath leaves.'
-		}
-	]);
-
+	let folder = writable(data.folder);
+	let images = writable(data.images);
 	function renameFolder() {
 		const newName = prompt('Enter new folder name:', 'Project Files');
 		if (newName) folder.update((f) => ({ ...f, name: newName }));
@@ -150,7 +74,7 @@
 </script>
 
 <main
-	class="relative flex min-h-[calc(100vh-95px)] flex-col bg-gray-200 p-4 lg:px-16 dark:bg-gray-700 transition-all duration-500 ease-out"
+	class="relative flex min-h-[calc(100vh-95px)] flex-col bg-gray-200 p-4 transition-all duration-500 ease-out lg:px-16 dark:bg-gray-700"
 >
 	<div class="relative z-10 mb-4 flex flex-col gap-4 lg:flex-row">
 		<div
@@ -159,17 +83,23 @@
 			<div
 				class="relative flex h-64 items-center justify-center bg-gray-100 shadow-inner md:h-80 dark:bg-gray-800"
 			>
-				<img
-					class="h-full w-full rounded-t-2xl object-cover"
-					src={$folder.thumbnail}
-					alt="Folder Thumbnail"
-				/>
-				<label
-					class="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/50 text-sm text-white opacity-0 transition hover:opacity-100"
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke-width="1.5"
+					stroke="currentColor"
+					class="h-24 w-24 text-green-300 transition-colors
+						   duration-300 group-hover:text-green-600
+						   sm:h-20 sm:w-20
+						   md:h-24 md:w-24 dark:text-green-300 dark:group-hover:text-green-400"
 				>
-					<input type="file" class="hidden" accept="image/*" on:change={changeThumbnail} />
-					Change Thumbnail
-				</label>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M2.25 12.75v6.75a2.25 2.25 0 002.25 2.25h15a2.25 2.25 0 002.25-2.25V9.75a2.25 2.25 0 00-2.25-2.25h-7.5l-2.25-2.25H4.5a2.25 2.25 0 00-2.25 2.25v9z"
+					/>
+				</svg>
 			</div>
 
 			<div class="space-y-4 divide-y divide-gray-200 p-4 dark:divide-gray-700">
@@ -194,7 +124,7 @@
 					</li>
 					<li class="flex justify-between">
 						<span class="font-medium text-gray-500 dark:text-gray-300">Owner:</span>
-						<span>{$folder.owner}</span>
+						<span>{($user as any).fullName}</span>
 					</li>
 					<li class="flex justify-between">
 						<span class="font-medium text-gray-500 dark:text-gray-300">Last Modified:</span>
@@ -208,12 +138,6 @@
 			</div>
 
 			<div class="flex flex-col gap-2 p-4">
-				<button
-					on:click={renameFolder}
-					class="flex items-center justify-center gap-2 rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-800"
-				>
-					Rename
-				</button>
 				<button
 					on:click={deleteFolder}
 					class="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700"
@@ -252,7 +176,7 @@
 			>
 				{#each $paginatedImages as image}
 					<button
-						class="group relative aspect-square w-full cursor-pointer overflow-hidden rounded-lg shadow-md focus:ring-2 focus:ring-green-500 focus:outline-none dark:focus:ring-green-300 border border-gray-200 dark:border-gray-700"
+						class="group relative aspect-square w-full cursor-pointer overflow-hidden rounded-lg border border-gray-200 shadow-md focus:ring-2 focus:ring-green-500 focus:outline-none dark:border-gray-700 dark:focus:ring-green-300"
 						on:click={() => openModal(image)}
 						aria-label="View image details"
 					>

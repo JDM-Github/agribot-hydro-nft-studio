@@ -1,6 +1,43 @@
-<script>
+<script lang="ts">
+	import { onDestroy, onMount } from 'svelte';
+
+	export let detectedPlants;
+	export let updateDetectedPlant;
+	export let scanning = false;
 	export let showCamera = false;
 	export let closeCamera;
+
+	let latestResults: { label: string; timestamp: string }[] = [];
+	const fetchResults = async () => {
+		if (scanning) {
+			const response = await fetch('http://127.0.0.1:8000/latest_results');
+			if (response.ok) {
+				const data = await response.json();
+				latestResults = data;
+
+
+				let newPlant = [...detectedPlants];
+				for (const result of latestResults) {
+					for (const plant of detectedPlants) {
+						if (plant.key === result.label) {
+							let nP = plant;
+							nP.timestamp = result.timestamp;
+							nP.active = true; 
+						}
+					}
+				}
+				updateDetectedPlant(newPlant);
+			}
+		}
+	};
+	let intervalId: NodeJS.Timeout;
+
+	onMount(() => {
+		intervalId = setInterval(fetchResults, 2000);
+	});
+	onDestroy(() => {
+		clearInterval(intervalId);
+	});
 </script>
 
 <div
@@ -9,9 +46,17 @@
 	<div
 		class="relative flex h-64 items-center justify-center bg-gray-100 shadow-inner md:h-80 dark:bg-gray-800"
 	>
-		<span class="flex items-center gap-2 text-base font-medium text-gray-700 dark:text-gray-300">
-			📷 Live Camera Feed
-		</span>
+		{#if scanning}
+			<img
+				src={'http://127.0.0.1:8000/scan_feed'}
+				alt="📷 Camera Feed"
+				class="h-auto w-full max-w-[90%] rounded-md border dark:border-gray-600"
+			/>
+		{:else}
+			<span class="flex items-center gap-2 text-base font-medium text-gray-700 dark:text-gray-300">
+				📷 Live Camera Feed
+			</span>
+		{/if}
 	</div>
 
 	<div class="space-y-4 divide-y divide-gray-100 p-4 dark:divide-gray-700">
@@ -20,12 +65,6 @@
 		</h3>
 
 		<ul class="space-y-2 pt-2 text-sm text-gray-600 dark:text-gray-400">
-			<li class="flex justify-between">
-				<span class="font-medium text-gray-500 dark:text-gray-300">Plant Name:</span> None
-			</li>
-			<li class="flex justify-between">
-				<span class="font-medium text-gray-500 dark:text-gray-300">Confidence:</span> None
-			</li>
 			<li class="flex justify-between">
 				<span class="font-medium text-gray-500 dark:text-gray-300">IP Address:</span> 192.168.1.100
 			</li>
@@ -36,7 +75,7 @@
 				>
 			</li>
 			<li class="flex justify-between">
-				<span class="font-medium text-gray-500 dark:text-gray-300">Resolution:</span> 1920 x 1080
+				<span class="font-medium text-gray-500 dark:text-gray-300">Resolution:</span> 640 x 640
 			</li>
 			<li class="flex justify-between">
 				<span class="font-medium text-gray-500 dark:text-gray-300">Frame Rate:</span> 30 FPS
@@ -47,13 +86,12 @@
 			<li class="flex justify-between">
 				<span class="font-medium text-gray-500 dark:text-gray-300">Location:</span> Greenhouse Zone 4
 			</li>
-			<li></li>
 		</ul>
-		<button
+		<!-- <button
 			class="w-full rounded-md bg-green-500 px-3 py-1.5 text-sm font-medium text-white shadow-md transition"
 		>
 			SAVE PLANT
-		</button>
+		</button> -->
 	</div>
 </div>
 

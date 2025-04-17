@@ -1,22 +1,40 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { login } from '$lib/stores/auth';
-	import { addToast } from '$lib/stores/toast';
+	import { addToast, removeToast } from '$lib/stores/toast';
+	import RequestHandler from '$lib/utils/request';
 
 	let email = '';
 	let password = '';
 
-	function loginSubmit(event: Event) {
+	const loginSubmit = async (event: Event) => {
 		event.preventDefault();
-		if (email === 'test@example.com' && password === 'password') {
-			login({ email, password });
 
-			addToast('Login successful!', 'success', 3000);
-			goto('/');
-		} else {
-			addToast('Invalid email or password.', 'error', 3000);
+		const toastId = addToast('Trying to login...', 'loading');
+
+		try {
+			const response = await RequestHandler.fetchData('post', 'user/login', {
+				email,
+				password,
+			});
+			if (response.success) {
+				removeToast(toastId);
+				addToast('Login successful!', 'success', 3000);
+				login({ email, user: response.user });
+				email = '';
+				password = '';
+				goto('/');
+			} else {
+				removeToast(toastId);
+				addToast('Invalid email or password.', 'error', 3000);
+			}
+		} catch (error) {
+			removeToast(toastId);
+			console.error('Registration error:', error);
+			addToast('An unexpected error occurred.', 'error');
 		}
 	}
+
 	export let isRegister;
 	export let toggleForm: () => void;
 </script>

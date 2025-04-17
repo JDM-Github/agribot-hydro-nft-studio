@@ -1,8 +1,11 @@
 <script lang="ts">
 	export let showSprayModal = false;
+	
+	export let allSprays: string[];
+	export let allSpraysActive: boolean[];
+	export let previousSprays: any;
 	export let closeModal: () => void = () => {};
 
-	// Spray data with descriptions, recommended plants, and disease targets
 	export const recommendedSprays = [
 		{
 			name: 'Water',
@@ -44,15 +47,10 @@
 			]
 		}
 	];
-
-	let sprays = ['', '', '', ''];
-	let activeSlots = [true, true, true, true];
-
 	let selectedSpray: { info: string; plants: { name: string; disease: string }[] } | null = null;
 	let selectedSprayPosition = { x: 0, y: 0 };
-
 	function applyRecommended(index: number, sprayName: string) {
-		sprays[index] = sprayName;
+		allSprays[index] = sprayName;
 	}
 
 	function showSprayInfo(event: MouseEvent, sprayName: string) {
@@ -73,29 +71,29 @@
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity duration-300"
 	>
 		<div
-			class="mx-16 w-full max-w-2xl rounded-lg border border-gray-300 bg-white p-6 shadow-lg transition-transform duration-300 dark:border-gray-700 dark:bg-gray-900"
+			class="mx-16 w-full max-w-2xl rounded-lg border border-gray-300 dark:border-gray-700 bg-white p-6 shadow-lg transition-transform duration-300  dark:bg-gray-900"
 		>
 			<h2 class="text-xl font-bold text-gray-800 lg:text-2xl dark:text-gray-200">Setup Spray</h2>
 
 			<div class="mt-4 flex flex-col gap-3">
-				{#each sprays as spray, i}
+				{#each allSprays as spray, i}
 					<div class="flex items-center gap-3">
 						<span class="w-10 text-sm text-gray-600 lg:text-base dark:text-gray-300">#{i + 1}</span>
 						<input
 							type="text"
-							bind:value={sprays[i]}
+							bind:value={allSprays[i]}
 							placeholder="Enter spray name..."
 							class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none lg:text-base dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
 						/>
 						<button
 							class="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-							on:click={() => (sprays[i] = '')}
+							on:click={() => (allSprays[i] = '')}
 						>
 							❌
 						</button>
 
 						<label class="relative inline-flex cursor-pointer items-center">
-							<input type="checkbox" bind:checked={activeSlots[i]} class="peer sr-only" />
+							<input type="checkbox" bind:checked={allSpraysActive[i]} class="peer sr-only" />
 							<div
 								class="peer h-5 w-9 rounded-full bg-gray-300 peer-checked:bg-blue-500 peer-focus:ring-2 peer-focus:ring-blue-300 peer-focus:outline-none after:absolute after:top-0.5 after:left-0.5 after:h-4 after:w-4 after:rounded-full after:border after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-4 peer-checked:after:border-white dark:bg-gray-600 dark:peer-checked:bg-blue-600 dark:peer-focus:ring-blue-800"
 							></div>
@@ -114,7 +112,7 @@
 							class="relative flex items-center gap-2 rounded-md bg-green-500 px-3 py-1 text-sm text-white hover:bg-green-600 lg:text-base dark:bg-green-600 dark:hover:bg-green-700"
 							on:click={() =>
 								applyRecommended(
-									sprays.findIndex((s) => s === ''),
+									allSprays.findIndex((s: string) => s === ''),
 									spray.name
 								)}
 							on:mouseenter={(event) => showSprayInfo(event, spray.name)}
@@ -151,12 +149,19 @@
 			<div class="mt-6 flex justify-end gap-2">
 				<button
 					class="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 lg:text-base"
-					on:click={closeModal}
+					on:click={() => {
+						allSprays = previousSprays.spray;
+						allSpraysActive = previousSprays.active;
+						closeModal()
+					}}
 				>
 					Cancel
 				</button>
 				<button
 					class="rounded-md bg-blue-500 px-4 py-2 text-sm text-white hover:bg-blue-600 lg:text-base"
+					on:click={() => {
+						closeModal()
+					}}
 				>
 					Save
 				</button>
@@ -164,3 +169,4 @@
 		</div>
 	</div>
 {/if}
+
