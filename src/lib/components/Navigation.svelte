@@ -1,10 +1,11 @@
-<script>
+<script lang="ts">
 	import { page } from '$app/state';
 	import { darkMode } from '$lib/stores/theme';
 	import { user, logout } from '$lib/stores/auth';
-
+	import { isConnected, connect, disconnect, currentLink } from '$lib/stores/connection';
+	import { addToast, removeToast } from '$lib/stores/toast';
+	import { goto } from '$app/navigation';
 	let isMenuOpen = false;
-	let isConnected = false;
 
 	const records = [
 		{ name: 'SETUP', path: '/' },
@@ -23,6 +24,38 @@
 	function closeMenu() {
 		isMenuOpen = false;
 	}
+	function handleConnection() {
+		let toastID = addToast('Connecting to AGRI-BOT...', 'loading');
+		if (!$isConnected) {
+			connect()
+				.then(() => {
+					removeToast(toastID);
+					if ($isConnected) {
+						addToast('Successfully connected to AGRI-BOT.', 'success', 3000);
+					} else {
+						addToast('Failed to connect to AGRI-BOT.', 'error', 3000);
+					}
+				})
+				.catch(() => {
+					addToast('Failed to connect to AGRI-BOT.', 'error', 3000);
+				});
+		} else {
+			disconnect();
+			removeToast(toastID);
+			addToast('Disconnected from AGRI-BOT.', 'info', 3000);
+		}
+	}
+
+	async function changePath(path: string) {
+		try {
+			await fetch(`${currentLink}/stop_everything`, {
+				method: 'POST'
+			});
+		} catch (e) {
+			console.error('Failed to stop everything:', e);
+		}
+		await goto(path);
+	}
 </script>
 
 <nav
@@ -36,23 +69,24 @@
 			AGRI-BOT STUDIO
 		</span>
 		<button
-			class={`ml-2 rounded px-3 py-1 text-sm font-medium shadow-md transition-colors ${isConnected ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}
+			class={`ml-2 rounded px-3 py-1 text-sm font-medium shadow-md transition-colors ${$isConnected ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}
+			onclick={handleConnection}
 		>
-			{isConnected ? 'Connected' : 'Disconnected'}
+			{$isConnected ? 'Connected' : 'Disconnected'}
 		</button>
 	</div>
 
 	<ul class="hidden items-center space-x-6 md:flex">
 		{#each records as item}
 			<li>
-				<a
-					href={item.path}
-					class="font-medium hover:text-green-500 {page.route.id === item.path
+				<button
+					onclick={() => changePath(item.path)}
+					class="font-medium hover:text-green-500 {page.url.pathname === item.path
 						? 'font-bold text-green-600'
 						: 'text-gray-800 dark:text-gray-300'} {$user ? '' : 'hidden'}"
 				>
 					{item.name}
-				</a>
+				</button>
 			</li>
 		{/each}
 		<li>
@@ -97,16 +131,18 @@
 	<ul class="flex flex-col space-y-1 p-2 text-sm">
 		{#each records as item}
 			<li>
-				<a
-					href={item.path}
-					onclick={closeMenu}
-					class="block rounded-lg px-4 py-2 text-center transition duration-150 ease-in-out hover:bg-gray-100 dark:hover:bg-gray-700
-                        {page.route.id === item.path
+				<button
+					onclick={() => {
+						changePath(item.path);
+						closeMenu();
+					}}
+					class="block w-full rounded-lg px-4 py-2 text-center transition duration-150 ease-in-out hover:bg-gray-100 dark:hover:bg-gray-700 {page
+						.url.pathname === item.path
 						? 'font-bold text-green-600'
 						: 'text-gray-800 dark:text-gray-300'}"
 				>
 					{item.name}
-				</a>
+				</button>
 			</li>
 		{/each}
 

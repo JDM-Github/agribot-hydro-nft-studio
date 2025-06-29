@@ -1,6 +1,6 @@
 export default class RequestHandler {
 	static development = import.meta.env.MODE === 'development';
-	static baseURL = 'http://localhost:8888';
+	static baseURL = 'https://agribot-hydro-nft-admin.netlify.app';
 	static apiLink = '.netlify/functions/api';
 
 	static async fetchData(
@@ -36,9 +36,6 @@ export default class RequestHandler {
 		} else {
 			options.body = requestData;
 		}
-
-		console.log(url);
-		console.log(options);
 
 		try {
 			const response = await fetch(url, options);

@@ -3,7 +3,6 @@
 	export let isOpen = false;
     export let changeThumbnail;
     export let renameFolder;
-    export let deleteFolder;
     export let closeModal;
 
 </script>
@@ -71,12 +70,12 @@
 				>
 					Rename
 				</button>
-				<button
+				<!-- <button
 					on:click={deleteFolder}
 					class="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700"
 				>
 					Delete
-				</button>
+				</button> -->
 				<button
 					class="flex items-center justify-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-600"
 				>

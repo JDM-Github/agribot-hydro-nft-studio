@@ -1,5 +1,5 @@
 import { get } from 'svelte/store';
-import { user, logout } from '$lib/stores/auth';
+import { user } from '$lib/stores/auth';
 import { darkMode } from '$lib/stores/theme';
 import { redirect } from '@sveltejs/kit';
 
@@ -16,7 +16,11 @@ export function load({ url }) {
 
 	if (!isLoggedIn && !isLoginPage) {
 		throw redirect(307, '/login');
-	} 
+	}
+	// if (isLoggedIn && isLoginPage) {
+	// 	throw redirect(307, '/');
+	// }
+
 	const isDarkMode = get(darkMode);
 	const record = records.find((r) => r.path === currentPath);
 	return {

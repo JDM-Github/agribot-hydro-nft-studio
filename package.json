@@ -33,6 +33,7 @@
 		"@tailwindcss/vite": "^4.0.0",
 		"@testing-library/jest-dom": "^6.6.3",
 		"@testing-library/svelte": "^5.2.4",
+		"@types/js-cookie": "^3.0.6",
 		"dotenv": "^8.2.0",
 		"electron": "^34.2.0",
 		"electron-builder": "^25.1.8",
@@ -67,11 +68,12 @@
 		"fs-extra": "^11.3.0",
 		"gsap": "^3.12.7",
 		"idb": "^8.0.2",
+		"js-cookie": "^3.0.5",
 		"lucide-svelte": "^0.483.0",
 		"sharp": "^0.33.5",
 		"svelte-inview": "^4.0.4",
 		"svelte-local-storage-store": "^0.6.4",
 		"svelte-persisted-store": "^0.12.0",
-		"swiper": "^11.2.4"
+		"swiper": "^11.2.6"
 	}
 }

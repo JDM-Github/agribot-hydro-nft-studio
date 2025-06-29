@@ -4,43 +4,60 @@
 	import { writable } from 'svelte/store';
 	import { onDestroy } from 'svelte';
 	import { addToast, removeToast } from '$lib/stores/toast';
+	import { goto } from '$app/navigation';
+	import { currentLink, isConnected } from '$lib/stores/connection';
+	import { get } from 'svelte/store';
+	import { user } from '$lib/stores/auth';
 
-	let gpsLocation = 'Fetching...';
-	let robotPosition = { x: 0, y: 0 };
+	export let data;
+	let plantHistory: any = [];
+	let showingCamera = !data.no_camera;
+	let videoFeedUrl = '';
+	let robotStatus = (data.robot_state == "Stopped" ? "Stand By" : (data.robot_state == "Paused" ? "Paused" : "Running"));
+	if (data.robot_state == "Running") {
+		videoFeedUrl = `${currentLink}/video_feed`;
+	} else if (data.robot_state == "Paused") {
+		videoFeedUrl = data.last_frame;
+	}
+
 	let currentDay = new Date().toDateString();
-	let currentTime = new Date().toLocaleTimeString();
-	let robotStatus = 'Running';
+	let currentTime = writable(new Date().toLocaleTimeString());
 
 	let modalOpen = writable(false);
 	let selectedImage = writable<any>(null);
+	let capturedFullFrame = writable<any>(null);
+	let capturedFullFrameModal = writable(false);
+
+	let spray1 = writable(false);
+	let spray2 = writable(false);
+	let spray3 = writable(false);
+	let spray4 = writable(false);
+	let waterContainers = [
+		{ id: 1, hasWater: true },
+		{ id: 2, hasWater: true },
+		{ id: 3, hasWater: false },
+		{ id: 4, hasWater: true }
+	];
+
 	function openModal(image: any) {
 		selectedImage.set({ ...image });
 		modalOpen.set(true);
-	}
-	let videoFeedUrl = '';
-
-	async function captureImage() {
-		const response = await fetch('http://127.0.0.1:8000/capture');
-		if (response.ok) {
-			const blob = await response.blob();
-			const url = URL.createObjectURL(blob);
-
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = 'captured_image.jpg';
-			document.body.appendChild(a);
-			a.click();
-			document.body.removeChild(a);
-		} else {
-			alert('Failed to capture image');
-		}
 	}
 
 	async function captureImageAndDisplay() {
 		const toastId = addToast('Capturing image...', 'loading');
 
 		try {
-			const response = await fetch('http://127.0.0.1:8000/capture_and_return_blob');
+			const currentUser: any = get(user);
+			const email = currentUser?.email || '';
+
+			if (!email) {
+				removeToast(toastId);
+				addToast('User email not found.', 'error', 3000);
+				return;
+			}
+			const folderName = email.split('@')[0];
+			const response = await fetch(`${currentLink}/capture_and_return_blob?folder=${folderName}`);
 			const data = await response.json();
 
 			if (data.length === 0) {
@@ -48,8 +65,8 @@
 				addToast('No plants detected.', 'info', 3000);
 				return;
 			}
-
-			data.forEach((plant: any) => {
+			capturedFullFrame.set(data.fullFrame);
+			data.detections.forEach((plant: any) => {
 				const newPlant = {
 					id: Date.now(),
 					src: plant.src,
@@ -62,187 +79,246 @@
 				};
 				plantHistory = [newPlant, ...plantHistory].slice(0, 6);
 			});
-
 			removeToast(toastId);
 			addToast(`${data.length} plant(s) detected!`, 'success', 3000);
 		} catch (error) {
 			removeToast(toastId);
+			capturedFullFrame.set(null);
 			addToast('Failed to capture image!', 'error', 3000);
 		}
 	}
 
 	async function controlRobot(action: string) {
-		const response = await fetch(`http://127.0.0.1:8000/${action.toLowerCase()}`, {
-			method: 'POST'
-		});
-		const data = await response.json();
-		console.log(data);
-
+		await fetch(`${currentLink}/${action.toLowerCase()}`, { method: 'POST' });
+		showingCamera = false;
 		if (action === 'Run') {
-			videoFeedUrl = 'http://127.0.0.1:8000/video_feed';
+			videoFeedUrl = `${currentLink}/video_feed`;
+			robotStatus = 'Running';
 		} else {
 			videoFeedUrl = '';
+			robotStatus = 'Stand By';
+			capturedFullFrame.set(null);
 		}
 	}
 
 	const updateInfo = async () => {
 		try {
+			currentTime.set(new Date().toLocaleTimeString());
 			if (videoFeedUrl === '') return;
-			const res = await fetch('http://127.0.0.1:8000/camera_info');
-			const data = await res.json();
-
-			gpsLocation = `Lat: ${data.gps.lat}, Lon: ${data.gps.lon}`;
-			robotPosition = {
-				x: data.gyro.x.toFixed(2),
-				y: data.gyro.y.toFixed(2)
-			};
-			currentTime = new Date().toLocaleTimeString();
 		} catch (err) {
 			console.error('Failed to fetch camera info', err);
 		}
 	};
-
 	const interval = setInterval(updateInfo, 1000);
 	onDestroy(() => clearInterval(interval));
-
-	let plantHistory: any = [];
+	async function toggleCamera() {
+		showingCamera = !showingCamera;
+		await fetch(`${currentLink}/toggle_camera`, { method: 'POST' });
+	}
 </script>
 
-<div
-	class="relative flex min-h-[calc(100vh-95px)] flex-col
+{#if !$isConnected}
+	<div
+		class="relative flex min-h-[calc(100vh-95px)] flex-col items-center justify-center bg-gray-200 p-4 ease-out lg:px-16 dark:bg-gray-800"
+	>
+		<div
+			class="flex h-full flex-col items-center justify-center text-center text-lg font-semibold text-gray-600 dark:text-gray-400"
+		>
+			<p>The device is not connected to AGRI-BOT. Please connect first.</p>
+		</div>
+	</div>
+	<Footer />
+{:else}
+	<div
+		class="relative flex min-h-[calc(100vh-95px)] flex-col
 	bg-gradient-to-b from-gray-200 to-gray-300
 	p-4 ease-out lg:px-16 dark:from-gray-700 dark:to-gray-800"
->
-	<div class="relative z-10 mb-4 flex flex-col gap-4 lg:flex-row">
-		<div
-			class="flex min-h-[250px] items-center justify-center rounded-lg bg-gray-100 p-6 shadow-lg lg:w-1/2 dark:bg-gray-900"
-		>
-			{#if videoFeedUrl}
-				<img
-					src={videoFeedUrl}
-					alt="📷 Camera Feed"
-					class="h-auto w-full max-w-[90%] rounded-md border dark:border-gray-600"
-				/>
-			{:else}
-				<p class="text-lg font-semibold text-gray-700 dark:text-gray-300">📷 Camera Feed</p>
-			{/if}
-		</div>
-
-		<div class="flex flex-col rounded-xl bg-white p-4 shadow-lg lg:w-1/2 dark:bg-gray-900">
+	>
+		<div class="relative z-10 mb-4 flex max-h-[100%] flex-col gap-4 md:max-h-[510px] lg:flex-row">
 			<div
-				class="flex flex-col gap-2 rounded-2xl border border-gray-200 bg-[#fafffc] p-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:p-3 dark:border-gray-700 dark:bg-gray-900"
+				class="relative flex min-h-[250px] w-full flex-col items-center justify-center rounded-lg bg-gray-100 p-6 shadow-lg lg:w-1/2 dark:bg-gray-900"
 			>
-				<div class="flex items-center gap-2">
-					<span class="text-xl sm:text-2xl">⚙️</span>
-					<h2 class="text-base font-bold text-gray-400 sm:text-lg dark:text-gray-300">
-						CAMERA INFORMATION
-					</h2>
+				{#if videoFeedUrl}
+					<button
+						class="absolute top-4 right-4 z-10 rounded bg-green-600 px-3 py-1.5 text-sm text-white shadow hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
+						on:click={toggleCamera}
+					>
+						{#if showingCamera}Turn Off Camera{:else}Show Camera{/if}
+					</button>
+
+					{#if showingCamera}
+						<img
+							src={videoFeedUrl}
+							alt="📷 Camera Feed"
+							class="h-full w-full max-w-full rounded-md border object-contain dark:border-gray-600"
+						/>
+					{/if}
+				{:else}
+					<p class="text-lg font-semibold text-gray-700 dark:text-gray-300">📷 Camera Feed</p>
+				{/if}
+
+				{#if $capturedFullFrame}
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+					<img
+						src={$capturedFullFrame}
+						alt="Last Captured Frame"
+						class="absolute top-4 left-4 h-40 w-40 cursor-pointer rounded border border-gray-400 shadow-lg transition hover:brightness-110 dark:border-gray-600"
+						on:click={() => capturedFullFrameModal.set(true)}
+					/>
+				{/if}
+			</div>
+
+			<div class="flex flex-col rounded-xl bg-white p-4 shadow-lg lg:w-1/2 dark:bg-gray-900">
+				<div
+					class="flex flex-col gap-2 rounded-2xl border border-gray-200 bg-[#fafffc] p-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:p-3 dark:border-gray-700 dark:bg-gray-900"
+				>
+					<div class="flex items-center gap-2">
+						<span class="text-xl sm:text-2xl">⚙️</span>
+						<h2 class="text-base font-bold text-gray-400 sm:text-lg dark:text-gray-300">
+							CAMERA INFORMATION
+						</h2>
+					</div>
+
+					<button
+						class="flex h-10 w-10 items-center justify-center rounded-full bg-green-600 text-white shadow-md transition hover:bg-green-700 focus:ring-2 focus:ring-green-300 focus:outline-none dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-400"
+						title="Help"
+					>
+						<span class="text-lg font-bold">?</span>
+					</button>
 				</div>
-			</div>
-
-			<div
-				class="mt-1 rounded-lg border-gray-200 bg-gray-100 p-4 dark:border-gray-700 dark:bg-gray-800"
-			>
-				<ul class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-					<li class="flex justify-between">
-						<span class="font-medium text-gray-500 dark:text-gray-300">Record Day:</span>
-						<span>{currentDay}</span>
-					</li>
-					<li class="flex justify-between">
-						<span class="font-medium text-gray-500 dark:text-gray-300">Status:</span>
-						<span>{robotStatus}</span>
-					</li>
-					<li class="flex justify-between">
-						<span class="font-medium text-gray-500 dark:text-gray-300">Position:</span>
-						<span>X: {robotPosition.x}, Y: {robotPosition.y}</span>
-					</li>
-					<li class="flex justify-between">
-						<span class="font-medium text-gray-500 dark:text-gray-300">GPS Location:</span>
-						<span>{gpsLocation}</span>
-					</li>
-					<li class="flex justify-between">
-						<span class="font-medium text-gray-500 dark:text-gray-300">Time:</span>
-						<span>{currentTime}</span>
-					</li>
-				</ul>
-			</div>
-
-			<div
-				class="mt-6 rounded-xl border border-gray-200 bg-gray-100 p-4 shadow-lg dark:border-gray-700 dark:bg-gray-800"
-			>
-				<h3 class="text-base font-bold text-gray-700 dark:text-gray-300">DETECTION HISTORY</h3>
 
 				<div
-					class="scrollbar-hide mt-4 flex min-h-[140px] gap-4 overflow-x-auto px-2 py-2 whitespace-nowrap"
+					class="mt-1 rounded-lg border-gray-200 bg-gray-100 p-4 dark:border-gray-700 dark:bg-gray-800"
 				>
-					{#if plantHistory.length > 0}
-						{#each plantHistory as plant}
-							<button
-								class="flex min-h-[140px] min-w-[140px] flex-col items-center rounded-lg bg-white p-3 shadow-md md:min-h-[160px] md:min-w-[160px] dark:bg-gray-900"
-								on:click={() => openModal(plant)}
-							>
-								<img
-									src={plant.src}
-									alt={plant.plantName}
-									class="h-[90%] w-[90%] rounded-lg border border-gray-300 object-contain dark:border-gray-700"
-								/>
-								<p class="mt-2 text-center text-sm font-semibold text-gray-700 dark:text-gray-300">
-									{plant.plantName}
-								</p>
-								<p class="text-xs text-red-500">{plant.diseaseName}</p>
-							</button>
-						{/each}
-					{:else}
-						<div
-							class="flex min-h-[140px] min-w-[140px] items-center justify-center rounded-lg bg-gray-300 shadow-md dark:bg-gray-900"
-						>
-							<p class="text-gray-400 dark:text-gray-500">No records</p>
-						</div>
-					{/if}
+					<ul class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+						<li class="flex justify-between">
+							<span class="font-medium text-gray-500 dark:text-gray-300">Record Day:</span>
+							<span>{currentDay}</span>
+						</li>
+						<li class="flex justify-between">
+							<span class="font-medium text-gray-500 dark:text-gray-300">Status:</span>
+							<span>{robotStatus}</span>
+						</li>
+						<li class="flex justify-between">
+							<span class="font-medium text-gray-500 dark:text-gray-300">Time:</span>
+							<span>{$currentTime}</span>
+						</li>
+						<li class="flex justify-between">
+							<span class="font-medium text-gray-500 dark:text-gray-300">Spray 1 Status:</span>
+							<span>{$spray1 ? 'ON' : 'OFF'}</span>
+						</li>
+						<li class="flex justify-between">
+							<span class="font-medium text-gray-500 dark:text-gray-300">Spray 2 Status:</span>
+							<span>{$spray2 ? 'ON' : 'OFF'}</span>
+						</li>
+						<li class="flex justify-between">
+							<span class="font-medium text-gray-500 dark:text-gray-300">Spray 3 Status:</span>
+							<span>{$spray3 ? 'ON' : 'OFF'}</span>
+						</li>
+						<li class="flex justify-between">
+							<span class="font-medium text-gray-500 dark:text-gray-300">Spray 4 Status:</span>
+							<span>{$spray4 ? 'ON' : 'OFF'}</span>
+						</li>
+					</ul>
 				</div>
-			</div>
 
-			<div class="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
-				<div class="flex gap-2">
-					<button
-						class="rounded-lg bg-blue-600 px-5 py-2 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
-						on:click={captureImageAndDisplay}
+				<div
+					class="mt-6 rounded-xl border border-gray-200 bg-gray-100 p-4 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+				>
+					<h3 class="text-base font-bold text-gray-700 dark:text-gray-300">DETECTION HISTORY</h3>
+
+					<div
+						class="scrollbar-hide mt-4 flex min-h-[140px] gap-4 overflow-x-auto px-2 py-2 whitespace-nowrap"
 					>
-						Capture
-					</button>
+						{#if plantHistory.length > 0}
+							{#each plantHistory as plant}
+								<button
+									class="flex min-h-[140px] min-w-[140px] flex-col items-center rounded-lg bg-white p-3 shadow-md md:min-h-[160px] md:min-w-[160px] dark:bg-gray-900"
+									on:click={() => openModal(plant)}
+								>
+									<img
+										src={plant.src}
+										alt={plant.plantName}
+										class="h-[90%] w-[90%] rounded-lg border border-gray-300 object-contain dark:border-gray-700"
+									/>
+									<p
+										class="mt-2 text-center text-sm font-semibold text-gray-700 dark:text-gray-300"
+									>
+										{plant.plantName}
+									</p>
+									<p class="text-xs text-red-500">{plant.diseaseName}</p>
+								</button>
+							{/each}
+						{:else}
+							<div
+								class="flex min-h-[140px] min-w-[140px] items-center justify-center rounded-lg bg-gray-300 shadow-md dark:bg-gray-900"
+							>
+								<p class="text-gray-400 dark:text-gray-500">No records</p>
+							</div>
+						{/if}
+					</div>
+				</div>
+
+				<div class="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+					<div class="flex gap-2">
+						<button
+							class="rounded-lg bg-blue-600 px-5 py-2 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
+							on:click={captureImageAndDisplay}
+						>
+							Capture
+						</button>
+						<button
+							class="rounded-lg bg-green-600 px-5 py-2 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800"
+							on:click={() => controlRobot('Run')}
+						>
+							Run
+						</button>
+						<button
+							class="rounded-lg bg-gray-600 px-5 py-2 text-white hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-800"
+							on:click={() => controlRobot('Pause')}
+						>
+							Pause
+						</button>
+						<button
+							class="rounded-lg bg-red-600 px-5 py-2 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
+							on:click={() => controlRobot('Stop')}
+						>
+							Stop
+						</button>
+					</div>
 					<button
-						class="rounded-lg bg-green-600 px-5 py-2 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800"
-						on:click={() => controlRobot('Run')}
+						on:click={() => {
+							const today = new Date();
+							const todayDate = `${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}${today.getFullYear()}`;
+							goto(`/folder/${todayDate}`);
+						}}
+						class="rounded-lg bg-green-500 px-5 py-2 text-white hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700"
 					>
-						Run
-					</button>
-					<button
-						class="rounded-lg bg-gray-600 px-5 py-2 text-white hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-800"
-						on:click={() => controlRobot('Pause')}
-					>
-						Pause
-					</button>
-					<button
-						class="rounded-lg bg-red-600 px-5 py-2 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
-						on:click={() => controlRobot('Stop')}
-					>
-						Stop
+						View Today Records
 					</button>
 				</div>
-				<button
-					class="rounded-lg bg-green-500 px-5 py-2 text-white hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700"
-				>
-					View Records
-				</button>
 			</div>
 		</div>
 	</div>
-</div>
 
-<Footer />
-<ViewPicture
-	modalOpen={$modalOpen}
-	closeModal={() => modalOpen.set(false)}
-	downloadImage={() => {}}
-	selectedImage={$selectedImage}
-/>
+	<Footer />
+	<ViewPicture
+		modalOpen={$modalOpen}
+		closeModal={() => modalOpen.set(false)}
+		downloadImage={() => {}}
+		selectedImage={$selectedImage}
+	/>
+	{#if $capturedFullFrameModal}
+		<button
+			class="bg-opacity-80 fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+			on:click={() => capturedFullFrameModal.set(false)}
+		>
+			<img
+				src={$capturedFullFrame}
+				alt="Captured Frame Full Size"
+				class="max-h-[90%] max-w-[90%] rounded-lg shadow-2xl"
+			/>
+		</button>
+	{/if}
+{/if}

@@ -3,7 +3,6 @@
 	import { login } from '$lib/stores/auth';
 	import { addToast, removeToast } from '$lib/stores/toast';
 	import RequestHandler from '$lib/utils/request';
-
 	let email = '';
 	let password = '';
 
@@ -15,9 +14,10 @@
 		try {
 			const response = await RequestHandler.fetchData('post', 'user/login', {
 				email,
-				password,
+				password
 			});
 			if (response.success) {
+
 				removeToast(toastId);
 				addToast('Login successful!', 'success', 3000);
 				login({ email, user: response.user });
@@ -33,7 +33,7 @@
 			console.error('Registration error:', error);
 			addToast('An unexpected error occurred.', 'error');
 		}
-	}
+	};
 
 	export let isRegister;
 	export let toggleForm: () => void;

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import RadarChartComponent from '$lib/components/RadarChartComponent.svelte';
 	import SetSchedule from '$lib/components/SetSchedule.svelte';
+	import { addToast } from '$lib/stores/toast';
 	import { writable, type Writable } from 'svelte/store';
 
 	export let scanning;
@@ -132,12 +133,11 @@
 		}
 	};
 
-	let previousModel = writable('Model A');
+	let previousModel = writable($objectDetection);
 	let showToast = writable(false);
 	let showRadarModal = false;
 	let showScheduleModal = false;
 	let oldSchedule: any = {};
-
 	function confirmChange() {
 		previousModel.set($objectDetection);
 		showToast.set(false);
@@ -169,7 +169,6 @@
 				}}
 				class="w-full rounded-md bg-yellow-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700"
 			>
-				<option value="1.0.0">ModelV1.0.0</option>
 				{#each objectDetectionionYolo as model}
 					<option value={model}>{model}</option>
 				{/each}
@@ -181,7 +180,7 @@
 				bind:value={$stageClassification}
 				on:change={(event: any) => {
 					stageClassification.set(event.target.value);
-					showToast.set(true);
+					// showToast.set(true);
 				}}
 				class="w-full rounded-md bg-purple-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700"
 			>
@@ -196,7 +195,7 @@
 				bind:value={$diseaseSegmentation}
 				on:change={(event: any) => {
 					diseaseSegmentation.set(event.target.value);
-					showToast.set(true);
+					// showToast.set(true);
 				}}
 				class="w-full rounded-md bg-rose-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-rose-600 dark:bg-rose-600 dark:hover:bg-rose-700"
 			>
@@ -313,13 +312,17 @@
 	{oldSchedule}
 	{showScheduleModal}
 	onClose={() => (showScheduleModal = false)}
+	onSave={() => {
+		showScheduleModal = false;
+		addToast('Schedule updated!', 'success', 3000);
+	}}
 />
 {#if $showToast}
 	<div class="fixed inset-0 z-40 bg-black/80"></div>
 	<div
 		class="fixed right-5 bottom-5 z-50 flex flex-col space-y-3 rounded-lg bg-red-600 px-5 py-4 text-white shadow-lg transition-opacity duration-300"
 	>
-		⚠️ <span>Warning: Changing the model will reset your setup!</span>
+		⚠️ <span>Warning: Changing the model will reset all your plant setup!</span>
 		<div class="flex justify-end space-x-3">
 			<button
 				on:click={confirmChange}

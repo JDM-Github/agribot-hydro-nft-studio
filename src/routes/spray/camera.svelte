@@ -6,15 +6,15 @@
 	export let scanning = false;
 	export let showCamera = false;
 	export let closeCamera;
+	export let currentLink;
 
 	let latestResults: { label: string; timestamp: string }[] = [];
 	const fetchResults = async () => {
 		if (scanning) {
-			const response = await fetch('http://127.0.0.1:8000/latest_results');
+			const response = await fetch(`${currentLink}/latest_results`);
 			if (response.ok) {
 				const data = await response.json();
 				latestResults = data;
-
 
 				let newPlant = [...detectedPlants];
 				for (const result of latestResults) {
@@ -22,7 +22,7 @@
 						if (plant.key === result.label) {
 							let nP = plant;
 							nP.timestamp = result.timestamp;
-							nP.active = true; 
+							nP.active = true;
 						}
 					}
 				}
@@ -31,13 +31,41 @@
 		}
 	};
 	let intervalId: NodeJS.Timeout;
+	let intervalId2: NodeJS.Timeout;
 
 	onMount(() => {
-		intervalId = setInterval(fetchResults, 2000);
+		intervalId = setInterval(fetchResults, 1000);
+		intervalId2 = setInterval(fetchCameraInfo, 100);
 	});
 	onDestroy(() => {
 		clearInterval(intervalId);
+		clearInterval(intervalId2);
 	});
+
+	let cameraInfo = { status: 'false', resolution: 'NOT SET', fps: 0, ip: 'NOT SET' };
+	const fetchCameraInfo = async () => {
+		if (scanning) {
+			const cameraPromise = fetch(`${currentLink}/camera_info`);
+			const ipPromise =
+				cameraInfo.ip === 'NOT SET' ? fetch('https://api.ipify.org?format=json') : null;
+
+			const [cameraResponse, ipResponse] = await Promise.all([cameraPromise, ipPromise]);
+
+			if (cameraResponse.ok) {
+				const data = await cameraResponse.json();
+				cameraInfo = { ...cameraInfo, ...data };
+			} else {
+				cameraInfo = { status: 'false', resolution: 'NOT SET', fps: 0, ip: cameraInfo.ip };
+			}
+
+			if (ipResponse && ipResponse.ok) {
+				const ipData = await ipResponse.json();
+				cameraInfo.ip = ipData.ip;
+			}
+		} else {
+			cameraInfo = { status: 'false', resolution: 'NOT SET', fps: 0, ip: 'NOT SET' };
+		}
+	};
 </script>
 
 <div
@@ -48,8 +76,8 @@
 	>
 		{#if scanning}
 			<img
-				src={'http://127.0.0.1:8000/scan_feed'}
-				alt="📷 Camera Feed"
+				src={`${currentLink}/scan_feed`}
+				alt={`${currentLink}/scan_feed`}
 				class="h-auto w-full max-w-[90%] rounded-md border dark:border-gray-600"
 			/>
 		{:else}
@@ -66,32 +94,35 @@
 
 		<ul class="space-y-2 pt-2 text-sm text-gray-600 dark:text-gray-400">
 			<li class="flex justify-between">
-				<span class="font-medium text-gray-500 dark:text-gray-300">IP Address:</span> 192.168.1.100
+				<span class="font-medium text-gray-500 dark:text-gray-300">URL:</span>
+				{currentLink}
 			</li>
 			<li class="flex justify-between">
 				<span class="font-medium text-gray-500 dark:text-gray-300">Status:</span>
-				<span class="inline-flex items-center gap-1 font-medium text-green-600 dark:text-green-400"
-					>● Online</span
-				>
+				{#if cameraInfo.status === 'online'}
+					<span
+						class="inline-flex items-center gap-1 font-medium text-green-600 dark:text-green-400"
+						>● Online</span
+					>
+				{:else}
+					<span class="inline-flex items-center gap-1 font-medium text-red-600 dark:text-red-400"
+						>● Offline</span
+					>
+				{/if}
 			</li>
 			<li class="flex justify-between">
-				<span class="font-medium text-gray-500 dark:text-gray-300">Resolution:</span> 640 x 640
+				<span class="font-medium text-gray-500 dark:text-gray-300">Resolution:</span>
+				{cameraInfo.resolution}
 			</li>
 			<li class="flex justify-between">
-				<span class="font-medium text-gray-500 dark:text-gray-300">Frame Rate:</span> 30 FPS
+				<span class="font-medium text-gray-500 dark:text-gray-300">Frame Rate:</span>
+				{cameraInfo.fps} FPS
 			</li>
 			<li class="flex justify-between">
-				<span class="font-medium text-gray-500 dark:text-gray-300">Connection Type:</span> Wired Ethernet
-			</li>
-			<li class="flex justify-between">
-				<span class="font-medium text-gray-500 dark:text-gray-300">Location:</span> Greenhouse Zone 4
+				<span class="font-medium text-gray-500 dark:text-gray-300">Public IP:</span>
+				{cameraInfo.ip}
 			</li>
 		</ul>
-		<!-- <button
-			class="w-full rounded-md bg-green-500 px-3 py-1.5 text-sm font-medium text-white shadow-md transition"
-		>
-			SAVE PLANT
-		</button> -->
 	</div>
 </div>
 

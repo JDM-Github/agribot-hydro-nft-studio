@@ -1,15 +1,22 @@
+import { user } from '$lib/stores/auth';
 import { v2 as cloudinary } from 'cloudinary';
+import { get } from 'svelte/store';
 
 cloudinary.config({
-	cloud_name: 'dhud4mpgu',
-	api_key: '143511642428641',
-	api_secret: '2nIL6TKeyhwzfcVV1_9XGArAbbs',
+	cloud_name: import.meta.env.CLOUDINARY_NAME,
+	api_key: import.meta.env.CLOUDINARY_API,
+	api_secret: import.meta.env.CLOUDINARY_SECRET,
 	secure: true
 });
 
 export const load = async () => {
 	try {
-		const result = await cloudinary.api.sub_folders('records');
+		const currentUser: any = get(user);
+		if (!currentUser) return { records: [] };
+		const email = currentUser?.email || '';
+		if (!email) return { records: [] };
+		const folderName = email.split('@')[0];
+		const result = await cloudinary.api.sub_folders(folderName);
 		const folders = result.folders.map((folder: any) => {
 			const slug = folder.name;
 			const date = formatFolderSlugToDate(slug);

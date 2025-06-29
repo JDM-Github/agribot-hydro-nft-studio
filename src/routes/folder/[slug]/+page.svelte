@@ -29,18 +29,11 @@
 	}
 
 	export let data;
-
 	let folder = writable(data.folder);
 	let images = writable(data.images);
 	function renameFolder() {
 		const newName = prompt('Enter new folder name:', 'Project Files');
 		if (newName) folder.update((f) => ({ ...f, name: newName }));
-	}
-
-	function deleteFolder() {
-		if (confirm('Are you sure you want to delete this folder?')) {
-			alert('Folder deleted');
-		}
 	}
 
 	function changeThumbnail(event: any) {
@@ -124,7 +117,7 @@
 					</li>
 					<li class="flex justify-between">
 						<span class="font-medium text-gray-500 dark:text-gray-300">Owner:</span>
-						<span>{($user as any).fullName}</span>
+						<span>{($user as any).email}</span>
 					</li>
 					<li class="flex justify-between">
 						<span class="font-medium text-gray-500 dark:text-gray-300">Last Modified:</span>
@@ -138,12 +131,12 @@
 			</div>
 
 			<div class="flex flex-col gap-2 p-4">
-				<button
+				<!-- <button
 					on:click={deleteFolder}
 					class="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700"
 				>
 					Delete
-				</button>
+				</button> -->
 				<button
 					class="flex items-center justify-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-600"
 				>
@@ -171,24 +164,32 @@
 				</button>
 			</div>
 
-			<div
-				class="mt-4 grid min-h-[400px] grid-cols-4 gap-4 rounded-2xl bg-gray-300 p-4 lg:grid-cols-5 dark:bg-gray-800"
-			>
-				{#each $paginatedImages as image}
-					<button
-						class="group relative aspect-square w-full cursor-pointer overflow-hidden rounded-lg border border-gray-200 shadow-md focus:ring-2 focus:ring-green-500 focus:outline-none dark:border-gray-700 dark:focus:ring-green-300"
-						on:click={() => openModal(image)}
-						aria-label="View image details"
-					>
-						<img class="h-full w-full object-cover" src={image.src} alt="Image {image.id}" />
-						<div
-							class="absolute top-0 left-0 rounded-br-lg bg-black/50 px-2 py-1 text-xs text-white"
+			{#if $paginatedImages.length > 0}
+				<div
+					class="mt-4 grid min-h-[400px] grid-cols-4 gap-4 rounded-2xl bg-gray-300 p-4 lg:grid-cols-5 dark:bg-gray-800"
+				>
+					{#each $paginatedImages as image}
+						<button
+							class="group relative aspect-square w-full cursor-pointer overflow-hidden rounded-lg border border-gray-200 shadow-md focus:ring-2 focus:ring-green-500 focus:outline-none dark:border-gray-700 dark:focus:ring-green-300"
+							on:click={() => openModal(image)}
+							aria-label="View image details"
 						>
-							{image.id}
-						</div>
-					</button>
-				{/each}
-			</div>
+							<img class="h-full w-full object-cover" src={image.src} alt="Image {image.id}" />
+							<div
+								class="absolute top-0 left-0 rounded-br-lg bg-black/50 px-2 py-1 text-xs text-white"
+							>
+								{image.id}
+							</div>
+						</button>
+					{/each}
+				</div>
+			{:else}
+				<div
+					class="mt-4 rounded-2xl bg-gray-100 p-8 text-center text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+				>
+					No images found.
+				</div>
+			{/if}
 
 			<div class="mt-4 flex items-center justify-center gap-2">
 				<button
@@ -220,6 +221,5 @@
 	isOpen={folderInfo}
 	{changeThumbnail}
 	{renameFolder}
-	{deleteFolder}
 	closeModal={() => (folderInfo = false)}
 />

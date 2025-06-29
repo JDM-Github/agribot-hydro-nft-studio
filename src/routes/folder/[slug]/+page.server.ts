@@ -47,6 +47,21 @@ export const load = async ({ params }) => {
 		return { images, folder: folderMetadata };
 	} catch (err) {
 		console.error('Error fetching images:', err);
-		throw error(500, 'Error fetching images from Cloudinary');
+		let folderMetadata = {
+			id: folderSlug,
+			name: `Folder ${folderSlug}`,
+			createdAt: 'NA',
+			lastModified: 'NA',
+			size: `0MB`,
+			fileCount: 0,
+			access: 'Private',
+			tags: ['Design', 'Development'],
+			permissions: {
+				canEdit: true,
+				canShare: true,
+				canDelete: true
+			}
+		};
+		return { images: [], folder: folderMetadata };
 	}
 };
