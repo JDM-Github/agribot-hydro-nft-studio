@@ -1,6 +1,4 @@
-import { user } from '$lib/stores/auth';
 import { v2 as cloudinary } from 'cloudinary';
-import { get } from 'svelte/store';
 
 cloudinary.config({
 	cloud_name: import.meta.env.CLOUDINARY_NAME,
@@ -9,9 +7,9 @@ cloudinary.config({
 	secure: true
 });
 
-export const load = async () => {
+export const load = async ({locals}) => {
 	try {
-		const currentUser: any = get(user);
+		const currentUser: any = locals.user;
 		if (!currentUser) return { records: [] };
 		const email = currentUser?.email || '';
 		if (!email) return { records: [] };

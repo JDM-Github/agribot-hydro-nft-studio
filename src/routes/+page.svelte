@@ -5,12 +5,12 @@
 	import Camera from './spray/camera.svelte';
 	import Scannedheader from './spray/scannedheader.svelte';
 	import SprayButton from './spray/spraybuttons.svelte';
-	import { user } from '$lib/stores/auth';
 	import { detectedPlants as dplants } from '$lib/stores/plant';
 	import { writable } from 'svelte/store';
 	import { currentLink, isConnected } from '$lib/stores/connection';
 	import { addToast, removeToast } from '$lib/stores/toast';
 
+	export let data; 
 	let showCamera = false;
 	let selectedPlant: any = null;
 	let detectedPlants: any[] = [];
@@ -26,7 +26,7 @@
 	let stageClassification = writable('');
 	let diseaseSegmentation = writable('');
 
-	$: config = ($user as any)?.config;
+	$: config = (data.user as any)?.config;
 	const createConfiguration = () => {
 		const config = {
 			sprays: {

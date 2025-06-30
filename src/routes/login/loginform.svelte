@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { login } from '$lib/stores/auth';
 	import { addToast, removeToast } from '$lib/stores/toast';
-	import RequestHandler from '$lib/utils/request';
 	let email = '';
 	let password = '';
 
@@ -12,18 +10,29 @@
 		const toastId = addToast('Trying to login...', 'loading');
 
 		try {
-			const response = await RequestHandler.fetchData('post', 'user/login', {
-				email,
-				password
+			// const response = await RequestHandler.fetchData('post', 'user/login', {
+			// 	email,
+			// 	password
+			// });
+			const res = await fetch('/api/user/login', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					type: 'login',
+					email,
+					password
+				}),
+				credentials: 'same-origin'
 			});
-			if (response.success) {
-
+			const response = await res.json();
+			if (res.ok && response.success) {
 				removeToast(toastId);
 				addToast('Login successful!', 'success', 3000);
-				login({ email, user: response.user });
 				email = '';
 				password = '';
-				goto('/');
+				await goto('/', { invalidateAll: true });
 			} else {
 				removeToast(toastId);
 				addToast('Invalid email or password.', 'error', 3000);
@@ -31,7 +40,7 @@
 		} catch (error) {
 			removeToast(toastId);
 			console.error('Registration error:', error);
-			addToast('An unexpected error occurred.', 'error');
+			addToast('An unexpected error occurred.', 'error', 3000);
 		}
 	};
 

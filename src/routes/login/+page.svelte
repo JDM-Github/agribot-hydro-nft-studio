@@ -1,16 +1,10 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import Footer from '$lib/components/Footer.svelte';
-	import { user } from '$lib/stores/auth';
 	import { addToast, removeToast } from '$lib/stores/toast';
 	import RequestHandler from '$lib/utils/request';
 	import Loginform from './loginform.svelte';
 
 	let isRegister = false;
-	if ($user) {
-		goto('/');
-	}
-
 	function toggleForm() {
 		isRegister = !isRegister;
 	}

@@ -1,10 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { darkMode } from '$lib/stores/theme';
-	import { user, logout } from '$lib/stores/auth';
+	// import { user, logout } from '$lib/stores/auth';
 	import { isConnected, connect, disconnect, currentLink } from '$lib/stores/connection';
 	import { addToast, removeToast } from '$lib/stores/toast';
 	import { goto } from '$app/navigation';
+
+	export let user: any = null;
+
 	let isMenuOpen = false;
 
 	const records = [
@@ -48,9 +51,9 @@
 
 	async function changePath(path: string) {
 		try {
-			await fetch(`${currentLink}/stop_everything`, {
-				method: 'POST'
-			});
+			// await fetch(`${currentLink}/stop_everything`, {
+			// 	method: 'POST'
+			// });
 		} catch (e) {
 			console.error('Failed to stop everything:', e);
 		}
@@ -81,28 +84,29 @@
 			<li>
 				<button
 					onclick={() => changePath(item.path)}
-					class="font-medium hover:text-green-500 {page.url.pathname === item.path
+					class="cursor-pointer font-medium hover:text-green-500 {page.url.pathname === item.path
 						? 'font-bold text-green-600'
-						: 'text-gray-800 dark:text-gray-300'} {$user ? '' : 'hidden'}"
+						: 'text-gray-800 dark:text-gray-300'} {user ? '' : 'hidden'}"
 				>
 					{item.name}
 				</button>
 			</li>
 		{/each}
 		<li>
-			{#if $user}
-				<a
-					href="/login"
-					onclick={logout}
-					class="block w-full rounded-lg bg-red-600 px-4 py-2 text-center font-medium text-white shadow-md transition hover:bg-red-700"
-				>
-					Logout
-				</a>
+			{#if user}
+				<form method="POST" action="/api/user/logout">
+					<button
+						type="submit"
+						class="block w-full cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-center font-medium text-white shadow-md transition hover:bg-red-700"
+					>
+						Logout
+					</button>
+				</form>
 			{:else}
 				<a
 					href="/login"
 					onclick={closeMenu}
-					class="block w-full rounded-lg bg-green-600 px-4 py-2 text-center font-medium text-white shadow-md transition hover:bg-green-700"
+					class="block w-full cursor-pointer rounded-lg bg-green-600 px-4 py-2 text-center font-medium text-white shadow-md transition hover:bg-green-700"
 				>
 					Login / Register
 				</a>
@@ -111,7 +115,7 @@
 		<li>
 			<button
 				onclick={toggleDarkMode}
-				class="rounded bg-gray-200 p-2 text-black dark:bg-gray-700 dark:text-white"
+				class="cursor-pointer rounded bg-gray-200 p-2 text-black hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
 			>
 				{$darkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
 			</button>
@@ -147,14 +151,15 @@
 		{/each}
 
 		<li class="mt-2">
-			{#if $user}
-				<a
-					href="/login"
-					onclick={logout}
-					class="block w-full rounded-lg bg-red-600 px-4 py-2 text-center font-medium text-white shadow-md transition hover:bg-red-700"
-				>
-					Logout
-				</a>
+			{#if user}
+				<form method="POST" action="/api/user/logout">
+					<button
+						type="submit"
+						class="block w-full rounded-lg bg-red-600 px-4 py-2 text-center font-medium text-white shadow-md transition hover:bg-red-700"
+					>
+						Logout
+					</button>
+				</form>
 			{:else}
 				<a
 					href="/login"

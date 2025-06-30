@@ -1,31 +1,28 @@
-import { get } from 'svelte/store';
-import { user } from '$lib/stores/auth';
+// +layout.ts
 import { darkMode } from '$lib/stores/theme';
 import { redirect } from '@sveltejs/kit';
+import type { LayoutLoad } from './$types';
 
-export function load({ url }) {
+export const load: LayoutLoad = ({ url, data }) => {
 	const records = [
 		{ name: 'SETUP', path: '/' },
 		{ name: 'LIVE', path: '/live' },
 		{ name: 'RECORDS', path: '/record' }
 	];
 
-	const isLoggedIn = get(user);
+	const isLoggedIn = (data as any)?.user || false;
 	const currentPath = url.pathname;
 	const isLoginPage = currentPath === '/login';
-
 	if (!isLoggedIn && !isLoginPage) {
 		throw redirect(307, '/login');
 	}
-	// if (isLoggedIn && isLoginPage) {
-	// 	throw redirect(307, '/');
-	// }
 
-	const isDarkMode = get(darkMode);
 	const record = records.find((r) => r.path === currentPath);
+
 	return {
+		user: data?.user || null,
 		title: record ? `${record.name} | AGRI-BOT Studio` : 'AGRI-BOT Studio',
 		description: 'This is a dynamic description for SEO.',
-		isDarkMode
+		isDarkMode: darkMode,
 	};
-}
+};

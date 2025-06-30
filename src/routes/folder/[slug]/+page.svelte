@@ -2,9 +2,9 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import FolderInfo from '$lib/modal/FolderInfo.svelte';
 	import ViewPicture from '$lib/modal/ViewPicture.svelte';
-	import { user } from '$lib/stores/auth';
 	import { derived, writable } from 'svelte/store';
 
+	export let data;
 	let folderInfo = false;
 	let modalOpen = writable(false);
 	let selectedImage = writable<null | { id: number; src: string }>(null);
@@ -27,8 +27,6 @@
 		link.click();
 		document.body.removeChild(link);
 	}
-
-	export let data;
 	let folder = writable(data.folder);
 	let images = writable(data.images);
 	function renameFolder() {
@@ -117,7 +115,7 @@
 					</li>
 					<li class="flex justify-between">
 						<span class="font-medium text-gray-500 dark:text-gray-300">Owner:</span>
-						<span>{($user as any).email}</span>
+						<span>{(data.user as any).email}</span>
 					</li>
 					<li class="flex justify-between">
 						<span class="font-medium text-gray-500 dark:text-gray-300">Last Modified:</span>

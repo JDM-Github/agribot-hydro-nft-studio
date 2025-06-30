@@ -7,16 +7,21 @@
 	import { goto } from '$app/navigation';
 	import { currentLink, isConnected } from '$lib/stores/connection';
 	import { get } from 'svelte/store';
-	import { user } from '$lib/stores/auth';
 
 	export let data;
+	let user = data.user || null;
 	let plantHistory: any = [];
 	let showingCamera = !data.no_camera;
 	let videoFeedUrl = '';
-	let robotStatus = (data.robot_state == "Stopped" ? "Stand By" : (data.robot_state == "Paused" ? "Paused" : "Running"));
-	if (data.robot_state == "Running") {
+	let robotStatus =
+		data.robot_state == 'Stopped'
+			? 'Stand By'
+			: data.robot_state == 'Paused'
+				? 'Paused'
+				: 'Running';
+	if (data.robot_state == 'Running') {
 		videoFeedUrl = `${currentLink}/video_feed`;
-	} else if (data.robot_state == "Paused") {
+	} else if (data.robot_state == 'Paused') {
 		videoFeedUrl = data.last_frame;
 	}
 
@@ -48,9 +53,7 @@
 		const toastId = addToast('Capturing image...', 'loading');
 
 		try {
-			const currentUser: any = get(user);
-			const email = currentUser?.email || '';
-
+			const email = user.email || '';
 			if (!email) {
 				removeToast(toastId);
 				addToast('User email not found.', 'error', 3000);
@@ -89,15 +92,45 @@
 	}
 
 	async function controlRobot(action: string) {
-		await fetch(`${currentLink}/${action.toLowerCase()}`, { method: 'POST' });
-		showingCamera = false;
-		if (action === 'Run') {
-			videoFeedUrl = `${currentLink}/video_feed`;
-			robotStatus = 'Running';
-		} else {
-			videoFeedUrl = '';
-			robotStatus = 'Stand By';
-			capturedFullFrame.set(null);
+		const actionLabel = action === 'Run' ? 'Starting robot' : 'Stopping robot';
+		const toastId = addToast(`${actionLabel}...`, 'loading');
+
+		try {
+			const response = await fetch(`${currentLink}/${action.toLowerCase()}`, { method: 'POST' });
+
+			removeToast(toastId);
+
+			if (response.ok) {
+				if (action === 'Run') {
+					showingCamera = false;
+					videoFeedUrl = `${currentLink}/video_feed`;
+					robotStatus = 'Running';
+				} else {
+					showingCamera = false;
+					videoFeedUrl = '';
+					robotStatus = 'Stand By';
+					capturedFullFrame.set(null);
+				}
+				addToast(
+					`Robot ${action === 'Run' ? 'started' : 'stopped'} successfully.`,
+					'success',
+					3000
+				);
+			} else {
+				let errorMessage = 'Unknown error';
+				try {
+					const data = await response.json();
+					errorMessage = data?.error || response.statusText;
+				} catch (err) {
+					errorMessage = response.statusText || 'Failed to parse error response.';
+				}
+				addToast(`Failed to ${action.toLowerCase()} robot: ${errorMessage}`, 'error', 4000);
+				console.error(`Failed to ${action.toLowerCase()} robot:`, errorMessage);
+			}
+		} catch (err: any) {
+			removeToast(toastId);
+			addToast(`Network error: ${err.message}`, 'error', 4000);
+			console.error('Network error while controlling robot:', err);
 		}
 	}
 
@@ -263,26 +296,32 @@
 				<div class="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
 					<div class="flex gap-2">
 						<button
-							class="rounded-lg bg-blue-600 px-5 py-2 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
+							class="rounded-lg bg-blue-600 px-5 py-2 text-white hover:bg-blue-700 dark:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed dark:hover:bg-blue-800"
 							on:click={captureImageAndDisplay}
+							disabled={robotStatus === 'Stand By'}
 						>
 							Capture
 						</button>
 						<button
-							class="rounded-lg bg-green-600 px-5 py-2 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800"
+							class="rounded-lg bg-green-600 px-5 py-2 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-green-700 dark:hover:bg-green-800"
 							on:click={() => controlRobot('Run')}
+							disabled={robotStatus === 'Running'}
 						>
 							Run
 						</button>
+
 						<button
-							class="rounded-lg bg-gray-600 px-5 py-2 text-white hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-800"
+							class="rounded-lg bg-gray-600 px-5 py-2 text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-700 dark:hover:bg-gray-800"
 							on:click={() => controlRobot('Pause')}
+							disabled={robotStatus === 'Stand By'}
 						>
 							Pause
 						</button>
+
 						<button
-							class="rounded-lg bg-red-600 px-5 py-2 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
+							class="rounded-lg bg-red-600 px-5 py-2 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50"
 							on:click={() => controlRobot('Stop')}
+							disabled={robotStatus === 'Stand By'}
 						>
 							Stop
 						</button>

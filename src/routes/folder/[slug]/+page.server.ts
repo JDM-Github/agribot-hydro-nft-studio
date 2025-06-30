@@ -1,18 +1,25 @@
 import { v2 as cloudinary } from 'cloudinary';
-import { error } from '@sveltejs/kit';
 
+// cloudinary.config({
+// 	cloud_name: 'dhud4mpgu',
+// 	api_key: '143511642428641',
+// 	api_secret: '2nIL6TKeyhwzfcVV1_9XGArAbbs',
+// 	secure: true
+// });
 cloudinary.config({
-	cloud_name: 'dhud4mpgu',
-	api_key: '143511642428641',
-	api_secret: '2nIL6TKeyhwzfcVV1_9XGArAbbs',
+	cloud_name: import.meta.env.CLOUDINARY_NAME,
+	api_key: import.meta.env.CLOUDINARY_API,
+	api_secret: import.meta.env.CLOUDINARY_SECRET,
 	secure: true
 });
 
-export const load = async ({ params }) => {
+export const load = async ({ params, locals }) => {
 	const folderSlug = params.slug;
-
+	const currentUser: any = locals.user;
 	try {
-		const result = await cloudinary.api.resources_by_asset_folder(`records/${folderSlug}`);
+		const email = currentUser?.email || '';
+		const folderName = email.split('@')[0];
+		const result = await cloudinary.api.resources_by_asset_folder(`${folderName}/${folderSlug}`);
 		const images = result.resources.map((image: any) => ({
 			id: image.public_id,
 			src: image.secure_url,

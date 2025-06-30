@@ -233,11 +233,12 @@
 
 	<div class="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto md:w-1/3">
 		<button
-			class="w-full rounded-md px-4 py-2 text-xs font-medium text-white shadow-md transition sm:w-auto"
+			class="w-full rounded-md px-4 py-2 text-xs font-medium text-white shadow-md transition sm:w-auto disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
 			class:bg-green-500={!scanning}
 			class:bg-gray-400={scanning}
 			class:dark:bg-green-600={!scanning}
 			class:dark:bg-gray-600={scanning}
+			class:hover:brightness-70={!scanning}
 			on:click={() => controlRobot(true)}
 			disabled={scanning}
 		>
@@ -245,11 +246,12 @@
 		</button>
 
 		<button
-			class="w-full rounded-md px-4 py-2 text-xs font-medium text-white shadow-md transition sm:w-auto"
+			class="w-full rounded-md px-4 py-2 text-xs font-medium text-white shadow-md transition sm:w-auto disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
 			class:bg-red-500={scanning}
 			class:bg-gray-400={!scanning}
 			class:dark:bg-red-600={scanning}
 			class:dark:bg-gray-600={!scanning}
+			class:hover:brightness-70={scanning}
 			on:click={() => controlRobot(false)}
 			disabled={!scanning}
 		>

@@ -14,6 +14,6 @@
 
 <Toast />
 <main class="bg-white pt-16 dark:bg-gray-800">
-	<Navigation />
+	<Navigation user={data.user}/>
 	{@render children()}
 </main>
