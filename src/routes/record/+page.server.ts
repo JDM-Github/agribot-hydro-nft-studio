@@ -1,9 +1,9 @@
 import { v2 as cloudinary } from 'cloudinary';
-
+import { CLOUDINARY_NAME, CLOUDINARY_API, CLOUDINARY_SECRET } from '$env/static/private';
 cloudinary.config({
-	cloud_name: import.meta.env.CLOUDINARY_NAME,
-	api_key: import.meta.env.CLOUDINARY_API,
-	api_secret: import.meta.env.CLOUDINARY_SECRET,
+	cloud_name: CLOUDINARY_NAME,
+	api_key: CLOUDINARY_API,
+	api_secret: CLOUDINARY_SECRET,
 	secure: true
 });
 
@@ -20,6 +20,8 @@ export const load = async ({locals}) => {
 			const date = formatFolderSlugToDate(slug);
 			return { date, slug };
 		});
+		console.log(folders);
+		console.log(currentUser);
 
 		return { records: folders };
 	} catch (error) {

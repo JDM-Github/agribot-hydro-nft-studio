@@ -10,10 +10,6 @@
 		const toastId = addToast('Trying to login...', 'loading');
 
 		try {
-			// const response = await RequestHandler.fetchData('post', 'user/login', {
-			// 	email,
-			// 	password
-			// });
 			const res = await fetch('/api/user/login', {
 				method: 'POST',
 				headers: {
@@ -28,10 +24,9 @@
 			});
 			const response = await res.json();
 			if (res.ok && response.success) {
+				localStorage.setItem('userConfig', JSON.stringify(response.config));
 				removeToast(toastId);
 				addToast('Login successful!', 'success', 3000);
-				email = '';
-				password = '';
 				await goto('/', { invalidateAll: true });
 			} else {
 				removeToast(toastId);

@@ -16,16 +16,17 @@
 			mAP50_95: number;
 		}
 	>;
+	export let modelType: string;
 
 	let canvasEl: HTMLCanvasElement;
 	let chartInstance: Chart;
 
 	const metricLabels = ['Accuracy', 'Recall', 'Precision', 'mAP50', 'mAP50_95'];
 
-	function getColorForModel(modelName: string): string {
-		if (modelName.startsWith('PlantOD')) return 'rgba(59, 130, 246, 1)';
-		if (modelName.startsWith('StageCLS')) return 'rgba(168, 85, 247, 1)';
-		if (modelName.startsWith('DiseaseSeg')) return 'rgba(244, 63, 94, 1)';
+	function getColorForModel(): string {
+		if (modelType === 'PlantOD') return 'rgba(59, 130, 246, 1)';
+		if (modelType === 'StageCLS') return 'rgba(168, 85, 247, 1)';
+		if (modelType === 'DiseaseSeg') return 'rgba(244, 63, 94, 1)';
 		return 'rgba(107, 114, 128, 1)';
 	}
 
@@ -35,9 +36,7 @@
 			.map((modelName) => {
 				const metrics = dataMap[modelName];
 				const isSelected = modelName === selected;
-
-				const baseColor = isSelected ? getColorForModel(modelName) : 'rgba(107, 114, 128, 1)';
-
+				const baseColor = isSelected ? getColorForModel() : 'rgba(107, 114, 128, 1)';
 				return {
 					label: modelName,
 					data: [

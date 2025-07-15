@@ -167,7 +167,7 @@
 	bg-gradient-to-b from-gray-200 to-gray-300
 	p-4 ease-out lg:px-16 dark:from-gray-700 dark:to-gray-800"
 	>
-		<div class="relative z-10 mb-4 flex max-h-[100%] flex-col gap-4 md:max-h-[510px] lg:flex-row">
+		<div class="relative z-10 mb-4 flex max-h-[100%] flex-col gap-4 md:max-h-[530px] lg:flex-row">
 			<div
 				class="relative flex min-h-[250px] w-full flex-col items-center justify-center rounded-lg bg-gray-100 p-6 shadow-lg lg:w-1/2 dark:bg-gray-900"
 			>
@@ -225,6 +225,9 @@
 					class="mt-1 rounded-lg border-gray-200 bg-gray-100 p-4 dark:border-gray-700 dark:bg-gray-800"
 				>
 					<ul class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+						<li class="flex justify-between">
+							<span class="font-medium text-gray-500 dark:text-gray-300">URL:</span>
+							<span>{currentLink}</span>
 						<li class="flex justify-between">
 							<span class="font-medium text-gray-500 dark:text-gray-300">Record Day:</span>
 							<span>{currentDay}</span>

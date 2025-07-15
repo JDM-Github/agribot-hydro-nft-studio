@@ -3,7 +3,6 @@
 	let { data, children } = $props();
 	import Navigation from '$lib/components/Navigation.svelte';
 	import Toast from '$lib/components/ToastContainer.svelte';
-
 </script>
 
 <svelte:head>
@@ -14,6 +13,6 @@
 
 <Toast />
 <main class="bg-white pt-16 dark:bg-gray-800">
-	<Navigation user={data.user}/>
+	<Navigation user={data.user} />
 	{@render children()}
 </main>

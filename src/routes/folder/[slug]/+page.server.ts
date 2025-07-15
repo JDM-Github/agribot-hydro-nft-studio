@@ -1,15 +1,9 @@
 import { v2 as cloudinary } from 'cloudinary';
-
-// cloudinary.config({
-// 	cloud_name: 'dhud4mpgu',
-// 	api_key: '143511642428641',
-// 	api_secret: '2nIL6TKeyhwzfcVV1_9XGArAbbs',
-// 	secure: true
-// });
+import { CLOUDINARY_NAME, CLOUDINARY_API, CLOUDINARY_SECRET } from '$env/static/private';
 cloudinary.config({
-	cloud_name: import.meta.env.CLOUDINARY_NAME,
-	api_key: import.meta.env.CLOUDINARY_API,
-	api_secret: import.meta.env.CLOUDINARY_SECRET,
+	cloud_name: CLOUDINARY_NAME,
+	api_key: CLOUDINARY_API,
+	api_secret: CLOUDINARY_SECRET,
 	secure: true
 });
 
@@ -18,6 +12,7 @@ export const load = async ({ params, locals }) => {
 	const currentUser: any = locals.user;
 	try {
 		const email = currentUser?.email || '';
+		if (!email) return { images: [], folder: {} };
 		const folderName = email.split('@')[0];
 		const result = await cloudinary.api.resources_by_asset_folder(`${folderName}/${folderSlug}`);
 		const images = result.resources.map((image: any) => ({
@@ -34,7 +29,6 @@ export const load = async ({ params, locals }) => {
 			imageSize: image.width + 'x' + image.height,
 			generatedDescription: `A plant image showing symptoms of ${image.context?.diseaseName || 'an unknown condition'}.`
 		}));
-
 		let folderMetadata = {
 			id: folderSlug,
 			name: `Folder ${folderSlug}`,

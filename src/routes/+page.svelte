@@ -1,132 +1,280 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import PlantModal from '$lib/modal/PlantModal.svelte';
 	import SetupSprayModal from '$lib/modal/SetupSprayModal.svelte';
 	import Camera from './spray/camera.svelte';
 	import Scannedheader from './spray/scannedheader.svelte';
 	import SprayButton from './spray/spraybuttons.svelte';
-	import { detectedPlants as dplants } from '$lib/stores/plant';
-	import { writable } from 'svelte/store';
-	import { currentLink, isConnected } from '$lib/stores/connection';
-	import { addToast, removeToast } from '$lib/stores/toast';
+	import { config as exportedConfig, allPlants } from '$lib/stores/plant';
+	import { get, writable, type Writable } from 'svelte/store';
+	import { connect, currentLink, disconnect, isConnected } from '$lib/stores/connection';
+	import { addToast, confirmToast, removeToast } from '$lib/stores/toast';
+	import { onMount } from 'svelte';
+	import ManuallyAddPlant from '$lib/modal/ManuallyAddPlant.svelte';
+	import RequestHandler from '$lib/utils/request';
+	import { beforeNavigate } from '$app/navigation';
+	import { deepEqual, validateAndNormalizeConfig } from '$lib/helpers/utility';
+	export let data;
 
-	export let data; 
+	let showManualPlant = false;
 	let showCamera = false;
+	let selectedPlantIndex: number = -1;
 	let selectedPlant: any = null;
-	let detectedPlants: any[] = [];
+	let previousSprays: any;
+	const newLink = writable<string>(currentLink);
+	const searchPlant = writable<string>('');
+	// ---------------------------------------
+	const allSprays = writable(['', '', '', '']);
+	const allSpraysActive = writable([true, true, true, true]);
+	const objectDetection = writable<string>('');
+	const stageClassification = writable<string>('');
+	const diseaseSegmentation = writable<string>('');
+	const schedule = writable<{
+		frequency: string;
+		time: string;
+		days: string[];
+	}>({
+		frequency: 'monthly',
+		time: '12:00',
+		days: ['', '', '']
+	});
+	let initialConfig: any = null;
+	const yoloObjectDetection = writable<any>(null);
+	const yoloStageClassification = writable<any>(null);
+	const maskRCNNSegmentation = writable<any>(null);
+	let detectedPlants: Writable<
+		{
+			key: string;
+			timestamp: string;
+			disabled: boolean;
+			disease: {
+				[key: string]: boolean[];
+			};
+		}[]
+	> = writable([]);
 
 	// ---------------------------------------
-	let allSprays = ['', '', '', ''];
-	let allSpraysActive = [true, true, true, true];
-	let previousSprays = { spray: allSprays, active: allSpraysActive };
-	// ---------------------------------------
 
-	let schedule: any = {};
-	let objectDetection = writable('');
-	let stageClassification = writable('');
-	let diseaseSegmentation = writable('');
+	function isConfigDirty() {
+		const current = getCurrentConfig();
+		if (!initialConfig) return true;
+		if (Object.keys(current).length !== Object.keys(initialConfig).length) return true;
+		return !deepEqual(getCurrentConfig(), initialConfig);
+	}
 
-	$: config = (data.user as any)?.config;
-	const createConfiguration = () => {
-		const config = {
+	function getCurrentConfig() {
+		return {
 			sprays: {
-				spray: ['', '', '', ''],
-				active: [true, true, true, true]
+				spray: get(allSprays),
+				active: get(allSpraysActive)
 			},
-			detectedPlants: dplants,
-			schedule: {
+			detectedPlants: get(detectedPlants),
+			schedule: get(schedule),
+			objId: $yoloObjectDetection.find((w: any) => w.version == $objectDetection).id,
+			stageId: $yoloStageClassification.find((w: any) => w.version == $stageClassification).id,
+			segmentationId: $maskRCNNSegmentation.find((w: any) => w.version == $diseaseSegmentation).id
+		};
+	}
+
+	function applyConfig(config: any) {
+		allSprays.set(config.sprays?.spray ?? ['', '', '', '']);
+		allSpraysActive.set(config.sprays?.active ?? [true, true, true, true]);
+		objectDetection.set(
+			data.models.yoloobjectdetection.find((w: any) => w.id === config.objId)?.version ||
+				data.models.yoloobjectdetection[0].version ||
+				'NONE'
+		);
+		stageClassification.set(
+			data.models.yolostageclassification.find((w: any) => w.id === config.stageId)?.version ||
+				data.models.yolostageclassification[0].version ||
+				'NONE'
+		);
+		diseaseSegmentation.set(
+			data.models.maskrcnnsegmentation.find((w: any) => w.id === config.segmentationId)?.version ||
+				data.models.maskrcnnsegmentation[0].version ||
+				'NONE'
+		);
+		detectedPlants.set(config.detectedPlants ?? []);
+		schedule.set(
+			config.schedule ?? {
 				frequency: 'monthly',
 				time: '12:00',
 				days: ['', '', '']
-			},
-			objectDetection: '',
-			stageClassification: '',
-			diseaseSegmentation: ''
-		};
-		detectedPlants = config.detectedPlants;
-		schedule = config.schedule;
-	};
-
-	$: {
-		if (config && Object.keys(config).length > 0) {
-			detectedPlants = config.detectedPlants;
-			schedule = config.schedule;
-			objectDetection.set(config.objectDetection);
-			stageClassification.set(config.stageClassification);
-			diseaseSegmentation.set(config.diseaseSegmentation);
-			allSprays = config.sprays?.spray ?? [];
-			allSpraysActive = config.sprays?.active ?? [];
-		} else {
-			createConfiguration();
-		}
+			}
+		);
 	}
+
+	onMount(() => {
+		if ($isConnected) {
+			yoloObjectDetection.set(data.models.yoloobjectdetection);
+			yoloStageClassification.set(data.models.yolostageclassification);
+			maskRCNNSegmentation.set(data.models.maskrcnnsegmentation);
+			try {
+				const stored = localStorage.getItem('userConfig');
+				if (stored) {
+					const parsed = JSON.parse(stored);
+					initialConfig = JSON.parse(JSON.stringify(parsed));
+					applyConfig(parsed);
+					addToast('Loaded config from localStorage.', 'info', 3000);
+				} else {
+					initialConfig = JSON.parse(JSON.stringify(exportedConfig));
+					applyConfig(exportedConfig);
+					addToast('Loaded config from exportedConfig.', 'info', 3000);
+				}
+			} catch (err) {
+				addToast('Error loading config from localStorage', 'error', 3000);
+				applyConfig(exportedConfig);
+			}
+		}
+	});
+	onMount(() => {
+		const handler = (event: BeforeUnloadEvent) => {
+			if (isConfigDirty() || showCamera || showSprayModal || showManualPlant) {
+				event.preventDefault();
+			}
+		};
+		window.addEventListener('beforeunload', handler);
+		onDestroy(() => {
+			window.removeEventListener('beforeunload', handler);
+		});
+	});
+
+	beforeNavigate(async (navigation) => {
+		if (isConfigDirty()) {
+			const leave = confirm('You have unsaved changes. Leave anyway?');
+			if (!leave) {
+				navigation.cancel();
+			}
+		} else if (showCamera) {
+			const leave = confirm('Camera is open. Close it before leaving?');
+			if (!leave) {
+				navigation.cancel();
+			}
+		} else if (showSprayModal) {
+			const leave = confirm('Spray setup is open. Close it before leaving?');
+			if (!leave) {
+				navigation.cancel();
+			}
+		} else if (showManualPlant) {
+			const leave = confirm('Manual plant addition is open. Close it before leaving?');
+			if (!leave) {
+				navigation.cancel();
+			}
+		}
+	});
+
 	let showModal = false;
 	let showSprayModal = false;
 	let scanning = false;
 
-	const saveConfigToFile = (config: any) => {
-		// const config = {
-		// 	sprays: {
-		// 		spray: allSprays,
-		// 		active: allSpraysActive
-		// 	},
-		// 	detectedPlants,
-		// 	schedule,
-		// 	objectDetection: $objectDetection,
-		// 	stageClassification: $stageClassification,
-		// 	diseaseSegmentation: $diseaseSegmentation
-		// };
-		const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'text/plain' });
+	async function revertConfig() {
+		if (
+			await confirmToast(
+				'Are you sure you want to revert to the last save configuration? This will discard all unsaved changes.'
+			)
+		) {
+			applyConfig(initialConfig);
+			addToast('Configuration reverted to last save state.', 'info', 3000);
+		}
+	}
+
+	function downloadConfig() {
+		const configData = {
+			sprays: {
+				spray: $allSprays,
+				active: $allSpraysActive
+			},
+			detectedPlants: $detectedPlants,
+			schedule: $schedule,
+			objId: $yoloObjectDetection.find((w: any) => w.version == $objectDetection).id,
+			stageId: $yoloStageClassification.find((w: any) => w.version == $stageClassification).id,
+			segmentationId: $maskRCNNSegmentation.find((w: any) => w.version == $diseaseSegmentation).id
+		};
+		const blob = new Blob([JSON.stringify(configData, null, 2)], { type: 'text/plain' });
 		const url = URL.createObjectURL(blob);
 		const link = document.createElement('a');
 		link.href = url;
-		link.download = 'test.json';
+		link.download = 'config.json';
 		document.body.appendChild(link);
 		link.click();
 		document.body.removeChild(link);
 		URL.revokeObjectURL(url);
-	};
+		addToast('Config downloaded successfully.', 'success', 3000);
+	}
+
+	function uploadConfig() {
+		const input = document.createElement('input');
+		input.type = 'file';
+		input.accept = 'application/json';
+		input.onchange = (event: any) => {
+			const file = event.target.files[0];
+			if (!file) return;
+			const reader = new FileReader();
+			reader.onload = (e: any) => {
+				try {
+					const parsed = JSON.parse(e.target.result as string);
+					const validated = validateAndNormalizeConfig(parsed);
+					applyConfig(validated);
+					addToast('Configuration loaded successfully.', 'success', 3000);
+					setTimeout(() => {
+						addToast(
+							'Changes staged. Remember to click "Save Configuration" to apply them.',
+							'info',
+							5000
+						);
+					}, 10);
+				} catch (err) {
+					addToast('Invalid configuration file.', 'error', 3000);
+				}
+			};
+			reader.readAsText(file);
+		};
+		input.click();
+	}
 
 	const saveConfig = async () => {
-		const config = {
-			sprays: {
-				spray: allSprays,
-				active: allSpraysActive
-			},
-			detectedPlants,
-			schedule,
-			objectDetection: $objectDetection,
-			stageClassification: $stageClassification,
-			diseaseSegmentation: $diseaseSegmentation
-		};
-		saveConfigToFile(config);
-		// console.log(config);
-		// const toastId = addToast('Updating config...', 'loading');
-		// try {
-		// 	const response = await RequestHandler.fetchData('post', 'user/update-config', {
-		// 		email: ($user as any).email,
-		// 		config
-		// 	});
-		// 	if (response.success) {
-		// 		removeToast(toastId);
-		// 		user.set(response.user);
-		// 		addToast('Updated config successfully!', 'success', 3000);
-		// 	} else {
-		// 		removeToast(toastId);
-		// 		addToast(response.message || 'Updating config error', 'error', 3000);
-		// 	}
-		// } catch (error) {
-		// 	console.error('Update config error:', error);
-		// 	removeToast(toastId);
-		// 	addToast('An unexpected error occurred.', 'error', 3000);
-		// }
+		if (
+			!(await confirmToast(
+				'Are you sure you want to save this configuration? This will overwrite your current settings.'
+			))
+		)
+			return;
+		const toastId = addToast('Updating config...', 'loading');
+		const config = getCurrentConfig();
+
+		try {
+			const response = await RequestHandler.fetchData('post', 'user/update-config', {
+				email: (data.user as any).email,
+				config
+			});
+			if (response.success) {
+				removeToast(toastId);
+				addToast('Updated config successfully!', 'success', 3000);
+				initialConfig = JSON.parse(JSON.stringify(config));
+				localStorage.setItem('userConfig', JSON.stringify(config));
+				setTimeout(() => {
+					addToast('Config saved to localStorage.', 'info', 3000);
+				}, 10);
+			} else {
+				removeToast(toastId);
+				addToast(response.message || 'Updating config error', 'error', 3000);
+			}
+		} catch (error) {
+			console.error('Update config error:', error);
+			removeToast(toastId);
+			addToast('An unexpected error occurred.', 'error', 3000);
+		}
 	};
 
 	function updateDetectedPlant(detected: any) {
 		detectedPlants = detected;
 	}
-	function openPlantModal(index: any) {
-		selectedPlant = index;
+	function disabledPlant() {
+		$detectedPlants[selectedPlantIndex].disabled = true;
+	}
+	function removePlant(key: string) {
+		detectedPlants.set(get(detectedPlants).filter((p: any) => p.key !== key));
 	}
 
 	async function controlRobot(state: boolean) {
@@ -160,6 +308,33 @@
 			console.error('Network error while controlling robot:', err);
 		}
 	}
+
+	function handleConnection() {
+		let toastID = addToast(`Connecting to AGRI-BOT...`, 'loading');
+		if (!$isConnected) {
+			connect($newLink)
+				.then(() => {
+					removeToast(toastID);
+					if ($isConnected) {
+						addToast('Successfully connected to AGRI-BOT.', 'success', 3000);
+					} else {
+						addToast('Failed to connect to AGRI-BOT.', 'error', 3000);
+					}
+				})
+				.catch(() => {
+					addToast('Failed to connect to AGRI-BOT.', 'error', 3000);
+				});
+		} else {
+			disconnect();
+			removeToast(toastID);
+			addToast('Disconnected from AGRI-BOT.', 'info', 3000);
+		}
+	}
+
+	$: filteredDetectedPlants = $detectedPlants.filter((p) => {
+		const name = allPlants[p.key]?.name?.toLowerCase() ?? '';
+		return name.includes($searchPlant.trim().toLowerCase());
+	});
 </script>
 
 {#if !$isConnected}
@@ -170,6 +345,19 @@
 			class="flex h-full flex-col items-center justify-center text-center text-lg font-semibold text-gray-600 dark:text-gray-400"
 		>
 			<p>The device is not connected to AGRI-BOT. Please connect first.</p>
+			<p>Current Link: {currentLink}</p>
+			<input
+				type="text"
+				bind:value={$newLink}
+				placeholder="Enter AGRI-BOT IP Address"
+				class="mt-4 rounded border border-gray-400 p-2 dark:bg-gray-700"
+			/>
+			<button
+				on:click={handleConnection}
+				class="mt-2 rounded bg-green-500 px-4 py-2 text-white hover:bg-green-600"
+			>
+				Connect / Reconnect
+			</button>
 		</div>
 	</div>
 	<Footer />
@@ -186,77 +374,74 @@
 				{currentLink}
 				closeCamera={() => (showCamera = false)}
 			/>
-
 			<div class="w-full rounded-xl bg-white p-4 shadow-lg md:flex-1 dark:bg-gray-900">
-				<Scannedheader searchPlants={() => {}} />
+				<Scannedheader {searchPlant} {revertConfig} />
 
 				<div
-					class="mx-2 max-h-[300px] space-y-2 overflow-y-auto rounded-xl border border-gray-200 bg-gray-100 p-2 lg:max-h-[400px] dark:border-gray-700 dark:bg-gray-800"
+					class="mx-2 max-h-[250px] space-y-2 overflow-y-auto rounded-xl border border-gray-200 bg-gray-100 p-2 md:max-h-[400px] dark:border-gray-700 dark:bg-gray-800"
 				>
-					<ul class="min-h-[350px] space-y-2">
-						{#if detectedPlants.some((plant) => plant.active)}
-							{#each detectedPlants as plant, index}
-								{#if plant.active}
-									<li
-										class="relative flex items-stretch rounded-lg border border-gray-100 bg-white shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
+					<ul class="min-h-[230px] space-y-2 md:min-h-[350px]">
+						{#if filteredDetectedPlants.length > 0}
+							{#each filteredDetectedPlants as plant, index}
+								<li
+									class="relative flex w-full items-stretch rounded-lg border border-gray-100 bg-white shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
+								>
+									<button
+										class="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-full md:h-20 md:w-20"
 									>
-										<button
-											class="flex h-20 w-20 flex-shrink-0 items-center justify-center overflow-hidden rounded-full lg:h-20 lg:w-20"
-											on:click={() => openPlantModal(index)}
-										>
-											<img
-												src={plant.image}
-												alt={plant.name}
-												class="h-16 w-16 rounded-full object-cover"
-											/>
-											{#if plant.disabled}
-												<div
-													class="absolute inset-0 flex items-center justify-center gap-3 space-y-1 rounded-full bg-black/60 text-xs text-red-300"
-												>
-													<span>Disabled</span>
-													<!-- svelte-ignore node_invalid_placement_ssr -->
-													<button
-														class="rounded bg-green-300 px-2 py-1 text-xs font-semibold text-black hover:bg-green-400"
-														on:click|stopPropagation={() => (plant.disabled = false)}
-													>
-														Enable
-													</button>
-												</div>
-											{/if}
-										</button>
-
-										<div class="flex flex-1 flex-col justify-center p-2">
-											<p class="text-sm font-semibold text-gray-900 dark:text-gray-200">
-												{plant.name}
-											</p>
-											<div class="mt-1 space-y-1 text-xs text-gray-500 dark:text-gray-400">
-												<p><strong>Time:</strong> {plant.timestamp ?? 'Unknown'}</p>
-											</div>
-										</div>
-
-										<div class="flex flex-col items-center justify-center space-y-1 p-2">
-											<!-- svelte-ignore a11y_consider_explicit_label -->
-											<button
-												class="rounded-md bg-green-500 p-2 text-white shadow-sm hover:bg-green-600 dark:bg-transparent dark:hover:bg-transparent dark:hover:text-green-400"
-												on:click={() => {
-													selectedPlant = plant;
-													showModal = true;
-												}}
+										<img
+											src={allPlants[plant.key].image}
+											alt={allPlants[plant.key].name}
+											class="h-14 w-14 rounded-full object-cover md:h-16 md:w-16"
+										/>
+										{#if plant.disabled}
+											<div
+												class="absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-full bg-black/60 px-1 text-[10px] text-red-300 md:text-xs"
 											>
-												<svg
-													xmlns="http://www.w3.org/2000/svg"
-													fill="none"
-													viewBox="0 0 24 24"
-													stroke-width="2"
-													stroke="currentColor"
-													class="h-4 w-4"
+												<span>Disabled</span>
+												<!-- svelte-ignore node_invalid_placement_ssr -->
+												<button
+													class="rounded bg-green-300 px-1 py-0.5 font-semibold text-black hover:bg-green-400"
+													on:click|stopPropagation={() => (plant.disabled = false)}
 												>
-													<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-												</svg>
-											</button>
+													Enable
+												</button>
+											</div>
+										{/if}
+									</button>
+
+									<div class="flex flex-1 flex-col justify-center p-2">
+										<p class="text-sm font-semibold text-gray-900 dark:text-gray-200">
+											{allPlants[plant.key].name}
+										</p>
+										<div class="mt-1 space-y-1 text-xs text-gray-500 dark:text-gray-400">
+											<p><strong>Time:</strong> {plant.timestamp ?? 'Unknown'}</p>
 										</div>
-									</li>
-								{/if}
+									</div>
+
+									<div class="flex flex-col items-center justify-center space-y-1 p-2">
+										<button
+											class="rounded-md bg-green-500 p-2 text-white shadow-sm hover:bg-green-600 dark:bg-transparent dark:hover:bg-transparent dark:hover:text-green-400"
+											aria-label="View plant details"
+											on:click={() => {
+												selectedPlantIndex = index;
+												selectedPlant = plant;
+												showModal = true;
+											}}
+										>
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												fill="none"
+												viewBox="0 0 24 24"
+												stroke-width="2"
+												stroke="currentColor"
+												class="h-4 w-4"
+											>
+												<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+											</svg>
+										</button>
+									</div>
+								</li>
 							{/each}
 						{:else}
 							<li
@@ -267,28 +452,38 @@
 						{/if}
 					</ul>
 				</div>
-				<SprayButton
-					{controlRobot}
-					{scanning}
-					openModal={() => {
-						previousSprays = { spray: [...allSprays], active: [...allSpraysActive] };
-						showSprayModal = true;
-					}}
-					openCamera={() => (showCamera = true)}
-					{schedule}
-					{objectDetection}
-					{stageClassification}
-					{diseaseSegmentation}
-					{saveConfig}
-				/>
+				{#if $yoloObjectDetection && $yoloStageClassification && $maskRCNNSegmentation}
+					<SprayButton
+						{controlRobot}
+						{scanning}
+						openModal={() => {
+							previousSprays = { spray: [...$allSprays], active: [...$allSpraysActive] };
+							showSprayModal = true;
+						}}
+						openCamera={() => (showCamera = true)}
+						{schedule}
+						{yoloObjectDetection}
+						{yoloStageClassification}
+						{maskRCNNSegmentation}
+						{objectDetection}
+						{stageClassification}
+						{diseaseSegmentation}
+						{saveConfig}
+						{downloadConfig}
+						{uploadConfig}
+						openManualPlant={() => (showManualPlant = true)}
+					/>
+				{/if}
 			</div>
 		</div>
 	</div>
 	<Footer />
 
 	<PlantModal
+		{removePlant}
+		{disabledPlant}
 		{selectedPlant}
-		slots={allSprays}
+		slots={$allSprays}
 		bind:showModal
 		closeModal={() => {
 			showModal = false;
@@ -302,6 +497,11 @@
 		{allSprays}
 		{allSpraysActive}
 		{previousSprays}
+	/>
+	<ManuallyAddPlant
+		{detectedPlants}
+		showModal={showManualPlant}
+		closeModal={() => (showManualPlant = false)}
 	/>
 	<!-- <Popup /> -->
 {/if}

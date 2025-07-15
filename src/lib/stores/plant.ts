@@ -1,9 +1,19 @@
-export const detectedPlants: any[] = [
-	{
-		active: false,
-		disabled: false,
-		key: 'tomato yield',
-		timestamp: '',
+export type Plant = {
+	name: string;
+	type: string;
+	image: string;
+	description: string;
+	diseases: {
+		name: string;
+		description: string;
+		image: string;
+		sprays: string[];
+		severity: string;
+	}[];
+};
+
+export const allPlants: Record<string, Plant> = {
+	'tomato yield': {
 		name: 'Tomato',
 		type: 'Fruit',
 		image:
@@ -29,11 +39,7 @@ export const detectedPlants: any[] = [
 			}
 		]
 	},
-	{
-		active: false,
-		disabled: false,
-		key: 'green lettuce',
-		timestamp: '',
+	'green lettuce': {
 		name: 'Green Lettuce',
 		type: 'Leafy Vegetable',
 		image: 'https://s30386.pcdn.co/wp-content/uploads/2019/08/459120973.jpg.optimal.jpg',
@@ -68,11 +74,7 @@ export const detectedPlants: any[] = [
 			}
 		]
 	},
-	{
-		active: false,
-		disabled: false,
-		key: 'lactuca sativa',
-		timestamp: '',
+	'lactuca sativa': {
 		name: 'Lactuca Sativa',
 		type: 'Leafy Vegetable',
 		image: 'https://www.gardensonline.com.au/Uploads/Plant/939/Lactuca-Sativa-1a.jpg',
@@ -107,73 +109,7 @@ export const detectedPlants: any[] = [
 			}
 		]
 	},
-	{
-		active: false,
-		disabled: false,
-		key: 'red lettuce',
-		timestamp: '',
-		name: 'Red Lettuce',
-		type: 'Leafy Vegetable',
-		image:
-			'https://www.healthifyme.com/blog/wp-content/uploads/2022/05/shutterstock_207374581-1-1024x731.jpg',
-		description:
-			'Red lettuce is a variety of *Lactuca sativa* distinguished by its reddish-purple leaves. It contains antioxidants such as anthocyanins and is commonly used to add color, flavor, and nutrients to salads and garnishes.',
-		diseases: [
-			{
-				name: 'Leaf Spot',
-				description:
-					'Fungal infection creating dark spots on leaves, especially under humid conditions.',
-				image:
-					'https://extension.umn.edu/sites/extension.umn.edu/files/styles/crop_large/public/leaf-spot-lettuce.jpg',
-				sprays: ['Copper Fungicide'],
-				severity: 'Low'
-			}
-		]
-	},
-	{
-		active: false,
-		disabled: false,
-		key: 'basil',
-		timestamp: '',
-		name: 'Basil',
-		type: 'Herb',
-		image: 'https://aanmc.org/wp-content/uploads/2021/08/987-1024x681.jpg',
-		description:
-			'Basil (*Ocimum basilicum*) is a fragrant herb in the mint family, widely used in culinary dishes for its aromatic leaves. Popular in Italian and Southeast Asian cuisines, basil thrives in warm environments and is often grown in kitchen gardens.',
-		diseases: [
-			{
-				name: 'Downy Mildew',
-				description:
-					'Causes yellow patches on leaves and white mold on undersides. Common in humid conditions, especially in hydroponic NFT systems where high moisture and poor air circulation can encourage fungal growth.',
-				image:
-					'https://apps.lucidcentral.org/pppw_v10/images/entities/lettuce_downy_mildew_209/bremla3.jpg',
-				sprays: ['Copper Fungicide', 'Fosetyl-Al'],
-				severity: 'High'
-			},
-			{
-				name: 'Powdery Mildew',
-				description:
-					'A fungal disease that causes a white, powdery substance to appear on the leaves and stems, leading to stunted growth and reduced yield. It thrives in conditions with high humidity and poor airflow, often seen in hydroponic systems.',
-				image:
-					'https://plantwiseplusknowledgebank.org/cms/10.1079/pwkb.species.9937/asset/d6fa09a4-8cf1-4862-bc39-dc01f1416af2/assets/graphic/9937_02.jpg',
-				sprays: ['Sulfur-based Fungicides', 'Neem Oil', 'Potassium Bicarbonate'],
-				severity: 'Moderate'
-			},
-			{
-				name: 'Bacterial Spot',
-				description:
-					'Caused by bacteria, this disease results in water-soaked lesions and a slimy, mushy texture on the leaves. It can quickly spread in the humid, high-moisture environment of NFT systems.',
-				image: 'https://www.plantdiseases.org/sites/default/files/plant_disease/images/0506.jpg',
-				sprays: ['Copper Fungicide', 'Streptomycin'],
-				severity: 'High'
-			}
-		]
-	},
-	{
-		active: false,
-		disabled: false,
-		key: 'romaine lettuce',
-		timestamp: '',
+	'romaine lettuce': {
 		name: 'Romaine Lettuce',
 		type: 'Leafy Vegetable',
 		image:
@@ -208,47 +144,64 @@ export const detectedPlants: any[] = [
 				severity: 'High'
 			}
 		]
+	}
+};
+
+export const config = {
+	detectedPlants: [],
+	sprays: {
+		spray: ['', '', '', ''],
+		active: [true, true, true, true]
+	},
+	schedule: {
+		frequency: 'monthly',
+		time: '12:00',
+		days: ['', '', '']
+	},
+	objectDetection: '',
+	stageClassification: '',
+	diseaseSegmentation: ''
+};
+
+export const recommendedSprays = [
+	{
+		name: 'Water',
+		info: 'Essential for plant growth and hydration.',
+		plants: [{ name: 'All Plants', disease: 'None' }]
 	},
 	{
-		active: false,
-		disabled: false,
-		key: 'tomato leaf',
-		timestamp: '',
-		name: 'Tomato Leaf',
-		type: 'Leaf',
-		image: 'https://laidbackgardener.blog/wp-content/uploads/2017/08/20170815a-max-pixel.jpg',
-		description:
-			'Tomato leaves, part of the *Solanum lycopersicum* plant, are typically not consumed due to the presence of alkaloids like tomatine. However, they are often studied in gardening for early signs of disease, pest damage, or nutrient deficiencies.',
-		diseases: [
-			{
-				name: 'Late Blight',
-				description:
-					'A fungal disease caused by *Phytophthora infestans* that leads to dark, greasy-looking spots on leaves and stems. Can devastate tomato crops quickly.',
-				image:
-					'https://www.gardeningknowhow.com/wp-content/uploads/2021/03/late-blight-tomatoes.jpg',
-				sprays: ['Copper Fungicide', 'Chlorothalonil'],
-				severity: 'High'
-			},
-			{
-				name: 'Powdery Mildew',
-				description:
-					'A white or gray powdery fungal growth on leaf surfaces. It thrives in dry conditions with high humidity and weakens the plant by reducing photosynthesis.',
-				image:
-					'https://www.almanac.com/sites/default/files/styles/primary_image_in_article/public/image_nodes/powdery-mildew.jpg',
-				sprays: ['Sulfur Spray', 'Neem Oil', 'Bicarbonate Solution'],
-				severity: 'Moderate'
-			},
-			{
-				name: 'Bacterial Spot',
-				description:
-					'Caused by *Xanthomonas campestris*, this disease creates small, dark, water-soaked spots that expand and turn necrotic, leading to leaf drop.',
-				image:
-					'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Bacterial_spot_on_tomato_leaf.jpg/800px-Bacterial_spot_on_tomato_leaf.jpg',
-				sprays: ['Copper Fungicide'],
-				severity: 'Low'
-			}
+		name: 'Fungicide',
+		info: 'Prevents and treats fungal infections on plants.',
+		plants: [
+			{ name: 'Tomato', disease: 'Septoria Blight' },
+			{ name: 'Strawberry', disease: 'Powdery Mildew' },
+			{ name: 'Lettuce', disease: 'Septoria Blight' }
+		]
+	},
+	{
+		name: 'Neem Oil',
+		info: 'Natural pesticide that protects against pests and fungi.',
+		plants: [
+			{ name: 'Cucumber', disease: 'Aphids' },
+			{ name: 'Tomato', disease: 'Spider Mites' },
+			{ name: 'Orchid', disease: 'Fungal Infection' }
+		]
+	},
+	{
+		name: 'Calcium Booster',
+		info: 'Enhances calcium levels to prevent deficiencies.',
+		plants: [
+			{ name: 'Tomato', disease: 'Blossom End Rot' },
+			{ name: 'Strawberry', disease: 'Calcium Deficiency' }
+		]
+	},
+	{
+		name: 'Anti-Fungal Spray',
+		info: 'Protects plants from fungal infections.',
+		plants: [
+			{ name: 'Orchid', disease: 'Powdery Mildew' },
+			{ name: 'Lettuce', disease: 'Leaf Spot' }
 		]
 	}
 ];
-
 

@@ -1,19 +1,18 @@
 <script lang="ts">
-	export let schedule: { frequency: string; time: string; days: string[] };
-	export let oldSchedule: any = {};
+	import type { Writable } from 'svelte/store';
+	export let schedule: Writable<{ frequency: string; time: string; days: string[] }>;
 	export let showScheduleModal = false;
 	export let onClose;
 	export let onSave;
 
-	let selectedDays: string[] = [...(schedule.days || [])];
-
+	$: selectedDays = [...($schedule.days || [])];
 	const toggleDay = (day: string) => {
 		if (selectedDays.includes(day)) {
 			selectedDays = selectedDays.filter((d) => d !== day);
 		} else {
 			selectedDays = [...selectedDays, day];
 		}
-		schedule.days = selectedDays;
+		$schedule.days = selectedDays;
 	};
 </script>
 
@@ -25,7 +24,6 @@
 			<button
 				class="absolute top-4 right-4 text-gray-600 hover:text-red-600 dark:text-gray-300"
 				on:click={() => {
-					schedule = { ...oldSchedule };
 					onClose();
 				}}
 			>
@@ -34,7 +32,6 @@
 
 			<h2 class="mb-4 text-xl font-bold text-gray-800 dark:text-white">Set Schedule</h2>
 			<form class="space-y-4">
-				<!-- Day Selection -->
 				<div class="mt-4">
 					<h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300">Select Days</h3>
 					<div class="mt-2 flex flex-wrap gap-2">
@@ -44,8 +41,8 @@
 								on:click={() => toggleDay(day)}
 								class="relative flex items-center gap-2 rounded-md px-3 py-1 text-sm text-white lg:text-base
 									{selectedDays.includes(day)
-									? 'bg-green-700 hover:bg-green-800'
-									: 'bg-green-500 hover:bg-green-600'}"
+									? 'bg-green-900 hover:bg-green-900'
+									: 'bg-green-500 hover:bg-green-700'}"
 							>
 								{day}
 							</button>
@@ -60,7 +57,7 @@
 					>
 					<select
 						id="frequency"
-						bind:value={schedule.frequency}
+						bind:value={$schedule.frequency}
 						class="rounded-md border border-gray-500 p-2 text-sm text-gray-800 dark:bg-gray-800 dark:text-white"
 					>
 						<option value="weekly">Every Week</option>
@@ -82,7 +79,7 @@
 					<input
 						type="time"
 						id="time"
-						bind:value={schedule.time}
+						bind:value={$schedule.time}
 						class="rounded-md border border-gray-500 p-2 text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
 					/>
 				</div>
@@ -91,7 +88,7 @@
 				<button
 					type="button"
 					on:click={onSave}
-					class="w-full rounded-md bg-green-600 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-green-800"
+					class="w-full rounded-md bg-green-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-green-700"
 				>
 					Save Schedule
 				</button>

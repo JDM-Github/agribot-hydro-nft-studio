@@ -1,0 +1,50 @@
+{
+  "sprays": {
+    "spray": [
+      "Fungicide",
+      "Neem Oil",
+      "Calcium Booster",
+      ""
+    ],
+    "active": [
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "detectedPlants": [
+    {
+      "key": "tomato yield",
+      "timestamp": "2025-07-13 20:48:24",
+      "disabled": false,
+      "disease": {
+        "Blight": [
+          false,
+          true,
+          true,
+          false
+        ],
+        "Bacterial Spot": [
+          true,
+          false,
+          true,
+          false
+        ]
+      }
+    }
+  ],
+  "schedule": {
+    "frequency": "monthly",
+    "time": "18:00",
+    "runsPerDay": 1,
+    "days": [
+      "Tuesday",
+      "Wednesday",
+      "Sunday"
+    ]
+  },
+  "objectDetection": "PlantODV1.0.0",
+  "stageClassification": "StageCLSV1.0.0",
+  "diseaseSegmentation": "DiseaseSegV1.0.0"
+}

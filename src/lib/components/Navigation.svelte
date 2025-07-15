@@ -1,19 +1,17 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { darkMode } from '$lib/stores/theme';
-	// import { user, logout } from '$lib/stores/auth';
-	import { isConnected, connect, disconnect, currentLink } from '$lib/stores/connection';
+	import { isConnected, connect, disconnect } from '$lib/stores/connection';
 	import { addToast, removeToast } from '$lib/stores/toast';
 	import { goto } from '$app/navigation';
 
 	export let user: any = null;
-
 	let isMenuOpen = false;
-
 	const records = [
 		{ name: 'SETUP', path: '/' },
 		{ name: 'LIVE', path: '/live' },
-		{ name: 'RECORDS', path: '/record' }
+		{ name: 'RECORDS', path: '/record' },
+		{ name: 'LOGS', path: '/logs' }
 	];
 
 	function toggleDarkMode() {
@@ -50,13 +48,6 @@
 	}
 
 	async function changePath(path: string) {
-		try {
-			// await fetch(`${currentLink}/stop_everything`, {
-			// 	method: 'POST'
-			// });
-		} catch (e) {
-			console.error('Failed to stop everything:', e);
-		}
 		await goto(path);
 	}
 </script>
@@ -71,27 +62,31 @@
 		>
 			AGRI-BOT STUDIO
 		</span>
-		<button
-			class={`ml-2 rounded px-3 py-1 text-sm font-medium shadow-md transition-colors ${$isConnected ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}
-			onclick={handleConnection}
-		>
-			{$isConnected ? 'Connected' : 'Disconnected'}
-		</button>
+		{#if user}
+			<button
+				class={`ml-2 rounded px-3 py-1 text-sm font-medium shadow-md transition-colors ${$isConnected ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}
+				onclick={handleConnection}
+			>
+				{$isConnected ? 'Connected' : 'Disconnected'}
+			</button>
+		{/if}
 	</div>
 
 	<ul class="hidden items-center space-x-6 md:flex">
-		{#each records as item}
-			<li>
-				<button
-					onclick={() => changePath(item.path)}
-					class="cursor-pointer font-medium hover:text-green-500 {page.url.pathname === item.path
-						? 'font-bold text-green-600'
-						: 'text-gray-800 dark:text-gray-300'} {user ? '' : 'hidden'}"
-				>
-					{item.name}
-				</button>
-			</li>
-		{/each}
+		{#if user && $isConnected}
+			{#each records as item}
+				<li>
+					<button
+						onclick={async () => await goto(item.path)}
+						class="cursor-pointer font-medium hover:text-green-500 {page.url.pathname === item.path
+							? 'font-bold text-green-600'
+							: 'text-gray-800 dark:text-gray-300'}"
+					>
+						{item.name}
+					</button>
+				</li>
+			{/each}
+		{/if}
 		<li>
 			{#if user}
 				<form method="POST" action="/api/user/logout">

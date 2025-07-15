@@ -1,151 +1,65 @@
 <script lang="ts">
 	import RadarChartComponent from '$lib/components/RadarChartComponent.svelte';
 	import SetSchedule from '$lib/components/SetSchedule.svelte';
-	import { addToast } from '$lib/stores/toast';
+	import { addToast, confirmToast } from '$lib/stores/toast';
 	import { writable, type Writable } from 'svelte/store';
 
 	export let scanning;
 	export let controlRobot;
 	export let openModal;
 	export let openCamera;
+	export let openManualPlant: () => void = () => {};
 
-	export let schedule: any;
+	export let schedule: Writable<{
+		frequency: string;
+		time: string;
+		days: string[];
+	}>;
+	export let yoloObjectDetection: any;
+	export let yoloStageClassification: any;
+	export let maskRCNNSegmentation: any;
 	export let objectDetection: Writable<string>;
 	export let stageClassification: Writable<string>;
 	export let diseaseSegmentation: Writable<string>;
 
 	export let saveConfig;
+	export let downloadConfig;
+	export let uploadConfig;
 
-	let objectDetectionionYolo = ['PlantODV1.0.0', 'PlantODV1.0.1', 'PlantODV1.0.2', 'PlantODV1.0.3'];
-	let stageClassificationYolo = [
-		'StageCLSV1.0.0',
-		'StageCLSV1.0.1',
-		'StageCLSV1.0.2',
-		'StageCLSV1.0.3'
-	];
-	let diseaseSegmentationMaskRCNN = [
-		'DiseaseSegV1.0.0',
-		'DiseaseSegV1.0.1',
-		'DiseaseSegV1.0.2',
-		'DiseaseSegV1.0.3'
-	];
-	
-	objectDetection.subscribe((val) => {
-		if (!val) objectDetection.set(objectDetectionionYolo[0]);
-	});
-	stageClassification.subscribe((val) => {
-		if (!val) stageClassification.set(stageClassificationYolo[0]);
-	});
-	diseaseSegmentation.subscribe((val) => {
-		if (!val) diseaseSegmentation.set(diseaseSegmentationMaskRCNN[0]);
-	});
-
+	function transformModels(models: any) {
+		const output: any = {};
+		models.forEach((item: any) => {
+			const modelKey = `${item.version}`;
+			output[modelKey] = {
+				accuracy: parseFloat(item.accuracy),
+				recall: parseFloat(item.recall),
+				precision: parseFloat(item.precision),
+				mAP50: parseFloat(item.mAP50),
+				mAP50_95: parseFloat(item.mAP50_95)
+			};
+		});
+		return output;
+	}
 	let modelPerformance = {
-		objectDetectionionYolo: {
-			'PlantODV1.0.0': {
-				accuracy: 0.9,
-				recall: 0.88,
-				precision: 0.91,
-				mAP50: 0.85,
-				mAP50_95: 0.81
-			},
-			'PlantODV1.0.1': {
-				accuracy: 0.91,
-				recall: 0.89,
-				precision: 0.92,
-				mAP50: 0.86,
-				mAP50_95: 0.82
-			},
-			'PlantODV1.0.2': {
-				accuracy: 0.92,
-				recall: 0.9,
-				precision: 0.93,
-				mAP50: 0.88,
-				mAP50_95: 0.83
-			},
-			'PlantODV1.0.3': {
-				accuracy: 0.93,
-				recall: 0.91,
-				precision: 0.94,
-				mAP50: 0.89,
-				mAP50_95: 0.84
-			}
-		},
-		stageClassificationYolo: {
-			'StageCLSV1.0.0': {
-				accuracy: 0.85,
-				recall: 0.83,
-				precision: 0.84,
-				mAP50: 0.81,
-				mAP50_95: 0.76
-			},
-			'StageCLSV1.0.1': {
-				accuracy: 0.87,
-				recall: 0.85,
-				precision: 0.86,
-				mAP50: 0.83,
-				mAP50_95: 0.78
-			},
-			'StageCLSV1.0.2': {
-				accuracy: 0.88,
-				recall: 0.86,
-				precision: 0.87,
-				mAP50: 0.84,
-				mAP50_95: 0.79
-			},
-			'StageCLSV1.0.3': {
-				accuracy: 0.89,
-				recall: 0.87,
-				precision: 0.88,
-				mAP50: 0.85,
-				mAP50_95: 0.8
-			}
-		},
-		diseaseSegmentationMaskRCNN: {
-			'DiseaseSegV1.0.0': {
-				accuracy: 0.88,
-				recall: 0.85,
-				precision: 0.87,
-				mAP50: 0.84,
-				mAP50_95: 0.79
-			},
-			'DiseaseSegV1.0.1': {
-				accuracy: 0.89,
-				recall: 0.86,
-				precision: 0.88,
-				mAP50: 0.85,
-				mAP50_95: 0.8
-			},
-			'DiseaseSegV1.0.2': {
-				accuracy: 0.9,
-				recall: 0.87,
-				precision: 0.89,
-				mAP50: 0.86,
-				mAP50_95: 0.81
-			},
-			'DiseaseSegV1.0.3': {
-				accuracy: 0.91,
-				recall: 0.88,
-				precision: 0.9,
-				mAP50: 0.87,
-				mAP50_95: 0.82
-			}
-		}
+		objectDetectionionYolo: transformModels($yoloObjectDetection),
+		stageClassificationYolo: transformModels($yoloStageClassification),
+		diseaseSegmentationMaskRCNN: transformModels($maskRCNNSegmentation)
 	};
 
 	let previousModel = writable($objectDetection);
-	let showToast = writable(false);
 	let showRadarModal = false;
 	let showScheduleModal = false;
 	let oldSchedule: any = {};
 	function confirmChange() {
 		previousModel.set($objectDetection);
-		showToast.set(false);
-	}
-
-	function cancelChange() {
-		objectDetection.set($previousModel);
-		showToast.set(false);
+		addToast('Object detection model changed!', 'success', 3000);
+		setTimeout(() => {
+			addToast(
+				'Changes staged. Remember to click "Save Configuration" to apply them.',
+				'info',
+				5000
+			);
+		}, 10);
 	}
 </script>
 
@@ -153,60 +67,144 @@
 	class="mx-auto flex flex-col items-center justify-between space-y-2 rounded-lg p-3 md:flex-row md:space-y-0 md:space-x-4 dark:bg-gray-900"
 >
 	<div class="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto md:w-1/3">
-		<button
-			class="w-full rounded-md bg-blue-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
-			on:click={openModal}
-		>
-			SETUP SPRAY
-		</button>
-
-		<div class="relative w-full sm:w-auto">
-			<select
-				bind:value={$objectDetection}
-				on:change={(event: any) => {
-					objectDetection.set(event.target.value);
-					showToast.set(true);
-				}}
-				class="w-full rounded-md bg-yellow-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700"
+		<details class="relative w-full sm:w-auto">
+			<summary
+				class="w-full cursor-pointer rounded-md bg-gray-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-950"
 			>
-				{#each objectDetectionionYolo as model}
-					<option value={model}>{model}</option>
-				{/each}
-			</select>
-		</div>
+				Model Selection Actions
+			</summary>
 
-		<div class="relative w-full sm:w-auto">
-			<select
-				bind:value={$stageClassification}
-				on:change={(event: any) => {
-					stageClassification.set(event.target.value);
-					// showToast.set(true);
-				}}
-				class="w-full rounded-md bg-purple-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700"
-			>
-				{#each stageClassificationYolo as model}
-					<option value={model}>{model}</option>
-				{/each}
-			</select>
-		</div>
+			<div class="absolute z-10 mt-2 md:w-80 w-64 flex flex-wrap items-center justify-center gap-2 rounded-md bg-gray-300 p-2 shadow-lg dark:bg-gray-800">
+				<button
+					on:click={() => (showRadarModal = true)}
+					class="w-full rounded-md bg-blue-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
+				>
+					Compare Models
+				</button>
+				<div class="relative w-full sm:w-auto">
+					<select
+						bind:value={$objectDetection}
+						on:change={() => confirmChange()}
+						class="w-full rounded-md bg-yellow-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700"
+					>
+						{#each $yoloObjectDetection as model}
+							<option value={model.version}>{model.version}</option>
+						{/each}
+					</select>
+				</div>
 
-		<div class="relative w-full sm:w-auto">
-			<select
-				bind:value={$diseaseSegmentation}
-				on:change={(event: any) => {
-					diseaseSegmentation.set(event.target.value);
-					// showToast.set(true);
-				}}
-				class="w-full rounded-md bg-rose-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-rose-600 dark:bg-rose-600 dark:hover:bg-rose-700"
-			>
-				{#each diseaseSegmentationMaskRCNN as model}
-					<option value={model}>{model}</option>
-				{/each}
-			</select>
-		</div>
+				<div class="relative w-full sm:w-auto">
+					<select
+						bind:value={$stageClassification}
+						on:change={(event: any) => {
+							stageClassification.set(event.target.value);
+							addToast('Stage classification model changed!', 'success', 3000);
+							setTimeout(() => {
+								addToast(
+									'Changes staged. Remember to click "Save Configuration" to apply them.',
+									'info',
+									5000
+								);
+							}, 10);
+						}}
+						class="w-full rounded-md bg-purple-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700"
+					>
+						{#each $yoloStageClassification as model}
+							<option value={model.version}>{model.version}</option>
+						{/each}
+					</select>
+				</div>
+
+				<div class="relative w-full sm:w-auto">
+					<select
+						bind:value={$diseaseSegmentation}
+						on:change={(event: any) => {
+							diseaseSegmentation.set(event.target.value);
+							addToast('Disease segmentation model changed!', 'success', 3000);
+							setTimeout(() => {
+								addToast(
+									'Changes staged. Remember to click "Save Configuration" to apply them.',
+									'info',
+									5000
+								);
+							}, 10);
+						}}
+						class="w-full rounded-md bg-rose-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-rose-600 dark:bg-rose-600 dark:hover:bg-rose-700"
+					>
+						{#each $maskRCNNSegmentation as model}
+							<option value={model.version}>{model.version}</option>
+						{/each}
+					</select>
+				</div>
+			</div>
+		</details>
 	</div>
 
 	<div class="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto md:w-1/3">
+		<details class="relative w-full sm:w-auto">
+			<summary
+				class="w-full cursor-pointer rounded-md bg-gray-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-950"
+			>
+				Configuration Actions
+			</summary>
+			<div
+				class="absolute z-10 mt-2 flex w-48 flex-col gap-1 rounded-md bg-gray-300 p-2 shadow-lg dark:bg-gray-800"
+			>
+				<button
+					on:click={saveConfig}
+					class="w-full rounded bg-blue-500 px-3 py-2 text-xs font-medium text-white hover:bg-blue-600"
+				>
+					Save Configuration
+				</button>
+				<button
+					on:click={downloadConfig}
+					class="w-full rounded bg-purple-500 px-3 py-2 text-xs font-medium text-white hover:bg-purple-600"
+				>
+					Download Configuration
+				</button>
+				<button
+					on:click={uploadConfig}
+					class="w-full rounded bg-orange-500 px-3 py-2 text-xs font-medium text-white hover:bg-orange-600"
+				>
+					Upload Configuration
+				</button>
+			</div>
+		</details>
+		<details class="relative w-full sm:w-auto">
+			<summary
+				class="w-full cursor-pointer rounded-md bg-gray-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-950"
+			>
+				Setup Actions
+			</summary>
+			<div
+				class="absolute z-10 mt-2 flex w-48 flex-col gap-1 rounded-md bg-gray-300 p-2 shadow-lg dark:bg-gray-800"
+			>
+				<button
+					class="w-full rounded bg-indigo-500 px-3 py-2 text-xs font-medium text-white hover:bg-indigo-600"
+					on:click={openModal}
+				>
+					Setup Spray
+				</button>
+				<button
+					on:click={() => {
+						showScheduleModal = true;
+						oldSchedule = { ...$schedule };
+					}}
+					class="w-full rounded bg-green-500 px-3 py-2 text-xs font-medium text-white hover:bg-green-600"
+				>
+					Set Schedule
+				</button>
+				<button
+					class="w-full cursor-pointer rounded-md bg-blue-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-blue-600 sm:w-auto dark:bg-blue-600 dark:hover:bg-blue-700"
+					on:click={openManualPlant}
+				>
+					Add Plant
+				</button>
+			</div>
+		</details>
+	</div>
+
+	<!-- <div class="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto md:w-1/3">
 		<button
 			on:click={() => (showRadarModal = true)}
 			class="w-full rounded-md bg-indigo-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-indigo-600 sm:w-auto dark:bg-indigo-600 dark:hover:bg-indigo-700"
@@ -216,24 +214,39 @@
 
 		<button
 			on:click={() => {
-				oldSchedule = { ...schedule };
 				showScheduleModal = true;
+				oldSchedule = { ...$schedule };
 			}}
 			class="w-full rounded-md bg-green-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-green-600 sm:w-auto dark:bg-green-600 dark:hover:bg-green-700"
 		>
 			Set Schedule
 		</button>
+
 		<button
-			class="w-full rounded-md bg-blue-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-blue-600 sm:w-auto dark:bg-blue-600 dark:hover:bg-blue-700"
 			on:click={saveConfig}
+			class="w-full rounded-md bg-blue-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-blue-600 sm:w-auto dark:bg-blue-600 dark:hover:bg-blue-700"
 		>
 			Save Configuration
 		</button>
-	</div>
+
+		<button
+			on:click={downloadConfig}
+			class="w-full rounded-md bg-purple-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-purple-600 sm:w-auto dark:bg-purple-600 dark:hover:bg-purple-700"
+		>
+			Download Configuration
+		</button>
+
+		<button
+			on:click={uploadConfig}
+			class="w-full rounded-md bg-orange-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-orange-600 sm:w-auto dark:bg-orange-600 dark:hover:bg-orange-700"
+		>
+			Upload Configuration
+		</button>
+	</div> -->
 
 	<div class="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto md:w-1/3">
 		<button
-			class="w-full rounded-md px-4 py-2 text-xs font-medium text-white shadow-md transition sm:w-auto disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+			class="w-full cursor-pointer rounded-md px-4 py-2 text-xs font-medium text-white shadow-md transition disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
 			class:bg-green-500={!scanning}
 			class:bg-gray-400={scanning}
 			class:dark:bg-green-600={!scanning}
@@ -246,7 +259,7 @@
 		</button>
 
 		<button
-			class="w-full rounded-md px-4 py-2 text-xs font-medium text-white shadow-md transition sm:w-auto disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+			class="w-full cursor-pointer rounded-md px-4 py-2 text-xs font-medium text-white shadow-md transition disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
 			class:bg-red-500={scanning}
 			class:bg-gray-400={!scanning}
 			class:dark:bg-red-600={scanning}
@@ -286,23 +299,24 @@
 			<div class="grid grid-cols-1 gap-6 md:grid-cols-3">
 				<RadarChartComponent
 					title="YOLOv8 Object Detection"
-					models={objectDetectionionYolo}
+					models={$yoloObjectDetection.map((m: any) => m.version)}
 					selected={$objectDetection}
 					dataMap={modelPerformance.objectDetectionionYolo}
+					modelType={'PlantOD'}
 				/>
-
 				<RadarChartComponent
 					title="YOLOv8 Stage Classification"
-					models={stageClassificationYolo}
+					models={$yoloStageClassification.map((m: any) => m.version)}
 					selected={$stageClassification}
 					dataMap={modelPerformance.stageClassificationYolo}
+					modelType={'StageCLS'}
 				/>
-
 				<RadarChartComponent
 					title="Mask-RCNN Disease DiseaseSegmentation"
-					models={diseaseSegmentationMaskRCNN}
+					models={$maskRCNNSegmentation.map((m: any) => m.version)}
 					selected={$diseaseSegmentation}
 					dataMap={modelPerformance.diseaseSegmentationMaskRCNN}
+					modelType={'DiseaseSeg'}
 				/>
 			</div>
 		</div>
@@ -311,33 +325,20 @@
 
 <SetSchedule
 	{schedule}
-	{oldSchedule}
 	{showScheduleModal}
-	onClose={() => (showScheduleModal = false)}
+	onClose={() => {
+		schedule.set(oldSchedule);
+		showScheduleModal = false;
+	}}
 	onSave={() => {
 		showScheduleModal = false;
-		addToast('Schedule updated!', 'success', 3000);
+		addToast('Schedule saved successfully!', 'success', 3000);
+		setTimeout(() => {
+			addToast(
+				'Changes staged. Remember to click "Save Configuration" to apply them.',
+				'info',
+				5000
+			);
+		}, 10);
 	}}
 />
-{#if $showToast}
-	<div class="fixed inset-0 z-40 bg-black/80"></div>
-	<div
-		class="fixed right-5 bottom-5 z-50 flex flex-col space-y-3 rounded-lg bg-red-600 px-5 py-4 text-white shadow-lg transition-opacity duration-300"
-	>
-		⚠️ <span>Warning: Changing the model will reset all your plant setup!</span>
-		<div class="flex justify-end space-x-3">
-			<button
-				on:click={confirmChange}
-				class="rounded-md bg-white px-3 py-1.5 text-sm font-bold text-red-600 hover:bg-gray-200"
-			>
-				OK
-			</button>
-			<button
-				on:click={cancelChange}
-				class="rounded-md bg-gray-300 px-3 py-1.5 text-sm font-bold text-gray-800 hover:bg-gray-400"
-			>
-				CANCEL
-			</button>
-		</div>
-	</div>
-{/if}
