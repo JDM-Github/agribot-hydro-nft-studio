@@ -1,10 +1,10 @@
 <script lang="ts">
 	import RadarChartComponent from '$lib/components/RadarChartComponent.svelte';
 	import SetSchedule from '$lib/components/SetSchedule.svelte';
-	import { addToast, confirmToast } from '$lib/stores/toast';
+	import { addToast } from '$lib/stores/toast';
 	import { writable, type Writable } from 'svelte/store';
+	import { isLivestreaming, isScanning } from '$lib/stores/connection';
 
-	export let scanning;
 	export let controlRobot;
 	export let openModal;
 	export let openCamera;
@@ -13,6 +13,7 @@
 	export let schedule: Writable<{
 		frequency: string;
 		time: string;
+		upto: string;
 		days: string[];
 	}>;
 	export let yoloObjectDetection: any;
@@ -51,6 +52,11 @@
 	let showScheduleModal = false;
 	let oldSchedule: any = {};
 	function confirmChange() {
+		if ($isLivestreaming) {
+			addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+			return;
+		}
+
 		previousModel.set($objectDetection);
 		addToast('Object detection model changed!', 'success', 3000);
 		setTimeout(() => {
@@ -74,7 +80,9 @@
 				Model Selection Actions
 			</summary>
 
-			<div class="absolute z-10 mt-2 md:w-80 w-64 flex flex-wrap items-center justify-center gap-2 rounded-md bg-gray-300 p-2 shadow-lg dark:bg-gray-800">
+			<div
+				class="absolute z-10 mt-2 flex w-64 flex-wrap items-center justify-center gap-2 rounded-md bg-gray-300 p-2 shadow-lg md:w-80 dark:bg-gray-800"
+			>
 				<button
 					on:click={() => (showRadarModal = true)}
 					class="w-full rounded-md bg-blue-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
@@ -97,6 +105,11 @@
 					<select
 						bind:value={$stageClassification}
 						on:change={(event: any) => {
+							if ($isLivestreaming) {
+								addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+								return;
+							}
+
 							stageClassification.set(event.target.value);
 							addToast('Stage classification model changed!', 'success', 3000);
 							setTimeout(() => {
@@ -119,6 +132,11 @@
 					<select
 						bind:value={$diseaseSegmentation}
 						on:change={(event: any) => {
+							if ($isLivestreaming) {
+								addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+								return;
+							}
+
 							diseaseSegmentation.set(event.target.value);
 							addToast('Disease segmentation model changed!', 'success', 3000);
 							setTimeout(() => {
@@ -181,12 +199,22 @@
 			>
 				<button
 					class="w-full rounded bg-indigo-500 px-3 py-2 text-xs font-medium text-white hover:bg-indigo-600"
-					on:click={openModal}
+					on:click={() => {
+						if ($isLivestreaming) {
+							addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+							return;
+						}
+						openModal();
+					}}
 				>
 					Setup Spray
 				</button>
 				<button
 					on:click={() => {
+						if ($isLivestreaming) {
+							addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+							return;
+						}
 						showScheduleModal = true;
 						oldSchedule = { ...$schedule };
 					}}
@@ -196,7 +224,13 @@
 				</button>
 				<button
 					class="w-full cursor-pointer rounded-md bg-blue-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-blue-600 sm:w-auto dark:bg-blue-600 dark:hover:bg-blue-700"
-					on:click={openManualPlant}
+					on:click={() => {
+						if ($isLivestreaming) {
+							addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+							return;
+						}
+						openManualPlant();
+					}}
 				>
 					Add Plant
 				</button>
@@ -204,69 +238,29 @@
 		</details>
 	</div>
 
-	<!-- <div class="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto md:w-1/3">
-		<button
-			on:click={() => (showRadarModal = true)}
-			class="w-full rounded-md bg-indigo-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-indigo-600 sm:w-auto dark:bg-indigo-600 dark:hover:bg-indigo-700"
-		>
-			Compare Models
-		</button>
-
-		<button
-			on:click={() => {
-				showScheduleModal = true;
-				oldSchedule = { ...$schedule };
-			}}
-			class="w-full rounded-md bg-green-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-green-600 sm:w-auto dark:bg-green-600 dark:hover:bg-green-700"
-		>
-			Set Schedule
-		</button>
-
-		<button
-			on:click={saveConfig}
-			class="w-full rounded-md bg-blue-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-blue-600 sm:w-auto dark:bg-blue-600 dark:hover:bg-blue-700"
-		>
-			Save Configuration
-		</button>
-
-		<button
-			on:click={downloadConfig}
-			class="w-full rounded-md bg-purple-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-purple-600 sm:w-auto dark:bg-purple-600 dark:hover:bg-purple-700"
-		>
-			Download Configuration
-		</button>
-
-		<button
-			on:click={uploadConfig}
-			class="w-full rounded-md bg-orange-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-orange-600 sm:w-auto dark:bg-orange-600 dark:hover:bg-orange-700"
-		>
-			Upload Configuration
-		</button>
-	</div> -->
-
 	<div class="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto md:w-1/3">
 		<button
 			class="w-full cursor-pointer rounded-md px-4 py-2 text-xs font-medium text-white shadow-md transition disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-			class:bg-green-500={!scanning}
-			class:bg-gray-400={scanning}
-			class:dark:bg-green-600={!scanning}
-			class:dark:bg-gray-600={scanning}
-			class:hover:brightness-70={!scanning}
+			class:bg-green-500={!$isScanning}
+			class:bg-gray-400={$isScanning}
+			class:dark:bg-green-600={!$isScanning}
+			class:dark:bg-gray-600={$isScanning}
+			class:hover:brightness-70={!$isScanning}
 			on:click={() => controlRobot(true)}
-			disabled={scanning}
+			disabled={$isScanning}
 		>
 			START
 		</button>
 
 		<button
 			class="w-full cursor-pointer rounded-md px-4 py-2 text-xs font-medium text-white shadow-md transition disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-			class:bg-red-500={scanning}
-			class:bg-gray-400={!scanning}
-			class:dark:bg-red-600={scanning}
-			class:dark:bg-gray-600={!scanning}
-			class:hover:brightness-70={scanning}
+			class:bg-red-500={$isScanning}
+			class:bg-gray-400={!$isScanning}
+			class:dark:bg-red-600={$isScanning}
+			class:dark:bg-gray-600={!$isScanning}
+			class:hover:brightness-70={$isScanning}
 			on:click={() => controlRobot(false)}
-			disabled={!scanning}
+			disabled={!$isScanning}
 		>
 			STOP
 		</button>

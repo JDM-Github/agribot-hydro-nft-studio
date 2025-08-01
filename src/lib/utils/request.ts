@@ -1,7 +1,55 @@
+import { currentLink } from '$lib/stores/connection';
+
 export default class RequestHandler {
 	static development = import.meta.env.MODE === 'development';
 	static baseURL = 'https://agribot-hydro-nft-admin.netlify.app';
 	static apiLink = '.netlify/functions/api';
+
+	static async customFetch(
+		link: string,
+		method: string = 'GET',
+		body: Record<string, any> = {},
+		baseLink: string = currentLink,
+		token: string | null = null
+	) {
+		if (!link) return [false, { error: 'No endpoint provided' }];
+
+		const headers: Record<string, string> = {
+			'Content-Type': 'application/json'
+		};
+		if (token) headers.Authorization = `Bearer ${token}`;
+
+		const options: RequestInit = { method, headers };
+		if (method !== 'GET' && Object.keys(body).length > 0) {
+			options.body = JSON.stringify(body);
+		}
+
+		try {
+			const response = await fetch(`${baseLink}/${link}`, options);
+			const data = await response.json().catch(() => ({}));
+			return [response.ok, data];
+		} catch (error) {
+			return [false, { error: String(error) }];
+		}
+	}
+
+	static async authFetch(
+		link: string,
+		method: string = 'GET',
+		body: Record<string, any> = {},
+		baseLink: string = currentLink
+	) {
+		return this.customFetch(link, method, body, baseLink, 'agribot-pi4');
+	}
+
+	static async normalFetch(
+		link: string,
+		method: string = 'GET',
+		body: Record<string, any> = {},
+		baseLink: string = currentLink
+	) {
+		return this.customFetch(link, method, body, baseLink, null);
+	}
 
 	static async fetchData(
 		method: string,

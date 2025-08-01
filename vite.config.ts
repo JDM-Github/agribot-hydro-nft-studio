@@ -5,9 +5,15 @@ import path from 'path';
 
 export default defineConfig({
 	plugins: [sveltekit(), tailwindcss()],
+	server: {
+		hmr: false,
+		watch: {
+			usePolling: false 
+		}
+	},
 	resolve: {
 		alias: {
 			$lib: path.resolve('./src/lib')
 		}
-	},
+	}
 });

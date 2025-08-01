@@ -8,7 +8,13 @@
 	import SprayButton from './spray/spraybuttons.svelte';
 	import { config as exportedConfig, allPlants } from '$lib/stores/plant';
 	import { get, writable, type Writable } from 'svelte/store';
-	import { connect, currentLink, disconnect, isConnected } from '$lib/stores/connection';
+	import {
+		currentLink,
+		isConnected,
+		isRobotRunning,
+		isLivestreaming,
+		isScanning
+	} from '$lib/stores/connection';
 	import { addToast, confirmToast, removeToast } from '$lib/stores/toast';
 	import { onMount } from 'svelte';
 	import ManuallyAddPlant from '$lib/modal/ManuallyAddPlant.svelte';
@@ -33,12 +39,15 @@
 	const schedule = writable<{
 		frequency: string;
 		time: string;
+		upto: string;
 		days: string[];
 	}>({
 		frequency: 'monthly',
 		time: '12:00',
+		upto: '14:00',
 		days: ['', '', '']
 	});
+	let isAlreadyInitialize = false;
 	let initialConfig: any = null;
 	const yoloObjectDetection = writable<any>(null);
 	const yoloStageClassification = writable<any>(null);
@@ -100,13 +109,15 @@
 			config.schedule ?? {
 				frequency: 'monthly',
 				time: '12:00',
+				upto: '14:00',
 				days: ['', '', '']
 			}
 		);
 	}
 
-	onMount(() => {
-		if ($isConnected) {
+	function initiateEverything() {
+		if (!isAlreadyInitialize && $isConnected) {
+			isAlreadyInitialize = true;
 			yoloObjectDetection.set(data.models.yoloobjectdetection);
 			yoloStageClassification.set(data.models.yolostageclassification);
 			maskRCNNSegmentation.set(data.models.maskrcnnsegmentation);
@@ -127,7 +138,12 @@
 				applyConfig(exportedConfig);
 			}
 		}
-	});
+	}
+
+	$: if ($isConnected) {
+        initiateEverything();
+    }
+
 	onMount(() => {
 		const handler = (event: BeforeUnloadEvent) => {
 			if (isConfigDirty() || showCamera || showSprayModal || showManualPlant) {
@@ -166,8 +182,6 @@
 
 	let showModal = false;
 	let showSprayModal = false;
-	let scanning = false;
-
 	async function revertConfig() {
 		if (
 			await confirmToast(
@@ -204,6 +218,10 @@
 	}
 
 	function uploadConfig() {
+		if ($isLivestreaming) {
+			addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+			return;
+		}
 		const input = document.createElement('input');
 		input.type = 'file';
 		input.accept = 'application/json';
@@ -234,6 +252,11 @@
 	}
 
 	const saveConfig = async () => {
+		if ($isLivestreaming) {
+			addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+			return;
+		}
+
 		if (
 			!(await confirmToast(
 				'Are you sure you want to save this configuration? This will overwrite your current settings.'
@@ -249,6 +272,12 @@
 				config
 			});
 			if (response.success) {
+				const [sucess, _] = await RequestHandler.authFetch('update-config', 'POST', {
+					config
+				});
+				if (!sucess) {
+					addToast('Config saved to cloud, but robot not updated.', 'error', 4000);
+				}
 				removeToast(toastId);
 				addToast('Updated config successfully!', 'success', 3000);
 				initialConfig = JSON.parse(JSON.stringify(config));
@@ -267,38 +296,46 @@
 		}
 	};
 
-	function updateDetectedPlant(detected: any) {
-		detectedPlants = detected;
-	}
 	function disabledPlant() {
+		if ($isLivestreaming) {
+			addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+			return;
+		}
 		$detectedPlants[selectedPlantIndex].disabled = true;
 	}
-	function removePlant(key: string) {
+
+	async function removePlant(key: string) {
+		if ($isLivestreaming) {
+			addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+			return;
+		}
+
+		const toastId = addToast(`Removing "${key}"...`, 'loading');
+		await RequestHandler.authFetch(`remove_result?key=${encodeURIComponent(key)}`, 'GET');
+		removeToast(toastId);
 		detectedPlants.set(get(detectedPlants).filter((p: any) => p.key !== key));
+		addToast(`Removed "${key}" successfully.`, 'success', 3000);
 	}
 
 	async function controlRobot(state: boolean) {
+		if ($isLivestreaming) {
+			addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+			return;
+		}
+
 		const action = state ? 'Starting' : 'Stopping';
 		const toastId = addToast(`${action} scanning...`, 'loading');
 
 		try {
 			const endpoint = state ? '/start_scan' : '/stop_scan';
-			const response = await fetch(`${currentLink}${endpoint}`, {
-				method: 'POST'
-			});
+			const [success, data] = await RequestHandler.authFetch(endpoint, 'POST');
 			removeToast(toastId);
 
-			if (response.ok) {
-				scanning = state;
+			if (success) {
+				isScanning.set(state);
 				addToast(`Scanning ${state ? 'started' : 'stopped'} successfully.`, 'success', 3000);
 			} else {
-				let errorMessage = 'Unknown error';
-				try {
-					const data = await response.json();
-					errorMessage = data?.error || response.statusText;
-				} catch (err) {
-					errorMessage = response.statusText || 'Failed to parse error response.';
-				}
+				const errorMessage = data?.error || 'Unknown error';
 				addToast(`Failed to ${state ? 'start' : 'stop'} scanning: ${errorMessage}`, 'error', 4000);
 				console.error('Failed to control robot:', errorMessage);
 			}
@@ -306,28 +343,6 @@
 			removeToast(toastId);
 			addToast(`Network error: ${err.message}`, 'error', 4000);
 			console.error('Network error while controlling robot:', err);
-		}
-	}
-
-	function handleConnection() {
-		let toastID = addToast(`Connecting to AGRI-BOT...`, 'loading');
-		if (!$isConnected) {
-			connect($newLink)
-				.then(() => {
-					removeToast(toastID);
-					if ($isConnected) {
-						addToast('Successfully connected to AGRI-BOT.', 'success', 3000);
-					} else {
-						addToast('Failed to connect to AGRI-BOT.', 'error', 3000);
-					}
-				})
-				.catch(() => {
-					addToast('Failed to connect to AGRI-BOT.', 'error', 3000);
-				});
-		} else {
-			disconnect();
-			removeToast(toastID);
-			addToast('Disconnected from AGRI-BOT.', 'info', 3000);
 		}
 	}
 
@@ -346,17 +361,21 @@
 		>
 			<p>The device is not connected to AGRI-BOT. Please connect first.</p>
 			<p>Current Link: {currentLink}</p>
-			<input
-				type="text"
-				bind:value={$newLink}
-				placeholder="Enter AGRI-BOT IP Address"
-				class="mt-4 rounded border border-gray-400 p-2 dark:bg-gray-700"
-			/>
+		</div>
+	</div>
+	<Footer />
+{:else if $isRobotRunning != 'Stopped'}
+	<div
+		class="relative flex min-h-[calc(100vh-95px)] flex-col items-center justify-center bg-gray-200 p-4 ease-out lg:px-16 dark:bg-gray-800"
+	>
+		<div
+			class="flex h-full flex-col items-center justify-center text-center text-lg font-semibold text-gray-600 dark:text-gray-400"
+		>
+			<p>The robot loop is currently running. Do you want to stop it?</p>
 			<button
-				on:click={handleConnection}
-				class="mt-2 rounded bg-green-500 px-4 py-2 text-white hover:bg-green-600"
+				class="mt-4 rounded-lg bg-red-600 px-5 py-2 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
 			>
-				Connect / Reconnect
+				Stop Robot Loop
 			</button>
 		</div>
 	</div>
@@ -368,15 +387,12 @@
 		<div class="relative z-10 mb-4 flex flex-col gap-4 md:flex-row">
 			<Camera
 				{detectedPlants}
-				{updateDetectedPlant}
-				{scanning}
 				{showCamera}
 				{currentLink}
 				closeCamera={() => (showCamera = false)}
 			/>
 			<div class="w-full rounded-xl bg-white p-4 shadow-lg md:flex-1 dark:bg-gray-900">
 				<Scannedheader {searchPlant} {revertConfig} />
-
 				<div
 					class="mx-2 max-h-[250px] space-y-2 overflow-y-auto rounded-xl border border-gray-200 bg-gray-100 p-2 md:max-h-[400px] dark:border-gray-700 dark:bg-gray-800"
 				>
@@ -402,7 +418,17 @@
 												<!-- svelte-ignore node_invalid_placement_ssr -->
 												<button
 													class="rounded bg-green-300 px-1 py-0.5 font-semibold text-black hover:bg-green-400"
-													on:click|stopPropagation={() => (plant.disabled = false)}
+													on:click|stopPropagation={() => {
+														if ($isLivestreaming) {
+															addToast(
+																'Action unavailable while livestreaming is active.',
+																'error',
+																3000
+															);
+														} else {
+															plant.disabled = false;
+														}
+													}}
 												>
 													Enable
 												</button>
@@ -424,6 +450,14 @@
 											class="rounded-md bg-green-500 p-2 text-white shadow-sm hover:bg-green-600 dark:bg-transparent dark:hover:bg-transparent dark:hover:text-green-400"
 											aria-label="View plant details"
 											on:click={() => {
+												if ($isLivestreaming) {
+													addToast(
+														'Action unavailable while livestreaming is active.',
+														'error',
+														3000
+													);
+													return;
+												}
 												selectedPlantIndex = index;
 												selectedPlant = plant;
 												showModal = true;
@@ -455,7 +489,6 @@
 				{#if $yoloObjectDetection && $yoloStageClassification && $maskRCNNSegmentation}
 					<SprayButton
 						{controlRobot}
-						{scanning}
 						openModal={() => {
 							previousSprays = { spray: [...$allSprays], active: [...$allSpraysActive] };
 							showSprayModal = true;
@@ -503,5 +536,4 @@
 		showModal={showManualPlant}
 		closeModal={() => (showManualPlant = false)}
 	/>
-	<!-- <Popup /> -->
 {/if}

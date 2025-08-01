@@ -1,38 +1,42 @@
 <script lang="ts">
+	import { allPlants } from '$lib/stores/plant';
+	import RequestHandler from '$lib/utils/request';
 	import { onDestroy, onMount } from 'svelte';
+	import { isScanning } from '$lib/stores/connection';
 
 	export let detectedPlants;
-	export let updateDetectedPlant;
-	export let scanning = false;
 	export let showCamera = false;
 	export let closeCamera;
 	export let currentLink;
 
 	let latestResults: { label: string; timestamp: string }[] = [];
 	const fetchResults = async () => {
-		if (scanning) {
-			const response = await fetch(`${currentLink}/latest_results`);
-			if (response.ok) {
-				const data = await response.json();
-				latestResults = data;
+		if (!$isScanning) return;
 
-				let newPlant = [...detectedPlants];
-				for (const result of latestResults) {
-					for (const plant of detectedPlants) {
-						if (plant.key === result.label) {
-							let nP = plant;
-							nP.timestamp = result.timestamp;
-							nP.active = true;
-						}
-					}
-				}
-				updateDetectedPlant(newPlant);
+		const [success, data] = await RequestHandler.authFetch('latest_results', 'GET');
+		if (!success) return;
+
+		latestResults = data;
+		let newPlant = [...$detectedPlants];
+		for (const result of latestResults) {
+			const exists = newPlant.some(plant => plant.key === result.label);
+
+			if (!exists && allPlants[result.label]) {
+				newPlant.push({
+					key: result.label,
+					timestamp: result.timestamp,
+					disabled: false,
+					disease: Object.fromEntries(
+						allPlants[result.label].diseases.map(d => [d.name, []])
+					)
+				});
 			}
 		}
+		detectedPlants.set(newPlant);
 	};
+
 	let intervalId: NodeJS.Timeout;
 	let intervalId2: NodeJS.Timeout;
-
 	onMount(() => {
 		intervalId = setInterval(fetchResults, 1000);
 		intervalId2 = setInterval(fetchCameraInfo, 100);
@@ -44,26 +48,43 @@
 
 	let cameraInfo = { status: 'false', resolution: 'NOT SET', fps: 0, ip: 'NOT SET' };
 	const fetchCameraInfo = async () => {
-		if (scanning) {
-			const cameraPromise = fetch(`${currentLink}/camera_info`);
-			const ipPromise =
-				cameraInfo.ip === 'NOT SET' ? fetch('https://api.ipify.org?format=json') : null;
-
-			const [cameraResponse, ipResponse] = await Promise.all([cameraPromise, ipPromise]);
-
-			if (cameraResponse.ok) {
-				const data = await cameraResponse.json();
-				cameraInfo = { ...cameraInfo, ...data };
-			} else {
-				cameraInfo = { status: 'false', resolution: 'NOT SET', fps: 0, ip: cameraInfo.ip };
-			}
-
-			if (ipResponse && ipResponse.ok) {
-				const ipData = await ipResponse.json();
-				cameraInfo.ip = ipData.ip;
-			}
-		} else {
+		if (!$isScanning) {
 			cameraInfo = { status: 'false', resolution: 'NOT SET', fps: 0, ip: 'NOT SET' };
+			return;
+		}
+
+		try {
+			const [cameraSuccess, cameraData] = await RequestHandler.authFetch('camera_info', 'GET');
+			let updatedInfo = {
+				status: 'false',
+				resolution: 'NOT SET',
+				fps: 0,
+				ip: cameraInfo.ip
+			};
+
+			if (cameraSuccess && cameraData) {
+				updatedInfo = { ...updatedInfo, ...cameraData };
+			}
+
+			if (!updatedInfo.ip || updatedInfo.ip === 'NOT SET') {
+				try {
+					const ipResponse = await fetch('https://api.ipify.org?format=json');
+					if (ipResponse.ok) {
+						const ipData = await ipResponse.json();
+						updatedInfo.ip = ipData.ip;
+					} else {
+						updatedInfo.ip = 'Unavailable';
+					}
+				} catch (err) {
+					console.warn('Failed to fetch public IP:', err);
+					updatedInfo.ip = 'Unavailable';
+				}
+			}
+
+			cameraInfo = updatedInfo;
+		} catch (err) {
+			console.error('Error fetching camera info:', err);
+			cameraInfo = { status: 'false', resolution: 'NOT SET', fps: 0, ip: 'Unavailable' };
 		}
 	};
 </script>
@@ -74,7 +95,7 @@
 	<div
 		class="relative flex h-64 items-center justify-center bg-gray-100 shadow-inner md:h-80 dark:bg-gray-800"
 	>
-		{#if scanning}
+		{#if $isScanning}
 			<img
 				src={`${currentLink}/scan_feed`}
 				alt={`${currentLink}/scan_feed`}
