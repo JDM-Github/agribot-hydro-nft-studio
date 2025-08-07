@@ -219,7 +219,7 @@
 	<div class="mx-auto w-11/12 rounded-xl bg-white p-4 shadow-lg md:flex-1 dark:bg-gray-900">
 		<!-- 🔴 Error Alert Banner -->
 		{#if showErrorAlert}
-			<div class="mb-3 animate-pulse rounded-lg bg-red-500 p-3 font-semibold text-white shadow-md">
+			<div class="absolute z-100 mb-3 animate-pulse rounded-lg bg-red-500 p-3 font-semibold text-white shadow-md">
 				🚨 New ERROR logs detected!
 			</div>
 		{/if}

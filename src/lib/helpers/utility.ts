@@ -13,9 +13,10 @@ const VALID_FREQUENCIES = [
 
 export function getBaseApiUrl() {
 	return import.meta.env.MODE === 'production'
-		? import.meta.env.VITE_PRODUCTION_LINK
+		? ''
 		: import.meta.env.VITE_DEVELOPMENT_LINK || 'http://127.0.0.1:8000';
 }
+
 export function getTimestamp() {
 	const now = new Date();
 	const yyyy = now.getFullYear();

@@ -1,4 +1,5 @@
-import { currentLink } from '$lib/stores/connection';
+import { currentLink, robotName } from '$lib/stores/connection';
+import { get } from 'svelte/store';
 
 export default class RequestHandler {
 	static development = import.meta.env.MODE === 'development';
@@ -9,9 +10,10 @@ export default class RequestHandler {
 		link: string,
 		method: string = 'GET',
 		body: Record<string, any> = {},
-		baseLink: string = currentLink,
+		baseLink: string | null = get(currentLink),
 		token: string | null = null
 	) {
+		if (!baseLink) return [false, { error: 'No base link provided' }];
 		if (!link) return [false, { error: 'No endpoint provided' }];
 
 		const headers: Record<string, string> = {
@@ -23,7 +25,7 @@ export default class RequestHandler {
 		if (method !== 'GET' && Object.keys(body).length > 0) {
 			options.body = JSON.stringify(body);
 		}
-
+		console.log(`${baseLink}/${link}`);
 		try {
 			const response = await fetch(`${baseLink}/${link}`, options);
 			const data = await response.json().catch(() => ({}));
@@ -37,16 +39,20 @@ export default class RequestHandler {
 		link: string,
 		method: string = 'GET',
 		body: Record<string, any> = {},
-		baseLink: string = currentLink
+		baseLink: string | null = get(currentLink)
 	) {
-		return this.customFetch(link, method, body, baseLink, 'agribot-pi4');
+		const robotN = get(robotName);
+		if (!robotN) {
+			return [false, { error: 'Invalid token provided.' }];
+		}
+		return this.customFetch(link, method, body, baseLink, robotN);
 	}
 
 	static async normalFetch(
 		link: string,
 		method: string = 'GET',
 		body: Record<string, any> = {},
-		baseLink: string = currentLink
+		baseLink: string | null = get(currentLink)
 	) {
 		return this.customFetch(link, method, body, baseLink, null);
 	}
@@ -108,3 +114,7 @@ export default class RequestHandler {
 		}
 	}
 }
+function $store(arg0: string) {
+	throw new Error('Function not implemented.');
+}
+

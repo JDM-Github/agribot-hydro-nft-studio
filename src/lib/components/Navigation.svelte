@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { darkMode } from '$lib/stores/theme';
-	import { isConnected, connect, disconnect } from '$lib/stores/connection';
+	import { isConnected, connect, disconnect, currentLink, robotName } from '$lib/stores/connection';
 	import { addToast, removeToast } from '$lib/stores/toast';
 	import { goto } from '$app/navigation';
 
@@ -11,23 +11,30 @@
 		{ name: 'SETUP', path: '/' },
 		{ name: 'LIVE', path: '/live' },
 		{ name: 'RECORDS', path: '/record' },
-		{ name: 'LOGS', path: '/logs' }
+		{ name: 'LOGS', path: '/logs' },
+		{ name: 'ROBOT', path: '/robot' }
 	];
 
 	function toggleDarkMode() {
 		darkMode.set(!$darkMode);
 		localStorage.setItem('darkMode', `${$darkMode}`);
 	}
-
 	function toggleMenu() {
 		isMenuOpen = !isMenuOpen;
 	}
 	function closeMenu() {
 		isMenuOpen = false;
 	}
+	// https://github.com/JDM-Github/instamine.git
 	function handleConnection() {
 		let toastID = addToast('Connecting to AGRI-BOT...', 'loading');
 		if (!$isConnected) {
+			robotName.set(user.prototypeID);
+			currentLink.set(
+				import.meta.env.VITE_ENV === 'production'
+					? user.prototypeID
+					: import.meta.env.VITE_DEVELOPMENT_LINK || 'http://127.0.0.1:8000'
+			);
 			connect()
 				.then(() => {
 					removeToast(toastID);

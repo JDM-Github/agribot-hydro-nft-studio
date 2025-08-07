@@ -28,7 +28,6 @@
 	let selectedPlantIndex: number = -1;
 	let selectedPlant: any = null;
 	let previousSprays: any;
-	const newLink = writable<string>(currentLink);
 	const searchPlant = writable<string>('');
 	// ---------------------------------------
 	const allSprays = writable(['', '', '', '']);
@@ -360,7 +359,6 @@
 			class="flex h-full flex-col items-center justify-center text-center text-lg font-semibold text-gray-600 dark:text-gray-400"
 		>
 			<p>The device is not connected to AGRI-BOT. Please connect first.</p>
-			<p>Current Link: {currentLink}</p>
 		</div>
 	</div>
 	<Footer />
@@ -388,7 +386,6 @@
 			<Camera
 				{detectedPlants}
 				{showCamera}
-				{currentLink}
 				closeCamera={() => (showCamera = false)}
 			/>
 			<div class="w-full rounded-xl bg-white p-4 shadow-lg md:flex-1 dark:bg-gray-900">

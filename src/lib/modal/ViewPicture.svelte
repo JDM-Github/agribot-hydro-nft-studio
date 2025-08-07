@@ -54,18 +54,18 @@
 					{selectedImage.plantName}
 				</p>
 				<p class="text-sm text-gray-600 dark:text-gray-400">
-					<strong>Disease:</strong>
-					{selectedImage.diseaseName}
+					<strong>Plant Health:</strong>
+					{selectedImage.plantHealth}
 				</p>
 				<p class="text-sm text-gray-600 dark:text-gray-400">
-					<strong>Location:</strong>
-					{selectedImage.location.address}
-					({selectedImage.location.latitude}, {selectedImage.location.longitude})
+					<strong>Location Position:</strong>
+					{selectedImage.locationOnCapture}
 				</p>
 				<p class="text-sm text-gray-600 dark:text-gray-400">
 					<strong>Image Size:</strong>
 					{selectedImage.imageSize}
 				</p>
+				<!-- locationOnCapture -->
 				<p class="text-sm text-gray-600 dark:text-gray-400">
 					<strong>AI Analysis:</strong>
 					{selectedImage.generatedDescription}

@@ -2,12 +2,11 @@
 	import { allPlants } from '$lib/stores/plant';
 	import RequestHandler from '$lib/utils/request';
 	import { onDestroy, onMount } from 'svelte';
-	import { isScanning } from '$lib/stores/connection';
+	import { currentLink, isScanning } from '$lib/stores/connection';
 
 	export let detectedPlants;
 	export let showCamera = false;
 	export let closeCamera;
-	export let currentLink;
 
 	let latestResults: { label: string; timestamp: string }[] = [];
 	const fetchResults = async () => {
@@ -97,8 +96,8 @@
 	>
 		{#if $isScanning}
 			<img
-				src={`${currentLink}/scan_feed`}
-				alt={`${currentLink}/scan_feed`}
+				src={`${$currentLink}/scan_feed`}
+				alt={`Scanning Feed.`}
 				class="h-auto w-full max-w-[90%] rounded-md border dark:border-gray-600"
 			/>
 		{:else}
@@ -116,7 +115,7 @@
 		<ul class="space-y-2 pt-2 text-sm text-gray-600 dark:text-gray-400">
 			<li class="flex justify-between">
 				<span class="font-medium text-gray-500 dark:text-gray-300">URL:</span>
-				{currentLink}
+				{$currentLink}
 			</li>
 			<li class="flex justify-between">
 				<span class="font-medium text-gray-500 dark:text-gray-300">Status:</span>

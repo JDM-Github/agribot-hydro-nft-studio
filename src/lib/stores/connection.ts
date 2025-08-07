@@ -1,24 +1,36 @@
-import { getBaseApiUrl } from '$lib/helpers/utility';
-import { writable as $store } from 'svelte/store';
+import { writable as $store, get } from 'svelte/store';
 
-let currentLink = getBaseApiUrl();
-let isConnected = $store(false);
-let isLivestreaming = $store(false);
-let isScanning = $store(false);
-let isRobotRunning = $store("Stopped");
+const robotName = $store<string | null>(null);
+const currentLink = $store<string | null>(null);
+const isConnected = $store(false);
+const isLivestreaming = $store(false);
+const isScanning = $store(false);
+const isRobotRunning = $store("Stopped");
 
-const connect = async (url: string | null = null, robot_id: string | null = null) => {
-	if (url) currentLink = url;
+const resetVariable = () => {
+	isConnected.set(false);
+	isLivestreaming.set(false);
+	isScanning.set(false);
+	isRobotRunning.set('Stopped');
+}
 
-	const token = robot_id || (import.meta.env.VITE_ENV === 'development' ? "agribot-pi4" : '');
+const connect = async (url: string | null = null, robot_name: string | null = null) => {
+	let link = get(currentLink);
+	if (link === null) {
+		console.error('❌ No base link. Aborting connection.');
+		resetVariable();
+		return;
+	}
+	if (url) link = url;
+
+	const token = robot_name || get(robotName);
 	if (!token) {
-		console.error('❌ No robot_id provided in production. Aborting connection.');
-		isConnected.set(false);
-		isRobotRunning.set('Stopped');
+		console.error('❌ No robot_name provided in production. Aborting connection.');
+		resetVariable();
 		return;
 	}
 	try {
-		const res = await fetch(`${currentLink}/ping`, {
+		const res = await fetch(`${link}/ping`, {
 			headers: {
 				Authorization: `Bearer ${token}`
 			}
@@ -31,10 +43,7 @@ const connect = async (url: string | null = null, robot_id: string | null = null
 			isRobotRunning.set(data.robot_loop_state);
 		} else {
 			console.error('Ping failed:', data.message || 'Unknown error');
-			isConnected.set(false);
-			isLivestreaming.set(false);
-			isScanning.set(false);
-			isRobotRunning.set('Stopped');
+			resetVariable();
 		}
 	} catch (e) {
 		console.error('Ping failed:', e);
@@ -43,7 +52,16 @@ const connect = async (url: string | null = null, robot_id: string | null = null
 };
 
 const disconnect = () => {
-	isConnected.set(false);
+	resetVariable();
 };
 
-export { currentLink, isConnected, isRobotRunning, isScanning, isLivestreaming, connect, disconnect };
+export {
+	currentLink,
+	isConnected,
+	isRobotRunning,
+	isScanning,
+	isLivestreaming,
+	robotName,
+	connect,
+	disconnect
+};
