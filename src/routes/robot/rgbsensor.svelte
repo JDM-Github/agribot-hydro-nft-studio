@@ -7,7 +7,7 @@
 
     async function fetchRGB() {
         try {
-            const [success, response] = await RequestHandler.authFetch("/rgb-sensor", "GET");
+            const [success, response] = await RequestHandler.authFetch("rgb-sensor", "POST");            
             if (success && response) {
                 rgb = response.normalized || { r: 0, g: 0, b: 0 };
                 detectedColor = response.color_name || "UNKNOWN";
@@ -17,11 +17,11 @@
         }
     }
 
-    // onMount(() => {
-    //     fetchRGB();
-    //     const interval = setInterval(fetchRGB, 1000);
-    //     return () => clearInterval(interval);
-    // });
+    onMount(() => {
+        fetchRGB();
+        const interval = setInterval(fetchRGB, 1000);
+        return () => clearInterval(interval);
+    });
 </script>
 
 <div

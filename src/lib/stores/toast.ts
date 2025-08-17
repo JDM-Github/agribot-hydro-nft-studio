@@ -23,12 +23,19 @@ export function addToast(
 	actions?: ToastAction[]
 ) {
 	const id = Date.now().toString();
+
+	if (type === 'loading') {
+		duration = duration ?? undefined;
+	} else {
+		duration = duration ?? 2000;
+	}
 	toasts.update((state) => [...state, { id, message, type, duration, actions }]);
-	if (type !== 'loading' && type !== 'confirm' && duration) {
+	if (duration) {
 		setTimeout(() => removeToast(id), duration);
 	}
 	return id;
 }
+
 
 export function removeToast(id: string) {
 	toasts.update((state) => state.filter((toast) => toast.id !== id));

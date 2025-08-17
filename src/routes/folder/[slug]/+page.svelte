@@ -13,6 +13,7 @@
 	}
 
 	function closeModal() {
+		selectedImage.set(null);
 		modalOpen.set(false);
 	}
 
@@ -25,6 +26,7 @@
 		link.click();
 		document.body.removeChild(link);
 	}
+
 	let folder: Writable<{
 		id: string;
 		name: string;
@@ -40,7 +42,7 @@
 	let currentPage = writable(1);
 	const itemsPerPage = 10;
 
-	const paginatedImages = derived([currentPage], ([$currentPage]) => {
+	const paginatedImages = derived([images, currentPage], ([$images, $currentPage]) => {
 		const start = ($currentPage - 1) * itemsPerPage;
 		const end = start + itemsPerPage;
 		return $images.slice().slice(start, end);
@@ -136,7 +138,7 @@
 				<button
 					class="flex items-center justify-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-600"
 					on:click={() => {
-						window.location.href = `/api/download/${$folder.id}`;
+						window.open(`/api/download/${$folder.id}`, "_blank");
 					}}
 				>
 					Download All
@@ -207,4 +209,4 @@
 </main>
 <Footer />
 
-<ViewPicture modalOpen={$modalOpen} {closeModal} {downloadImage} selectedImage={$selectedImage} />
+<ViewPicture modalOpen={$modalOpen} {closeModal} {downloadImage} selectedImage={$selectedImage} images={images} />

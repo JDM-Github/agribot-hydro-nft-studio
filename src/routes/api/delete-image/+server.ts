@@ -18,10 +18,16 @@ export const DELETE: RequestHandler = async ({ request }) => {
 			return json({ error: 'Missing public_id' }, { status: 400 });
 		}
 
-		const result = await cloudinary.uploader.destroy(public_id);
+		const normalizedId = public_id.replace(/\s+/g, "_");
+		const result = await cloudinary.uploader.destroy(normalizedId, {
+			resource_type: "image",
+			invalidate: true,
+			type: "upload"
+		});
 
+		console.log("Deleting:", normalizedId, result);
 		if (result.result !== 'ok') {
-			return json({ error: 'Failed to delete image' }, { status: 500 });
+			return json({ error: `Failed to delete image: ${result.result}` }, { status: 500 });
 		}
 
 		return json({ success: true });

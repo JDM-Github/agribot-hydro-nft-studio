@@ -3,9 +3,10 @@
 	import { addToast, removeToast } from "$lib/stores/toast";
 
 	export let modalOpen;
-	export let closeModal;
+	export let closeModal: () => void;
 	export let downloadImage;
 	export let selectedImage;
+	export let images: any;
 
 	async function deleteImage(public_id: string) {
 		const toastId = addToast("Deleting image...", "loading");
@@ -22,9 +23,14 @@
 		}
 
 		removeToast(toastId);
-		addToast("Successfully deleted image.", "error");
 		const result = await res.json();
-		return result.success;
+		if (result.success) {
+			addToast("Successfully deleted image.", "success");
+			images.update((imgs: any) => imgs.filter((img: any) => img.id !== public_id));
+			closeModal();
+	}
+
+	return result.success;
 	}
 </script>
 
@@ -62,7 +68,6 @@
 					<strong>Image Size:</strong>
 					{selectedImage.imageSize}
 				</p>
-				<!-- locationOnCapture -->
 				<p class="text-sm text-gray-600 dark:text-gray-400">
 					<strong>AI Analysis:</strong>
 					{selectedImage.generatedDescription}

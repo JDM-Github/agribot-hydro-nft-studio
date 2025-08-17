@@ -4,6 +4,7 @@
 	import { isRobotRunning } from '$lib/stores/connection';
 	import { simpleMode } from '$lib/stores/mode';
 
+    export let scanning;
     let triggerMode = writable(false);
 
     async function activateSpray(num: number) {
@@ -44,7 +45,7 @@
                 <input
                     type="checkbox"
                     bind:checked={$triggerMode}
-                    disabled={$isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
+                    disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
                     class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-400 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-30"
                     title="Enable single-press trigger mode instead of hold mode"
                 />
@@ -58,7 +59,7 @@
             <div class="flex flex-col items-center w-full">
                 <!-- svelte-ignore a11y_label_has_associated_control -->
                 <button
-                    disabled={$isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
+                    disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
                     title={`Activate Spray ${num}`}
                     class="w-full rounded-lg bg-blue-500 px-4 py-3 text-sm font-medium text-white hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-500"
                     on:mousedown={() => !$triggerMode && toggleSpray(num, true)}

@@ -214,7 +214,7 @@
 				</div>
 			</div>
 
-			<Relay />
+			<Relay scanning={scanning}/>
 		</div>
 	</div>
 	<Footer />

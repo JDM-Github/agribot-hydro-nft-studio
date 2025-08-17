@@ -10,21 +10,39 @@ cloudinary.config({
 	secure: true
 });
 
-export async function GET({ params }) {
+export async function GET({ params, locals }) {
 	const folderSlug = params.slug;
+	const email = locals.user?.email;
+
+	if (!email) {
+		return new Response('Unauthorized', { status: 401 });
+	}
+
+	const folderName = email.split('@')[0];
+	const folderPath = `${folderName}/${folderSlug}`;
 
 	try {
-		const result = await cloudinary.api.resources_by_asset_folder(folderSlug, {
+		const result = await cloudinary.api.resources_by_asset_folder(folderPath, {
 			max_results: 100
 		});
 
 		const zip = new JSZip();
 		for (const image of result.resources) {
-			const response = await fetch(image.secure_url);
-			const buffer = Buffer.from(await response.arrayBuffer());
-			const filename = image.public_id.split('/').pop() + '.jpg';
-			zip.file(filename, buffer);
+			try {
+				const res = await fetch(image.secure_url);
+				if (!res.ok) throw new Error(`Failed fetch ${image.secure_url}`);
+				const arrayBuffer = await res.arrayBuffer();
+				const buffer = Buffer.from(arrayBuffer);
+
+				const ext = image.format || 'jpg';
+				const filename = image.public_id.split('/').pop() + '.' + ext;
+
+				zip.file(filename, buffer);
+			} catch (innerErr) {
+				console.error(`Skipping ${image.public_id}:`, innerErr);
+			}
 		}
+
 		const content = await zip.generateAsync({ type: 'nodebuffer' });
 
 		return new Response(content, {

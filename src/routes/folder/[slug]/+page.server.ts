@@ -17,7 +17,11 @@ export const load = async ({ params, locals }) => {
 		if (!email) return { images: [], folder: {} };
 
 		const folderName = email.split('@')[0];
-		const result = await cloudinary.api.resources_by_asset_folder(`${folderName}/${folderSlug}`);
+		const result = await cloudinary.api.resources_by_asset_folder(`${folderName}/${folderSlug}`,
+			{
+				max_results: 100
+			}
+		);
 
 		let images = result.resources.map((image: any) => ({
 			id: image.public_id,
