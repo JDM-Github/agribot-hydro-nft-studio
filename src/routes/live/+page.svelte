@@ -7,10 +7,12 @@
 	import { goto } from '$app/navigation';
 	import { currentLink, isConnected, isRobotRunning, isScanning } from '$lib/stores/connection';
 	import RequestHandler from '$lib/utils/request.js';
+	import { simpleMode } from '$lib/stores/mode.js';
+	import { capitalize } from '$lib/helpers/utility.js';
 	export let data;
 
 	let user = data.user || null;
-	let plantHistory: any = [];
+	let plantHistory: any = data.images || [];
 	let showingCamera = !data.no_camera;
 	let videoFeedUrl = '';
 	let robotIsLivestreaming =
@@ -30,18 +32,13 @@
 
 	let modalOpen = writable(false);
 	let selectedImage = writable<any>(null);
-	let capturedFullFrame = writable<any>(null);
+	let capturedFullFrame = writable<any>("");
 	let capturedFullFrameModal = writable(false);
 	export const wasdEnabled = writable(false);
 
 	function openModal(image: any) {
 		selectedImage.set(image);
 		modalOpen.set(true);
-	}
-
-	async function activateSprayer(id: number) {
-		// await fetch(`${currentLink}/spray/${id}`, { method: 'POST' });
-		// await
 	}
 
 	async function captureImageAndDisplay() {
@@ -54,16 +51,18 @@
 		try {
 			if ($isRobotRunning == 'Running') {
 				removeToast(toastId);
-				if (
-					await confirmToast(
-						'The robot is currently running. Do you want to temporarly stopped it before capturing an image?'
-					)
-				) {
-					await RequestHandler.authFetch(`pause_robot_loop`, 'POST', { camera: '1' });
-				} else {
-					addToast('Image capture cancelled.', 'info', 3000);
-					return;
-				}
+				addToast("Robot is currently running. Can't capture.", "error");
+				return;
+				// if (
+				// 	await confirmToast(
+				// 		'The robot is currently running. Do you want to temporarly stopped it before capturing an image?'
+				// 	)
+				// ) {
+				// 	await RequestHandler.authFetch(`pause_robot_loop`, 'POST', { camera: '1' });
+				// } else {
+				// 	addToast('Image capture cancelled.', 'info', 3000);
+				// 	return;
+				// }
 			}
 			const email = user.email || '';
 			if (!email) {
@@ -85,7 +84,6 @@
 				addToast('No plants detected.', 'info', 3000);
 				return;
 			}
-			capturedFullFrame.set(data.fullFrame);
 			data.detections.forEach((plant: any) => {
 				const newPlant = {
 					id: Date.now(),
@@ -105,59 +103,6 @@
 			removeToast(toastId);
 			capturedFullFrame.set(null);
 			addToast('Failed to capture image!', 'error', 3000);
-		}
-	}
-
-	async function controlRobotLoop(action: string) {
-		if ($isScanning) {
-			addToast("Camera is currently scanning. Can't control the robot.", 'error', 3000);
-			return;
-		}
-
-		const endpointMap: { [key: string]: string } = {
-			run: 'run_robot_loop',
-			pause: 'pause_robot_loop',
-			stop: 'stop_robot_loop'
-		};
-
-		const actionMap: { [key: string]: string } = {
-			run: 'Robot loop started',
-			pause: 'Robot loop paused',
-			stop: 'Robot loop stopped'
-		};
-
-		const endpoint = endpointMap[action];
-		const actionMessage = actionMap[action];
-
-		if (!endpoint || !actionMessage) {
-			console.error(`Invalid robot loop action: ${action}`);
-			addToast('Invalid robot loop action.', 'error', 3000);
-			return;
-		}
-
-		const toastId = addToast(`${actionMessage}...`, 'loading');
-		try {
-			const [sucess, _] = await RequestHandler.authFetch(`${endpoint}`, 'POST');
-
-			if (sucess) {
-				removeToast(toastId);
-				addToast(`${actionMessage} successfully.`, 'success', 3000);
-				if (action === 'run') {
-					isRobotRunning.set('Running');
-				} else if (action === 'pause') {
-					isRobotRunning.set('Paused');
-				} else if (action === 'stop') {
-					isRobotRunning.set('Stopped');
-				}
-			} else {
-				const message = 'Unexpected server error';
-				removeToast(toastId);
-				addToast(`Failed to ${action} robot loop: ${message}`, 'error', 3000);
-			}
-		} catch (err) {
-			console.error(err);
-			removeToast(toastId);
-			addToast(`Error: Could not ${action} robot loop`, 'error', 3000);
 		}
 	}
 
@@ -181,7 +126,7 @@
 
 			if (success) {
 				if (action === 'Run') {
-					if (robotIsLivestreaming !== 'Paused') showingCamera = false;
+					showingCamera = true;
 					videoFeedUrl = `${$currentLink}/video_feed`;
 					robotIsLivestreaming = 'Running';
 				} else if (action === 'Stop') {
@@ -218,10 +163,6 @@
 	};
 	const interval = setInterval(updateInfo, 1000);
 	onDestroy(() => clearInterval(interval));
-	async function toggleCamera() {
-		showingCamera = !showingCamera;
-		await RequestHandler.authFetch(`toggle_camera`, 'POST');
-	}
 </script>
 
 {#if !$isConnected}
@@ -241,219 +182,64 @@
     bg-gradient-to-b from-gray-200 to-gray-300
     p-4 ease-out lg:px-16 dark:from-gray-700 dark:to-gray-800"
 	>
-		<div class="relative z-10 mb-4 flex max-h-[100%] flex-col gap-4 md:max-h-[550px] lg:flex-row">
-			<div
-				class="relative flex min-h-[250px] w-full flex-col items-center justify-center rounded-lg bg-gray-100 p-6 shadow-lg lg:w-1/2 dark:bg-gray-900"
-			>
-				{#if videoFeedUrl}
-					<button
-						class="absolute top-4 right-4 z-10 rounded bg-green-600 px-3 py-1.5 text-sm text-white shadow hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
-						on:click={toggleCamera}
-					>
-						{#if showingCamera}Turn Off Camera{:else}Show Camera{/if}
-					</button>
-
-					{#if showingCamera}
-						<img
-							src={videoFeedUrl}
-							alt="📷 Camera Feed"
-							class="h-full w-full max-w-full rounded-md border object-contain dark:border-gray-600"
-						/>
-					{/if}
-				{:else}
-					<p class="text-lg font-semibold text-gray-700 dark:text-gray-300">📷 Camera Feed</p>
-				{/if}
-
-				{#if $capturedFullFrame}
-					<!-- svelte-ignore a11y_click_events_have_key_events -->
-					<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-					<img
-						src={$capturedFullFrame}
-						alt="Last Captured Frame"
-						class="absolute top-4 left-4 h-40 w-40 cursor-pointer rounded border border-gray-400 shadow-lg transition hover:brightness-110 dark:border-gray-600"
-						on:click={() => capturedFullFrameModal.set(true)}
-					/>
-				{/if}
-			</div>
-
-			<div class="flex flex-col rounded-xl bg-white p-4 shadow-lg lg:w-1/2 dark:bg-gray-900">
+		<div
+			class="relative z-10 mb-4 flex lg:mx-auto max-h-[100%] flex-col gap-4 md:max-h-[550px] lg:flex-row {$simpleMode ? '' : 'lg:w-10/12'}"
+			class:md:w-4xl={$simpleMode}
+			class:md:mx-auto={$simpleMode}
+		>
+			{#if $simpleMode}
 				<div
-					class="flex flex-col gap-2 rounded-2xl border border-gray-200 bg-[#fafffc] p-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:p-3 dark:border-gray-700 dark:bg-gray-900"
+					class="flex w-full flex-col items-center gap-4 rounded-xl bg-white p-3 shadow-lg sm:gap-6 sm:p-4 dark:bg-gray-900"
 				>
-					<div class="flex items-center gap-2">
-						<span class="text-xl sm:text-2xl">⚙️</span>
-						<h2 class="text-base font-bold text-gray-400 sm:text-lg dark:text-gray-300">
-							CAMERA INFORMATION
-						</h2>
-					</div>
-
-					<button
-						class="flex h-10 w-10 items-center justify-center rounded-full bg-green-600 text-white shadow-md transition hover:bg-green-700 focus:ring-2 focus:ring-green-300 focus:outline-none dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-400"
-						title="Help"
-					>
-						<span class="text-lg font-bold">?</span>
-					</button>
-				</div>
-
-				<div
-					class="mt-1 rounded-lg border-gray-200 bg-gray-100 p-4 dark:border-gray-700 dark:bg-gray-800"
-				>
-					<ul class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-						<li class="flex justify-between">
-							<span class="font-medium text-gray-500 dark:text-gray-300">URL:</span>
-							<span>{$currentLink}</span>
-						</li>
-						<li class="flex justify-between">
-							<span class="font-medium text-gray-500 dark:text-gray-300">Record Day:</span>
-							<span>{currentDay}</span>
-						</li>
-						<li class="flex justify-between">
-							<span class="font-medium text-gray-500 dark:text-gray-300">Status:</span>
-							<span>{robotIsLivestreaming}</span>
-						</li>
-						<li class="flex justify-between">
-							<span class="font-medium text-gray-500 dark:text-gray-300">Time:</span>
-							<span>{$currentTime}</span>
-						</li>
-					</ul>
-				</div>
-
-				<!-- Controls Panel -->
-				<details class="relative mt-4 w-full sm:w-auto">
-					<summary
-						class="w-full cursor-pointer rounded-md bg-gray-600 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
-					>
-						🤖 Robot Controls
-					</summary>
-
-					<div
-						class="absolute z-10 mt-2 flex w-80 flex-col items-stretch gap-4 rounded-md border border-gray-300 bg-gray-200 p-4 shadow-lg md:w-96 dark:border-gray-700 dark:bg-gray-800"
-					>
-						<div class="flex flex-col gap-2">
-							<p class="text-xs font-semibold text-gray-600 uppercase dark:text-gray-400">
-								Manual Control
-							</p>
-							<button
-								on:click={() => wasdEnabled.update((v) => !v)}
-								class="rounded-md px-4 py-2 text-sm font-medium text-white shadow-md transition
-                                {$isRobotRunning != 'Stopped'
-									? 'bg-indigo-500 hover:bg-indigo-600 dark:bg-indigo-600 dark:hover:bg-indigo-700'
-									: 'cursor-not-allowed bg-gray-400 dark:bg-gray-600'}"
-								disabled={$isRobotRunning == 'Stopped'}
-							>
-								Toggle WASD Control ({$wasdEnabled ? 'On' : 'Off'})
-							</button>
-						</div>
-
-						<div class="flex flex-col gap-2">
-							<p class="text-xs font-semibold text-gray-600 uppercase dark:text-gray-400">
-								Robot Loop
-							</p>
-
-							<!-- Run Button: Disabled Style -->
-							<button
-								on:click={() => controlRobotLoop('run')}
-								class="rounded-md px-4 py-2 text-sm font-medium text-white shadow-md transition
-                                {$isRobotRunning == 'Stopped' || $isRobotRunning == 'Paused'
-									? 'bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700'
-									: 'cursor-not-allowed bg-gray-400 opacity-60 dark:bg-gray-700'}"
-								disabled={$isRobotRunning != 'Stopped' && $isRobotRunning != 'Paused'}
-							>
-								Run Robot Loop
-							</button>
-
-							<button
-								on:click={() => controlRobotLoop('pause')}
-								class="rounded-md px-4 py-2 text-sm font-medium text-white shadow-md transition
-                                {$isRobotRunning == 'Stopped' || $isRobotRunning == 'Paused'
-									? 'cursor-not-allowed bg-gray-400 opacity-60 dark:bg-gray-700'
-									: 'bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700'}"
-								disabled={$isRobotRunning == 'Stopped' || $isRobotRunning == 'Paused'}
-							>
-								Pause Robot Loop
-							</button>
-							<button
-								on:click={() => controlRobotLoop('stop')}
-								class="rounded-md px-4 py-2 text-sm font-medium text-white shadow-md transition
-                                {$isRobotRunning == 'Stopped'
-									? 'cursor-not-allowed bg-gray-400 opacity-60 dark:bg-gray-700'
-									: 'bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700'}"
-								disabled={$isRobotRunning == 'Stopped'}
-							>
-								Stop Robot Loop
-							</button>
-						</div>
-
-						<div class="flex flex-col gap-2">
-							<p class="text-xs font-semibold text-gray-600 uppercase dark:text-gray-400">
-								Sprayers
-							</p>
-							<div class="grid grid-cols-2 gap-2">
-								{#each [1, 2, 3, 4] as sprayer}
-									<button
-										on:click={() => activateSprayer(sprayer)}
-										class="rounded-md px-3 py-2 text-sm font-medium text-white shadow-md transition
-                                        {$isRobotRunning
-											? 'bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700'
-											: 'cursor-not-allowed bg-gray-400 dark:bg-gray-600'}"
-										disabled={$isRobotRunning == 'Stopped'}
-									>
-										Spray {sprayer}
-									</button>
-								{/each}
-							</div>
-						</div>
-					</div>
-				</details>
-
-				<div
-					class="mt-6 rounded-xl border border-gray-200 bg-gray-100 p-4 shadow-lg dark:border-gray-700 dark:bg-gray-800"
-				>
-					<h3 class="text-base font-bold text-gray-700 dark:text-gray-300">DETECTION HISTORY</h3>
-
-					<div
-						class="scrollbar-hide mt-4 flex min-h-[140px] gap-4 overflow-x-auto px-2 py-2 whitespace-nowrap"
-					>
-						{#if plantHistory.length > 0}
-							{#each plantHistory as plant}
-								<button
-									class="flex min-h-[140px] min-w-[140px] flex-col items-center rounded-lg bg-white p-3 shadow-md md:min-h-[160px] md:min-w-[160px] dark:bg-gray-900"
-									on:click={() => openModal(plant)}
-								>
-									<img
-										src={plant.src}
-										alt={plant.plantName}
-										class="h-[90%] w-[90%] rounded-lg border border-gray-300 object-contain dark:border-gray-700"
-									/>
-									<p
-										class="mt-2 text-center text-sm font-semibold text-gray-700 dark:text-gray-300"
-									>
-										{plant.plantName}
-									</p>
-									<p class="text-xs text-red-500">{plant.plantHealth}</p>
-								</button>
-							{/each}
-						{:else}
-							<div
-								class="flex min-h-[140px] min-w-[140px] items-center justify-center rounded-lg bg-gray-300 shadow-md dark:bg-gray-900"
-							>
-								<p class="text-gray-400 dark:text-gray-500">No records</p>
-							</div>
-						{/if}
-					</div>
-				</div>
-
-				<div class="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
-					<div class="flex gap-2">
-						<button
-							class="rounded-lg bg-blue-600 px-5 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-800"
-							on:click={captureImageAndDisplay}
-							disabled={robotIsLivestreaming === 'Stand By'}
+					<!-- Camera Feed -->
+					{#if videoFeedUrl && showingCamera}
+						<div
+							class="relative w-full overflow-hidden rounded-xl border border-gray-200 shadow-md dark:border-gray-700"
 						>
-							Capture
-						</button>
+							<img
+								src={videoFeedUrl}
+								alt="📷 Camera Feed"
+								class="max-h-[300px] w-full object-contain sm:max-h-[500px]"
+							/>
+							<span
+								class="absolute top-2 left-2 rounded bg-black/60 px-2 py-0.5 text-xs text-white sm:top-3 sm:left-3"
+							>
+								Live Feed
+							</span>
+						</div>
+					{:else}
+						<div
+							class="flex min-h-[200px] w-full flex-col items-center justify-center rounded-lg border border-gray-300 bg-gray-100 sm:min-h-[400px] dark:border-gray-600 dark:bg-gray-800"
+						>
+							<p class="text-base font-semibold text-gray-700 sm:text-lg dark:text-gray-300">
+								📷 Camera Feed
+							</p>
+						</div>
+					{/if}
+
+					<!-- Status Strip -->
+					<div
+						class="flex w-full flex-col items-center justify-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-xs font-medium shadow-sm sm:w-auto sm:flex-row sm:gap-8 sm:text-sm dark:bg-gray-800"
+					>
+						<span class="flex items-center gap-1 text-gray-800 dark:text-gray-400">
+							<span
+								class="inline-block h-2 w-2 rounded-full {robotIsLivestreaming === 'Running'
+									? 'bg-green-500'
+									: robotIsLivestreaming === 'Paused'
+										? 'bg-yellow-500'
+										: 'bg-red-500'}"
+							></span>
+							Status: {robotIsLivestreaming}
+						</span>
+						<span class="text-gray-800 dark:text-gray-400">🕒 {$currentTime}</span>
+					</div>
+
+					<!-- Controls -->
+					<div
+						class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-center sm:gap-3"
+					>
 						<button
-							class="rounded-lg bg-green-600 px-5 py-2 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-green-700 dark:hover:bg-green-800"
+							class="rounded-lg bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 sm:text-base dark:bg-green-700 dark:hover:bg-green-800"
 							on:click={() => controlLivestream('Run')}
 							disabled={robotIsLivestreaming === 'Running'}
 						>
@@ -461,7 +247,7 @@
 						</button>
 
 						<button
-							class="rounded-lg bg-gray-600 px-5 py-2 text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-700 dark:hover:bg-gray-800"
+							class="rounded-lg bg-gray-600 px-4 py-2 text-sm text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 sm:text-base dark:bg-gray-700 dark:hover:bg-gray-800"
 							on:click={() => controlLivestream('Pause')}
 							disabled={robotIsLivestreaming === 'Stand By' || robotIsLivestreaming === 'Paused'}
 						>
@@ -469,25 +255,169 @@
 						</button>
 
 						<button
-							class="rounded-lg bg-red-600 px-5 py-2 text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-red-700 dark:hover:bg-red-800"
+							class="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:text-base dark:bg-red-700 dark:hover:bg-red-800"
 							on:click={() => controlLivestream('Stop')}
 							disabled={robotIsLivestreaming === 'Stand By'}
 						>
 							Stop
 						</button>
+
+						<button
+							on:click={() => {
+								const today = new Date();
+								const todayDate = `${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}${today.getFullYear()}`;
+								goto(`/folder/${todayDate}`);
+							}}
+							class="rounded-lg bg-green-500 px-4 py-2 text-sm text-white hover:bg-green-600 sm:text-base dark:bg-green-600 dark:hover:bg-green-700"
+						>
+							View Today Records
+						</button>
 					</div>
-					<button
-						on:click={() => {
-							const today = new Date();
-							const todayDate = `${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}${today.getFullYear()}`;
-							goto(`/folder/${todayDate}`);
-						}}
-						class="rounded-lg bg-green-500 px-5 py-2 text-white hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700"
-					>
-						View Today Records
-					</button>
 				</div>
-			</div>
+
+				<!-- FULL MODE VIEW -->
+			{:else}
+				<div
+					class="relative flex min-h-[250px] w-full flex-col items-center justify-center rounded-lg bg-gray-100 p-6 shadow-lg lg:w-1/2 dark:bg-gray-900"
+				>
+					{#if videoFeedUrl && showingCamera}
+						{#if showingCamera}
+							<img
+								src={videoFeedUrl}
+								alt="📷 Camera Feed"
+								class="h-full max-h-[400px] max-w-[400px] rounded-md object-contain dark:border dark:border-gray-600"
+							/>
+						{/if}
+					{:else}
+						<p class="text-lg font-semibold text-gray-700 dark:text-gray-300">📷 Camera Feed</p>
+					{/if}
+				</div>
+
+				<div class="flex flex-col rounded-xl bg-white p-4 shadow-lg lg:w-1/2 dark:bg-gray-900">
+					<div
+						class="flex flex-col gap-2 rounded-2xl border border-gray-200 bg-[#fafffc] p-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:p-3 dark:border-gray-700 dark:bg-gray-900"
+					>
+						<div class="flex items-center gap-2">
+							<span class="text-xl sm:text-2xl">⚙️</span>
+							<h2 class="text-base font-bold text-gray-400 sm:text-lg dark:text-gray-300">
+								CAMERA INFORMATION
+							</h2>
+						</div>
+
+						<button
+							class="flex h-10 w-10 items-center justify-center rounded-full bg-green-600 text-white shadow-md transition hover:bg-green-700 focus:ring-2 focus:ring-green-300 focus:outline-none dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-400"
+							title="Help"
+						>
+							<span class="text-lg font-bold">?</span>
+						</button>
+					</div>
+
+					<div
+						class="mt-1 rounded-lg border-gray-200 bg-gray-100 p-4 dark:border-gray-700 dark:bg-gray-800"
+					>
+						<ul class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+							<li class="flex justify-between">
+								<span class="font-medium text-gray-500 dark:text-gray-300">URL:</span>
+								<span>{$currentLink}</span>
+							</li>
+							<li class="flex justify-between">
+								<span class="font-medium text-gray-500 dark:text-gray-300">Record Day:</span>
+								<span>{currentDay}</span>
+							</li>
+							<li class="flex justify-between">
+								<span class="font-medium text-gray-500 dark:text-gray-300">Status:</span>
+								<span>{robotIsLivestreaming}</span>
+							</li>
+							<li class="flex justify-between">
+								<span class="font-medium text-gray-500 dark:text-gray-300">Time:</span>
+								<span>{$currentTime}</span>
+							</li>
+						</ul>
+					</div>
+
+					<div
+						class="mt-6 rounded-xl border border-gray-200 bg-gray-100 p-4 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+					>
+						<h3 class="text-base font-bold text-gray-700 dark:text-gray-300">DETECTION HISTORY</h3>
+
+						<div
+							class="scrollbar-hide mt-4 flex min-h-[140px] gap-4 overflow-x-auto px-2 py-2 whitespace-nowrap"
+						>
+							{#if plantHistory.length > 0}
+								{#each plantHistory as plant}
+									<button
+										class="flex min-h-[140px] min-w-[140px] flex-col items-center rounded-lg bg-white p-3 shadow-md md:min-h-[160px] md:min-w-[160px] dark:bg-gray-900"
+										on:click={() => openModal(plant)}
+									>
+										<img
+											src={plant.src}
+											alt={plant.plantName}
+											class="h-auto max-h-[120px] w-auto max-w-[120px] rounded-lg border border-gray-300 object-contain dark:border-gray-700"
+										/>
+										<p
+											class="mt-2 text-center text-sm font-semibold text-gray-700 dark:text-gray-300"
+										>
+											{capitalize(plant.plantName)}
+										</p>
+										<p class="text-xs text-red-500">{capitalize(plant.diseaseName)}</p>
+									</button>
+								{/each}
+							{:else}
+								<div
+									class="flex min-h-[140px] min-w-[140px] items-center justify-center rounded-lg bg-gray-300 shadow-md dark:bg-gray-900"
+								>
+									<p class="text-gray-400 dark:text-gray-500">No records</p>
+								</div>
+							{/if}
+						</div>
+					</div>
+
+					<div class="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+						<div class="flex gap-2">
+							<button
+								class="rounded-lg bg-blue-600 px-5 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-800"
+								on:click={captureImageAndDisplay}
+								disabled={robotIsLivestreaming === 'Stand By'}
+							>
+								Capture
+							</button>
+							<button
+								class="rounded-lg bg-green-600 px-5 py-2 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-green-700 dark:hover:bg-green-800"
+								on:click={() => controlLivestream('Run')}
+								disabled={robotIsLivestreaming === 'Running'}
+							>
+								{robotIsLivestreaming === 'Paused' ? 'Resume' : 'Run Livestream'}
+							</button>
+
+							<button
+								class="rounded-lg bg-gray-600 px-5 py-2 text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-700 dark:hover:bg-gray-800"
+								on:click={() => controlLivestream('Pause')}
+								disabled={robotIsLivestreaming === 'Stand By' || robotIsLivestreaming === 'Paused'}
+							>
+								Pause
+							</button>
+
+							<button
+								class="rounded-lg bg-red-600 px-5 py-2 text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-red-700 dark:hover:bg-red-800"
+								on:click={() => controlLivestream('Stop')}
+								disabled={robotIsLivestreaming === 'Stand By'}
+							>
+								Stop
+							</button>
+						</div>
+						<button
+							on:click={() => {
+								const today = new Date();
+								const todayDate = `${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}${today.getFullYear()}`;
+								goto(`/folder/${todayDate}`);
+							}}
+							class="rounded-lg bg-green-500 px-5 py-2 text-white hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700"
+						>
+							View Today Records
+						</button>
+					</div>
+				</div>
+			{/if}
 		</div>
 	</div>
 

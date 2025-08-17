@@ -1,11 +1,9 @@
 <script lang="ts">
 	import Footer from '$lib/components/Footer.svelte';
-	import FolderInfo from '$lib/modal/FolderInfo.svelte';
 	import ViewPicture from '$lib/modal/ViewPicture.svelte';
-	import { derived, writable } from 'svelte/store';
+	import { derived, writable, type Writable } from 'svelte/store';
 
 	export let data;
-	let folderInfo = false;
 	let modalOpen = writable(false);
 	let selectedImage = writable<null | { id: number; src: string }>(null);
 
@@ -27,21 +25,18 @@
 		link.click();
 		document.body.removeChild(link);
 	}
-	let folder = writable(data.folder);
+	let folder: Writable<{
+		id: string;
+		name: string;
+		createdAt: string;
+		size: string;
+		fileCount: number;
+		lastModified: string;
+		access: string;
+	}> = writable(data.folder as any);
+	let thumbnail: null | string = data.thumbnail;
+
 	let images = writable(data.images);
-	function renameFolder() {
-		const newName = prompt('Enter new folder name:', 'Project Files');
-		if (newName) folder.update((f) => ({ ...f, name: newName }));
-	}
-
-	function changeThumbnail(event: any) {
-		const file = event.target.files[0];
-		if (file) {
-			const url = URL.createObjectURL(file);
-			folder.update((f) => ({ ...f, thumbnail: url }));
-		}
-	}
-
 	let currentPage = writable(1);
 	const itemsPerPage = 10;
 
@@ -74,23 +69,27 @@
 			<div
 				class="relative flex h-64 items-center justify-center bg-gray-100 shadow-inner md:h-80 dark:bg-gray-800"
 			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke-width="1.5"
-					stroke="currentColor"
-					class="h-24 w-24 text-green-300 transition-colors
-						   duration-300 group-hover:text-green-600
-						   sm:h-20 sm:w-20
-						   md:h-24 md:w-24 dark:text-green-300 dark:group-hover:text-green-400"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M2.25 12.75v6.75a2.25 2.25 0 002.25 2.25h15a2.25 2.25 0 002.25-2.25V9.75a2.25 2.25 0 00-2.25-2.25h-7.5l-2.25-2.25H4.5a2.25 2.25 0 00-2.25 2.25v9z"
-					/>
-				</svg>
+				{#if thumbnail}
+					<img src={thumbnail} alt="Folder Thumbnail" class="h-full w-full object-cover" />
+				{:else}
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke-width="1.5"
+						stroke="currentColor"
+						class="h-24 w-24 text-green-300 transition-colors
+							duration-300 group-hover:text-green-600
+							sm:h-20 sm:w-20
+							md:h-24 md:w-24 dark:text-green-300 dark:group-hover:text-green-400"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M2.25 12.75v6.75a2.25 2.25 0 002.25 2.25h15a2.25 2.25 0 002.25-2.25V9.75a2.25 2.25 0 00-2.25-2.25h-7.5l-2.25-2.25H4.5a2.25 2.25 0 00-2.25 2.25v9z"
+						/>
+					</svg>
+				{/if}
 			</div>
 
 			<div class="space-y-4 divide-y divide-gray-200 p-4 dark:divide-gray-700">
@@ -130,15 +129,17 @@
 
 			<div class="flex flex-col gap-2 p-4">
 				<!-- <button
-					on:click={deleteFolder}
-					class="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700"
-				>
-					Delete
-				</button> -->
-				<button
 					class="flex items-center justify-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-600"
 				>
 					Download
+				</button> -->
+				<button
+					class="flex items-center justify-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-600"
+					on:click={() => {
+						window.location.href = `/api/download/${$folder.id}`;
+					}}
+				>
+					Download All
 				</button>
 			</div>
 		</div>
@@ -153,13 +154,6 @@
 						{$folder.name}
 					</h2>
 				</div>
-
-				<button
-					class="block rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-800 lg:hidden dark:border-gray-700 dark:text-white"
-					on:click={() => (folderInfo = true)}
-				>
-					View Folder Details
-				</button>
 			</div>
 
 			{#if $paginatedImages.length > 0}
@@ -214,10 +208,3 @@
 <Footer />
 
 <ViewPicture modalOpen={$modalOpen} {closeModal} {downloadImage} selectedImage={$selectedImage} />
-<FolderInfo
-	folder={$folder}
-	isOpen={folderInfo}
-	{changeThumbnail}
-	{renameFolder}
-	closeModal={() => (folderInfo = false)}
-/>

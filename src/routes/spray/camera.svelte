@@ -27,7 +27,11 @@
 					disabled: false,
 					disease: Object.fromEntries(
 						allPlants[result.label].diseases.map(d => [d.name, []])
+					),
+					disease_time_spray: Object.fromEntries(
+						allPlants[result.label].diseases.map(d => [d.name, ['03:00', '22:00']])
 					)
+					// newEntry.disease_time_spray[d.name] = ['03:00', '22:00'];
 				});
 			}
 		}

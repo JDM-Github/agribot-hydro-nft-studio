@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { simpleMode } from '$lib/stores/mode';
 	import { recommendedSprays } from '$lib/stores/plant';
 	import { addToast } from '$lib/stores/toast';
 	import type { Writable } from 'svelte/store';
@@ -40,6 +41,12 @@
 			<div class="mt-4 flex flex-col gap-3">
 				{#each $allSprays as spray, i}
 					<div class="flex items-center gap-3">
+						<label class="relative inline-flex cursor-pointer items-center">
+							<input type="checkbox" bind:checked={$allSpraysActive[i]} class="peer sr-only" />
+							<div
+								class="peer h-5 w-9 rounded-full bg-gray-300 peer-checked:bg-blue-500 peer-focus:ring-2 peer-focus:ring-blue-300 peer-focus:outline-none after:absolute after:top-0.5 after:left-0.5 after:h-4 after:w-4 after:rounded-full after:border after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-4 peer-checked:after:border-white dark:bg-gray-600 dark:peer-checked:bg-blue-600 dark:peer-focus:ring-blue-800"
+							></div>
+						</label>
 						<span class="w-10 text-sm text-gray-600 lg:text-base dark:text-gray-300">#{i + 1}</span>
 						<input
 							type="text"
@@ -51,40 +58,37 @@
 							class="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
 							on:click={() => ($allSprays[i] = '')}
 						>
-							❌
+							❌CLEAR
 						</button>
 
-						<label class="relative inline-flex cursor-pointer items-center">
-							<input type="checkbox" bind:checked={$allSpraysActive[i]} class="peer sr-only" />
-							<div
-								class="peer h-5 w-9 rounded-full bg-gray-300 peer-checked:bg-blue-500 peer-focus:ring-2 peer-focus:ring-blue-300 peer-focus:outline-none after:absolute after:top-0.5 after:left-0.5 after:h-4 after:w-4 after:rounded-full after:border after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-4 peer-checked:after:border-white dark:bg-gray-600 dark:peer-checked:bg-blue-600 dark:peer-focus:ring-blue-800"
-							></div>
-						</label>
+						
 					</div>
 				{/each}
 			</div>
 
-			<div class="mt-6">
-				<h3 class="text-lg font-bold text-gray-700 lg:text-xl dark:text-gray-300">
-					Recommended Sprays
-				</h3>
-				<div class="mt-2 flex flex-wrap gap-2">
-					{#each recommendedSprays as spray}
-						<button
-							class="relative flex items-center gap-2 rounded-md bg-green-500 px-3 py-1 text-sm text-white hover:bg-green-600 lg:text-base dark:bg-green-500 dark:hover:bg-green-800"
-							on:click={() =>
-								applyRecommended(
-									$allSprays.findIndex((s: string) => s === ''),
-									spray.name
-								)}
-							on:mouseenter={(event) => showSprayInfo(event, spray.name)}
-							on:mouseleave={hideSprayInfo}
-						>
-							{spray.name}
-						</button>
-					{/each}
+			{#if !$simpleMode}
+				<div class="mt-6">
+					<h3 class="text-lg font-bold text-gray-700 lg:text-xl dark:text-gray-300">
+						Recommended Sprays
+					</h3>
+					<div class="mt-2 flex flex-wrap gap-2">
+						{#each recommendedSprays as spray}
+							<button
+								class="relative flex items-center gap-2 rounded-md bg-green-500 px-3 py-1 text-sm text-white hover:bg-green-600 lg:text-base dark:bg-green-500 dark:hover:bg-green-800"
+								on:click={() =>
+									applyRecommended(
+										$allSprays.findIndex((s: string) => s === ''),
+										spray.name
+									)}
+								on:mouseenter={(event) => showSprayInfo(event, spray.name)}
+								on:mouseleave={hideSprayInfo}
+							>
+								{spray.name}
+							</button>
+						{/each}
+					</div>
 				</div>
-			</div>
+			{/if}
 
 			{#if selectedSpray}
 				<div

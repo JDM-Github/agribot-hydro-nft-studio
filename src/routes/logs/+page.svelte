@@ -2,6 +2,7 @@
 	import { onMount, onDestroy, tick } from 'svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import RequestHandler from '$lib/utils/request';
+	import { simpleMode } from '$lib/stores/mode';
 
 	let logs: string[] = [];
 	let filteredLogs: string[] = [];
@@ -27,6 +28,11 @@
 		isAlreadyLoaded = true;
 		filterLogs();
 	});
+	$: if ($simpleMode) {
+		selectedLevel = 'ALL';
+		scrollToBottom();
+	}
+
 	let collapsedGroups: Record<string, boolean> = {};
 
 	let stats = { INFO: 0, WARNING: 0, DEBUG: 0, ERROR: 0, TOTAL: 0 };
@@ -218,8 +224,10 @@
 >
 	<div class="mx-auto w-11/12 rounded-xl bg-white p-4 shadow-lg md:flex-1 dark:bg-gray-900">
 		<!-- 🔴 Error Alert Banner -->
-		{#if showErrorAlert}
-			<div class="absolute z-100 mb-3 animate-pulse rounded-lg bg-red-500 p-3 font-semibold text-white shadow-md">
+		{#if showErrorAlert && !$simpleMode}
+			<div
+				class="absolute z-100 mb-3 animate-pulse rounded-lg bg-red-500 p-3 font-semibold text-white shadow-md"
+			>
 				🚨 New ERROR logs detected!
 			</div>
 		{/if}
@@ -240,19 +248,21 @@
 				<!-- Right: Action Buttons -->
 				<div class="flex gap-4">
 					<!-- Live Updates -->
-					<div class="flex flex-col items-center">
-						<!-- svelte-ignore a11y_label_has_associated_control -->
-						<label class="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-							Live Updates
-						</label>
-						<button
-							on:click={toggleLiveUpdates}
-							title="Toggle live updates"
-							class="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 focus:outline-none"
-						>
-							{liveUpdates ? 'Pause' : 'Live'}
-						</button>
-					</div>
+					{#if !$simpleMode}
+						<div class="flex flex-col items-center">
+							<!-- svelte-ignore a11y_label_has_associated_control -->
+							<label class="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+								Live Updates
+							</label>
+							<button
+								on:click={toggleLiveUpdates}
+								title="Toggle live updates"
+								class="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+							>
+								{liveUpdates ? 'Pause' : 'Live'}
+							</button>
+						</div>
+					{/if}
 
 					<!-- Download Logs -->
 					<div class="flex flex-col items-center">
@@ -286,91 +296,97 @@
 				</div>
 			</div>
 
-			<div class="grid grid-cols-2 items-start gap-3 sm:grid-cols-3 lg:grid-cols-6">
-				<div class="flex flex-col">
-					<!-- svelte-ignore a11y_label_has_associated_control -->
-					<label class="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400"> Date </label>
-					<input
-						type="date"
-						bind:value={selectedDate}
-						title="Select a specific date"
-						class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
-					/>
-				</div>
+			{#if !$simpleMode}
+				<div class="grid grid-cols-2 items-start gap-3 sm:grid-cols-3 lg:grid-cols-6">
+					<div class="flex flex-col">
+						<!-- svelte-ignore a11y_label_has_associated_control -->
+						<label class="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400"> Date </label>
+						<input
+							type="date"
+							bind:value={selectedDate}
+							title="Select a specific date"
+							class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
+						/>
+					</div>
 
-				<!-- Time range: Start -->
-				<div class="flex flex-col">
-					<!-- svelte-ignore a11y_label_has_associated_control -->
-					<label class="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-						Start Time
-					</label>
-					<input
-						type="time"
-						bind:value={startTime}
-						title="Start time filter"
-						class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
-					/>
-				</div>
+					<!-- Time range: Start -->
+					<div class="flex flex-col">
+						<!-- svelte-ignore a11y_label_has_associated_control -->
+						<label class="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+							Start Time
+						</label>
+						<input
+							type="time"
+							bind:value={startTime}
+							title="Start time filter"
+							class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
+						/>
+					</div>
 
-				<!-- Time range: End -->
-				<div class="flex flex-col">
-					<!-- svelte-ignore a11y_label_has_associated_control -->
-					<label class="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-						End Time
-					</label>
-					<input
-						type="time"
-						bind:value={endTime}
-						title="End time filter"
-						class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
-					/>
-				</div>
+					<!-- Time range: End -->
+					<div class="flex flex-col">
+						<!-- svelte-ignore a11y_label_has_associated_control -->
+						<label class="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+							End Time
+						</label>
+						<input
+							type="time"
+							bind:value={endTime}
+							title="End time filter"
+							class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
+						/>
+					</div>
 
-				<!-- Log level filter -->
-				<div class="flex flex-col">
-					<!-- svelte-ignore a11y_label_has_associated_control -->
-					<label class="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-						Log Level
-					</label>
-					<select
-						bind:value={selectedLevel}
-						title="Filter by log severity level"
-						class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
-					>
-						<option value="ALL">All</option>
-						<option value="INFO">INFO</option>
-						<option value="WARNING">WARNING</option>
-						<option value="DEBUG">DEBUG</option>
-						<option value="ERROR">ERROR</option>
-					</select>
-				</div>
+					<!-- Log level filter -->
+					<div class="flex flex-col">
+						<!-- svelte-ignore a11y_label_has_associated_control -->
+						<label class="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+							Log Level
+						</label>
+						<select
+							bind:value={selectedLevel}
+							title="Filter by log severity level"
+							class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
+						>
+							<option value="ALL">All</option>
+							<option value="INFO">INFO</option>
+							<option value="WARNING">WARNING</option>
+							<option value="DEBUG">DEBUG</option>
+							<option value="ERROR">ERROR</option>
+						</select>
+					</div>
 
-				<!-- Search filter -->
-				<div class="flex flex-col">
-					<!-- svelte-ignore a11y_label_has_associated_control -->
-					<label class="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400"> Search </label>
-					<input
-						type="text"
-						bind:value={searchQuery}
-						title="Search logs by keywords"
-						placeholder="Search logs..."
-						class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
-					/>
+					<!-- Search filter -->
+					<div class="flex flex-col">
+						<!-- svelte-ignore a11y_label_has_associated_control -->
+						<label class="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+							Search
+						</label>
+						<input
+							type="text"
+							bind:value={searchQuery}
+							title="Search logs by keywords"
+							placeholder="Search logs..."
+							class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
+						/>
+					</div>
 				</div>
-			</div>
+			{/if}
 		</div>
 
 		<!-- Stats Panel -->
-		<div
-			class="mb-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-		>
-			<strong>Log Stats:</strong>
-			<span class="ml-2">Total: {stats.TOTAL}</span> |
-			<span class="ml-2 text-blue-500">INFO: {stats.INFO}</span> |
-			<span class="ml-2 text-yellow-500">WARNING: {stats.WARNING}</span> |
-			<span class="ml-2 text-gray-500">DEBUG: {stats.DEBUG}</span> |
-			<span class="ml-2 text-red-500">ERROR: {stats.ERROR}</span>
-		</div>
+		{#if !$simpleMode}
+			<div
+				class="mb-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+			>
+				<strong>Log Stats:</strong>
+				<span class="ml-2">Total: {stats.TOTAL}</span> |
+				<span class="ml-2 text-blue-500">INFO: {stats.INFO}</span> |
+				<span class="ml-2 text-yellow-500">WARNING: {stats.WARNING}</span> |
+				<span class="ml-2 text-gray-500">DEBUG: {stats.DEBUG}</span> |
+				<span class="ml-2 text-red-500">ERROR: {stats.ERROR}</span>
+			</div>
+		{/if}
 
 		<!-- Log list -->
 		<div
@@ -379,34 +395,45 @@
 		>
 			<ul class="min-h-[350px] space-y-3">
 				{#if filteredLogs.length > 0}
-					{#each Object.entries(groupLogs()) as [group, lines]}
-						<!-- svelte-ignore a11y_click_events_have_key_events -->
-						<!-- svelte-ignore a11y_no_static_element_interactions -->
-						<li
-							class="rounded-md border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
-						>
-							<div
-								class="flex cursor-pointer items-center justify-between px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
-								on:click={() => toggleGroup(group)}
+					{#if $simpleMode}
+						{#each filteredLogs as line, index}
+							<li
+								class={`rounded-md p-2 text-sm text-gray-800 shadow-sm transition-all duration-300 ease-in-out dark:text-gray-200 ${getLogClass(line)}`}
 							>
-								<span>{group}: ({lines.length} logs)</span>
-								<span>{collapsedGroups[group] ? '>' : '▼'}</span>
-							</div>
+								<span class="w-12 text-xs text-gray-400 select-none">#{index + 1}</span>
+								{@html line}
+							</li>
+						{/each}
+					{:else}
+						{#each Object.entries(groupLogs()) as [group, lines]}
+							<!-- svelte-ignore a11y_click_events_have_key_events -->
+							<!-- svelte-ignore a11y_no_static_element_interactions -->
+							<li
+								class="rounded-md border border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
+							>
+								<div
+									class="flex cursor-pointer items-center justify-between px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+									on:click={() => toggleGroup(group)}
+								>
+									<span>{group}: ({lines.length} logs)</span>
+									<span>{collapsedGroups[group] ? '>' : '▼'}</span>
+								</div>
 
-							{#if !collapsedGroups[group]}
-								<ul class="space-y-1 px-2 pb-2">
-									{#each lines as line, index}
-										<li
-											class={`rounded-md p-2 text-sm text-gray-800 shadow-sm transition-all duration-300 ease-in-out dark:text-gray-200 ${getLogClass(line)}`}
-										>
-											<span class="w-12 text-xs text-gray-400 select-none">#{index + 1}</span>
-											{@html line}
-										</li>
-									{/each}
-								</ul>
-							{/if}
-						</li>
-					{/each}
+								{#if !collapsedGroups[group]}
+									<ul class="space-y-1 px-2 pb-2">
+										{#each lines as line, index}
+											<li
+												class={`rounded-md p-2 text-sm text-gray-800 shadow-sm transition-all duration-300 ease-in-out dark:text-gray-200 ${getLogClass(line)}`}
+											>
+												<span class="w-12 text-xs text-gray-400 select-none">#{index + 1}</span>
+												{@html line}
+											</li>
+										{/each}
+									</ul>
+								{/if}
+							</li>
+						{/each}
+					{/if}
 				{:else}
 					<li class="text-gray-500 dark:text-gray-400">No logs available...</li>
 				{/if}

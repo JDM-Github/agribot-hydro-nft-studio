@@ -1,11 +1,81 @@
 <script lang="ts">
 	import type { Writable } from 'svelte/store';
-	export let schedule: Writable<{ frequency: string; time: string; upto: string; days: string[] }>;
+
+	export let schedule: Writable<{
+		frequency: string;
+		runs: { time: string; upto: string }[];
+		days: string[];
+	}>;
+
 	export let showScheduleModal = false;
 	export let onClose;
 	export let onSave;
 
 	$: selectedDays = [...($schedule.days || [])];
+
+	let errors: string[] = [];
+
+	const toMinutes = (t: string) => {
+		if (!t) return NaN;
+		const [h, m] = t.split(':').map(Number);
+		return h * 60 + m;
+	};
+
+	const validateSchedule = () => {
+		errors = [];
+		const runs = [...($schedule.runs || [])];
+
+		if (!runs.length) errors.push('Add at least one run.');
+
+		runs.forEach((r, i) => {
+			const s = toMinutes(r.time);
+			const e = toMinutes(r.upto);
+
+			if (isNaN(s) || isNaN(e)) {
+				errors.push(`Run ${i + 1}: invalid time.`);
+				return;
+			}
+
+			// Check 3AM–10PM limits
+			if (s < toMinutes('03:00') || s > toMinutes('22:00')) {
+				errors.push(`Run ${i + 1}: Start time must be between 03:00 and 22:00.`);
+			}
+			if (e < toMinutes('03:00') || e > toMinutes('22:00')) {
+				errors.push(`Run ${i + 1}: Latest Start time must be between 03:00 and 22:00.`);
+			}
+
+			// End must be after start
+			if (e <= s) {
+				errors.push(`Run ${i + 1}: Latest Start must be AFTER Start.`);
+			}
+		});
+
+		// Overlaps / duplicate starts
+		const sorted = runs
+			.map((r, i) => ({ i, start: toMinutes(r.time), end: toMinutes(r.upto) }))
+			.sort((a, b) => a.start - b.start);
+
+		for (let i = 1; i < sorted.length; i++) {
+			const prev = sorted[i - 1];
+			const curr = sorted[i];
+
+			// same start time
+			if (curr.start === prev.start) {
+				errors.push(
+					`Runs ${prev.i + 1} and ${curr.i + 1} have the same start time (${runs[prev.i].time}).`
+				);
+			}
+			// overlap (curr starts before prev ends)
+			if (curr.start < prev.end) {
+				errors.push(
+					`Runs ${prev.i + 1} (${runs[prev.i].time}–${runs[prev.i].upto}) and ${curr.i + 1} (${runs[curr.i].time}–${runs[curr.i].upto}) overlap.`
+				);
+			}
+		}
+		if (errors.length) return;
+		onSave();
+	};
+
 
 	const toggleDay = (day: string) => {
 		if (selectedDays.includes(day)) {
@@ -16,14 +86,18 @@
 		$schedule.days = selectedDays;
 	};
 
-	// Ensure 'upto' is in the future
-	const validateUpto = () => {
-		if ($schedule.upto <= $schedule.time) {
-			const [hour, minute] = $schedule.time.split(':').map(Number);
+	const validateUpto = (index: number) => {
+		const run = $schedule.runs[index];
+		if (run.upto <= run.time) {
+			const [hour, minute] = run.time.split(':').map(Number);
 			const newTime = new Date();
-			newTime.setHours(hour + 1, minute); // set at least 1 hour later
-			$schedule.upto = newTime.toTimeString().slice(0, 5);
+			newTime.setHours(hour + 1, minute);
+			$schedule.runs[index].upto = newTime.toTimeString().slice(0, 5);
 		}
+	};
+
+	const removeRun = (index: number) => {
+		$schedule.runs = $schedule.runs.filter((_, i) => i !== index);
 	};
 </script>
 
@@ -34,67 +108,35 @@
 		>
 			<button
 				class="absolute top-4 right-4 text-gray-600 hover:text-red-600 dark:text-gray-300"
-				on:click={() => {
-					onClose();
-				}}
+				on:click={() => onClose()}>✕</button
 			>
-				✕
-			</button>
 
 			<h2 class="mb-4 text-xl font-bold text-gray-800 dark:text-white">Set Schedule</h2>
-			<form class="space-y-4">
-				<!-- Days Selection -->
-				<div class="mt-4">
-					<h3
-						class="flex items-center gap-2 text-lg font-semibold text-gray-700 dark:text-gray-300"
-					>
-						Select Days
-						<span
-							class="cursor-help text-gray-500 dark:text-gray-300"
-							title="Choose the days when the robot should be allowed to run. You can select multiple days."
-							>ℹ️</span
-						>
-					</h3>
+
+			<form class="space-y-5 text-sm">
+				<!-- Days -->
+				<div>
+					<h3 class="font-semibold text-gray-700 dark:text-gray-300">Select Days</h3>
 					<div class="mt-2 flex flex-wrap gap-2">
 						{#each ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as day}
 							<button
 								type="button"
 								on:click={() => toggleDay(day)}
-								class="relative flex items-center gap-2 rounded-md px-3 py-1 text-sm text-white lg:text-base
-								{selectedDays.includes(day)
-									? 'bg-green-900 hover:bg-green-900'
-									: 'bg-green-500 hover:bg-green-700'}"
+								class="rounded-md px-3 py-1 text-sm text-white transition
+									{selectedDays.includes(day)
+									? 'bg-green-700 hover:bg-green-800'
+									: 'bg-green-500 hover:bg-green-600'}">{day}</button
 							>
-								{day}
-							</button>
 						{/each}
 					</div>
 				</div>
 
-				<!-- Frequency -->
-				<div class="flex flex-col space-y-2">
-					<label
-						for="frequency"
-						class="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-white"
-					>
-						Frequency
-						<span
-							class="cursor-help text-gray-500 dark:text-gray-300"
-							title="How often the robot should repeat this schedule.
-- Weekly: Every week
-- Bi-Weekly: Every 2 weeks
-- Tri-Weekly: Every 3 weeks
-- Monthly: Every month
-- Bi-Monthly: Every 2 months
-- Tri-Monthly: Every 3 months
-- Semi-Annual: Every 6 months
-- Yearly: Once every year">ℹ️</span
-						>
-					</label>
+				<div>
+					<!-- svelte-ignore a11y_label_has_associated_control -->
+					<label class="font-semibold text-gray-800 dark:text-white">How Often</label>
 					<select
-						id="frequency"
 						bind:value={$schedule.frequency}
-						class="rounded-md border border-gray-500 p-2 text-sm text-gray-800 dark:bg-gray-800 dark:text-white"
+						class="mt-1 w-full rounded-md border border-gray-500 p-2 text-gray-800 dark:bg-gray-800 dark:text-white"
 					>
 						<option value="weekly">Every Week</option>
 						<option value="bi-weekly">Every 2 Weeks</option>
@@ -107,54 +149,69 @@
 					</select>
 				</div>
 
-				<!-- Time -->
-				<div class="mt-4 flex flex-col space-y-2">
-					<label
-						for="time"
-						class="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-white"
+				{#if errors.length}
+					<div
+						class="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-600 dark:bg-red-900/40 dark:text-red-200"
 					>
-						Start Time
-						<span
-							class="cursor-help text-gray-500 dark:text-gray-300"
-							title="The preferred time of day for the robot to start operating.">ℹ️</span
-						>
-					</label>
-					<input
-						type="time"
-						id="time"
-						bind:value={$schedule.time}
-						class="rounded-md border border-gray-500 p-2 text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-					/>
-				</div>
+						<ul class="list-disc space-y-1 pl-5">
+							{#each errors as e}<li>{e}</li>{/each}
+						</ul>
+					</div>
+				{/if}
+				<div>
+					<h3 class="font-semibold text-gray-700 dark:text-gray-300">Run Times</h3>
+					<p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+						Add multiple runs for morning, afternoon, night.
+					</p>
 
-				<!-- Upto Time -->
-				<div class="mt-4 flex flex-col space-y-2">
-					<label
-						for="upto"
-						class="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-white"
+					<div class="mt-2 max-h-40 overflow-y-auto pr-1">
+						{#each $schedule.runs as run, i}
+							<div class="mb-2 flex items-center gap-2">
+								<input
+									type="time"
+									bind:value={run.time}
+									min="03:00"
+									max="22:00"
+									class="rounded-md border border-gray-500 p-2 text-gray-800 dark:bg-gray-800 dark:text-white"
+								/>
+								<input
+									type="time"
+									bind:value={run.upto}
+									min="03:00"
+									max="22:00"
+									on:change={() => validateUpto(i)}
+									class="rounded-md border border-gray-500 p-2 text-gray-800 dark:bg-gray-800 dark:text-white"
+								/>
+								<button
+									type="button"
+									on:click={() => removeRun(i)}
+									class="px-2 py-1 text-red-600 hover:text-red-800"
+								>
+									✕
+								</button>
+							</div>
+						{/each}
+					</div>
+
+					<button
+						type="button"
+						on:click={() => {
+							$schedule = {
+								...$schedule,
+								runs: [...($schedule.runs || []), { time: '00:00', upto: '01:00' }]
+							};
+						}}
+						class="mt-2 rounded-md bg-blue-500 px-3 py-1 text-white hover:bg-blue-600"
 					>
-						Upto Time
-						<span
-							class="cursor-help text-gray-500 dark:text-gray-300"
-							title="This is the latest time the robot is allowed to start.
-If the robot missed the exact start time (e.g., due to charging), it can still start anytime before this cutoff window."
-							>ℹ️</span
-						>
-					</label>
-					<input
-						type="time"
-						id="upto"
-						bind:value={$schedule.upto}
-						on:change={validateUpto}
-						class="rounded-md border border-gray-500 p-2 text-sm text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-					/>
+						+ Add Run
+					</button>
 				</div>
 
 				<!-- Save -->
 				<button
 					type="button"
-					on:click={onSave}
-					class="w-full rounded-md bg-green-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-green-700"
+					on:click={validateSchedule}
+					class="w-full rounded-md bg-green-600 px-4 py-2 font-medium text-white shadow-md transition hover:bg-green-700"
 				>
 					Save Schedule
 				</button>

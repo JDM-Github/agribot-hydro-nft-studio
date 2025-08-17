@@ -167,40 +167,73 @@ export const recommendedSprays = [
 	{
 		name: 'Water',
 		info: 'Essential for plant growth and hydration.',
-		plants: [{ name: 'All Plants', disease: 'None' }]
+		plants: [
+			{ name: 'Green Lettuce', disease: 'None' },
+			{ name: 'Lactuca Sativa', disease: 'None' },
+			{ name: 'Romaine Lettuce', disease: 'None' }
+		]
 	},
 	{
 		name: 'Fungicide',
-		info: 'Prevents and treats fungal infections on plants.',
+		info: 'Prevents and treats fungal infections on lettuce.',
 		plants: [
-			{ name: 'Tomato', disease: 'Septoria Blight' },
-			{ name: 'Strawberry', disease: 'Powdery Mildew' },
-			{ name: 'Lettuce', disease: 'Septoria Blight' }
+			{ name: 'Green Lettuce', disease: 'Downy Mildew' },
+			{ name: 'Lactuca Sativa', disease: 'Downy Mildew' },
+			{ name: 'Romaine Lettuce', disease: 'Downy Mildew' }
 		]
 	},
 	{
 		name: 'Neem Oil',
 		info: 'Natural pesticide that protects against pests and fungi.',
 		plants: [
-			{ name: 'Cucumber', disease: 'Aphids' },
-			{ name: 'Tomato', disease: 'Spider Mites' },
-			{ name: 'Orchid', disease: 'Fungal Infection' }
+			{ name: 'Green Lettuce', disease: 'Aphids' },
+			{ name: 'Lactuca Sativa', disease: 'Aphids' },
+			{ name: 'Romaine Lettuce', disease: 'Aphids' }
 		]
 	},
 	{
 		name: 'Calcium Booster',
-		info: 'Enhances calcium levels to prevent deficiencies.',
+		info: 'Enhances calcium levels to prevent tip burn in lettuce.',
 		plants: [
-			{ name: 'Tomato', disease: 'Blossom End Rot' },
-			{ name: 'Strawberry', disease: 'Calcium Deficiency' }
+			{ name: 'Green Lettuce', disease: 'Tip Burn' },
+			{ name: 'Lactuca Sativa', disease: 'Tip Burn' },
+			{ name: 'Romaine Lettuce', disease: 'Tip Burn' }
 		]
 	},
 	{
 		name: 'Anti-Fungal Spray',
-		info: 'Protects plants from fungal infections.',
+		info: 'Protects lettuce from fungal infections.',
 		plants: [
-			{ name: 'Orchid', disease: 'Powdery Mildew' },
-			{ name: 'Lettuce', disease: 'Leaf Spot' }
+			{ name: 'Green Lettuce', disease: 'Leaf Spot' },
+			{ name: 'Lactuca Sativa', disease: 'Leaf Spot' },
+			{ name: 'Romaine Lettuce', disease: 'Leaf Spot' }
+		]
+	},
+	{
+		name: 'Insecticidal Soap',
+		info: 'Controls aphids, whiteflies, and other small insects.',
+		plants: [
+			{ name: 'Green Lettuce', disease: 'Aphids' },
+			{ name: 'Lactuca Sativa', disease: 'Whiteflies' },
+			{ name: 'Romaine Lettuce', disease: 'Aphids' }
+		]
+	},
+	{
+		name: 'Seaweed Extract',
+		info: 'Promotes root growth and stress resistance in lettuce.',
+		plants: [
+			{ name: 'Green Lettuce', disease: 'Nutrient Deficiency' },
+			{ name: 'Lactuca Sativa', disease: 'Stress Resistance' },
+			{ name: 'Romaine Lettuce', disease: 'Nutrient Deficiency' }
+		]
+	},
+	{
+		name: 'Copper Spray',
+		info: 'Fungicide and bactericide effective for lettuce diseases.',
+		plants: [
+			{ name: 'Green Lettuce', disease: 'Bacterial Leaf Spot' },
+			{ name: 'Lactuca Sativa', disease: 'Bacterial Leaf Spot' },
+			{ name: 'Romaine Lettuce', disease: 'Bacterial Leaf Spot' }
 		]
 	}
 ];

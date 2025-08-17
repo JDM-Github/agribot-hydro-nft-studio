@@ -1,10 +1,11 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { v2 as cloudinary } from 'cloudinary';
+import { CLOUDINARY_NAME, CLOUDINARY_API, CLOUDINARY_SECRET } from '$env/static/private';
 
 cloudinary.config({
-	cloud_name: 'dhud4mpgu',
-	api_key: '143511642428641',
-	api_secret: '2nIL6TKeyhwzfcVV1_9XGArAbbs',
+	cloud_name: CLOUDINARY_NAME,
+	api_key: CLOUDINARY_API,
+	api_secret: CLOUDINARY_SECRET,
 	secure: true
 });
 

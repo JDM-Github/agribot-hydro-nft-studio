@@ -4,6 +4,7 @@
 	import { addToast } from '$lib/stores/toast';
 	import { writable, type Writable } from 'svelte/store';
 	import { isLivestreaming, isScanning } from '$lib/stores/connection';
+	import { simpleMode } from '$lib/stores/mode';
 
 	export let controlRobot;
 	export let openModal;
@@ -12,8 +13,7 @@
 
 	export let schedule: Writable<{
 		frequency: string;
-		time: string;
-		upto: string;
+		runs: { time: string; upto: string }[];
 		days: string[];
 	}>;
 	export let yoloObjectDetection: any;
@@ -72,199 +72,252 @@
 <div
 	class="mx-auto flex flex-col items-center justify-between space-y-2 rounded-lg p-3 md:flex-row md:space-y-0 md:space-x-4 dark:bg-gray-900"
 >
-	<div class="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto md:w-1/3">
-		<details class="relative w-full sm:w-auto">
-			<summary
-				class="w-full cursor-pointer rounded-md bg-gray-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-950"
-			>
-				Model Selection Actions
-			</summary>
-
-			<div
-				class="absolute z-10 mt-2 flex w-64 flex-wrap items-center justify-center gap-2 rounded-md bg-gray-300 p-2 shadow-lg md:w-80 dark:bg-gray-800"
-			>
-				<button
-					on:click={() => (showRadarModal = true)}
-					class="w-full rounded-md bg-blue-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
+	{#if !$simpleMode}
+		<div class="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto md:w-1/3">
+			<details class="relative w-full sm:w-auto">
+				<summary
+					class="w-full cursor-pointer rounded-md bg-gray-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-950"
 				>
-					Compare Models
-				</button>
-				<div class="relative w-full sm:w-auto">
-					<select
-						bind:value={$objectDetection}
-						on:change={() => confirmChange()}
-						class="w-full rounded-md bg-yellow-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700"
-					>
-						{#each $yoloObjectDetection as model}
-							<option value={model.version}>{model.version}</option>
-						{/each}
-					</select>
-				</div>
+					Model Selection Actions
+				</summary>
 
-				<div class="relative w-full sm:w-auto">
-					<select
-						bind:value={$stageClassification}
-						on:change={(event: any) => {
+				<div
+					class="absolute z-10 mt-2 flex w-64 flex-wrap items-center justify-center gap-2 rounded-md bg-gray-300 p-2 shadow-lg md:w-80 dark:bg-gray-800"
+				>
+					<button
+						on:click={() => (showRadarModal = true)}
+						class="w-full rounded-md bg-blue-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
+					>
+						Compare Models
+					</button>
+					<div class="relative w-full sm:w-auto">
+						<select
+							bind:value={$objectDetection}
+							on:change={() => confirmChange()}
+							class="w-full rounded-md bg-yellow-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700"
+						>
+							{#each $yoloObjectDetection as model}
+								<option value={model.version}>{model.version}</option>
+							{/each}
+						</select>
+					</div>
+
+					<div class="relative w-full sm:w-auto">
+						<select
+							bind:value={$stageClassification}
+							on:change={(event: any) => {
+								if ($isLivestreaming) {
+									addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+									return;
+								}
+
+								stageClassification.set(event.target.value);
+								addToast('Stage classification model changed!', 'success', 3000);
+								setTimeout(() => {
+									addToast(
+										'Changes staged. Remember to click "Save Configuration" to apply them.',
+										'info',
+										5000
+									);
+								}, 10);
+							}}
+							class="w-full rounded-md bg-purple-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700"
+						>
+							{#each $yoloStageClassification as model}
+								<option value={model.version}>{model.version}</option>
+							{/each}
+						</select>
+					</div>
+
+					<div class="relative w-full sm:w-auto">
+						<select
+							bind:value={$diseaseSegmentation}
+							on:change={(event: any) => {
+								if ($isLivestreaming) {
+									addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+									return;
+								}
+
+								diseaseSegmentation.set(event.target.value);
+								addToast('Disease segmentation model changed!', 'success', 3000);
+								setTimeout(() => {
+									addToast(
+										'Changes staged. Remember to click "Save Configuration" to apply them.',
+										'info',
+										5000
+									);
+								}, 10);
+							}}
+							class="w-full rounded-md bg-rose-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-rose-600 dark:bg-rose-600 dark:hover:bg-rose-700"
+						>
+							{#each $maskRCNNSegmentation as model}
+								<option value={model.version}>{model.version}</option>
+							{/each}
+						</select>
+					</div>
+				</div>
+			</details>
+		</div>
+	{/if}
+
+	<div class="mx-auto flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto md:w-1/2">
+		{#if !$simpleMode}
+			<!-- Full mode: your existing details menus -->
+			<details class="relative w-full sm:w-auto">
+				<summary
+					class="w-full cursor-pointer rounded-md bg-gray-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-950"
+				>
+					Configuration Actions
+				</summary>
+				<div
+					class="absolute z-10 mt-2 flex w-48 flex-col gap-1 rounded-md bg-gray-300 p-2 shadow-lg dark:bg-gray-800"
+				>
+					<button
+						on:click={saveConfig}
+						class="w-full rounded bg-blue-500 px-3 py-2 text-xs font-medium text-white hover:bg-blue-600"
+					>
+						Save Configuration
+					</button>
+					<button
+						on:click={downloadConfig}
+						class="w-full rounded bg-purple-500 px-3 py-2 text-xs font-medium text-white hover:bg-purple-600"
+					>
+						Download Configuration
+					</button>
+					<button
+						on:click={uploadConfig}
+						class="w-full rounded bg-orange-500 px-3 py-2 text-xs font-medium text-white hover:bg-orange-600"
+					>
+						Upload Configuration
+					</button>
+				</div>
+			</details>
+
+			<details class="relative w-full sm:w-auto">
+				<summary
+					class="w-full cursor-pointer rounded-md bg-gray-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-950"
+				>
+					Setup Actions
+				</summary>
+				<div
+					class="absolute z-10 mt-2 flex w-48 flex-col gap-1 rounded-md bg-gray-300 p-2 shadow-lg dark:bg-gray-800"
+				>
+					<button
+						class="w-full rounded bg-indigo-500 px-3 py-2 text-xs font-medium text-white hover:bg-indigo-600"
+						on:click={() => {
 							if ($isLivestreaming) {
 								addToast('Action unavailable while livestreaming is active.', 'error', 3000);
 								return;
 							}
-
-							stageClassification.set(event.target.value);
-							addToast('Stage classification model changed!', 'success', 3000);
-							setTimeout(() => {
-								addToast(
-									'Changes staged. Remember to click "Save Configuration" to apply them.',
-									'info',
-									5000
-								);
-							}, 10);
+							openModal();
 						}}
-						class="w-full rounded-md bg-purple-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700"
 					>
-						{#each $yoloStageClassification as model}
-							<option value={model.version}>{model.version}</option>
-						{/each}
-					</select>
-				</div>
-
-				<div class="relative w-full sm:w-auto">
-					<select
-						bind:value={$diseaseSegmentation}
-						on:change={(event: any) => {
+						Setup Spray
+					</button>
+					<button
+						on:click={() => {
 							if ($isLivestreaming) {
 								addToast('Action unavailable while livestreaming is active.', 'error', 3000);
 								return;
 							}
-
-							diseaseSegmentation.set(event.target.value);
-							addToast('Disease segmentation model changed!', 'success', 3000);
-							setTimeout(() => {
-								addToast(
-									'Changes staged. Remember to click "Save Configuration" to apply them.',
-									'info',
-									5000
-								);
-							}, 10);
+							showScheduleModal = true;
+							oldSchedule = { ...$schedule };
 						}}
-						class="w-full rounded-md bg-rose-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-rose-600 dark:bg-rose-600 dark:hover:bg-rose-700"
+						class="w-full rounded bg-green-500 px-3 py-2 text-xs font-medium text-white hover:bg-green-600"
 					>
-						{#each $maskRCNNSegmentation as model}
-							<option value={model.version}>{model.version}</option>
-						{/each}
-					</select>
+						Set Schedule
+					</button>
+					<button
+						class="w-full cursor-pointer rounded-md bg-blue-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-blue-600 sm:w-auto dark:bg-blue-600 dark:hover:bg-blue-700"
+						on:click={() => {
+							if ($isLivestreaming) {
+								addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+								return;
+							}
+							openManualPlant();
+						}}
+					>
+						Add Plant
+					</button>
 				</div>
-			</div>
-		</details>
+			</details>
+		{:else}
+			<!-- Simple mode: slightly larger, cleaner buttons -->
+			<button
+				on:click={saveConfig}
+				class="rounded bg-blue-500 px-4 py-3 text-sm font-medium text-white hover:bg-blue-600"
+			>
+				Save Configuration
+			</button>
+			<button
+				class="rounded bg-indigo-500 px-4 py-3 text-sm font-medium text-white hover:bg-indigo-600"
+				on:click={() => {
+					if ($isLivestreaming) {
+						addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+						return;
+					}
+					openModal();
+				}}
+			>
+				Setup Spray
+			</button>
+			<button
+				on:click={() => {
+					if ($isLivestreaming) {
+						addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+						return;
+					}
+					showScheduleModal = true;
+					oldSchedule = { ...$schedule };
+				}}
+				class="rounded bg-green-500 px-4 py-3 text-sm font-medium text-white hover:bg-green-600"
+			>
+				Set Schedule
+			</button>
+			<button
+				class="rounded bg-blue-500 px-4 py-3 text-sm font-medium text-white hover:bg-blue-600"
+				on:click={() => {
+					if ($isLivestreaming) {
+						addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+						return;
+					}
+					openManualPlant();
+				}}
+			>
+				Add Plant
+			</button>
+		{/if}
 	</div>
 
-	<div class="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto md:w-1/3">
-		<details class="relative w-full sm:w-auto">
-			<summary
-				class="w-full cursor-pointer rounded-md bg-gray-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-950"
+	{#if !$simpleMode}
+		<div class="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto md:w-1/3">
+			<button
+				class="w-full cursor-pointer rounded-md px-4 py-2 text-xs font-medium text-white shadow-md transition disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+				class:bg-green-500={!$isScanning}
+				class:bg-gray-400={$isScanning}
+				class:dark:bg-green-600={!$isScanning}
+				class:dark:bg-gray-600={$isScanning}
+				class:hover:brightness-70={!$isScanning}
+				on:click={() => controlRobot(true)}
+				disabled={$isScanning}
 			>
-				Configuration Actions
-			</summary>
-			<div
-				class="absolute z-10 mt-2 flex w-48 flex-col gap-1 rounded-md bg-gray-300 p-2 shadow-lg dark:bg-gray-800"
-			>
-				<button
-					on:click={saveConfig}
-					class="w-full rounded bg-blue-500 px-3 py-2 text-xs font-medium text-white hover:bg-blue-600"
-				>
-					Save Configuration
-				</button>
-				<button
-					on:click={downloadConfig}
-					class="w-full rounded bg-purple-500 px-3 py-2 text-xs font-medium text-white hover:bg-purple-600"
-				>
-					Download Configuration
-				</button>
-				<button
-					on:click={uploadConfig}
-					class="w-full rounded bg-orange-500 px-3 py-2 text-xs font-medium text-white hover:bg-orange-600"
-				>
-					Upload Configuration
-				</button>
-			</div>
-		</details>
-		<details class="relative w-full sm:w-auto">
-			<summary
-				class="w-full cursor-pointer rounded-md bg-gray-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-950"
-			>
-				Setup Actions
-			</summary>
-			<div
-				class="absolute z-10 mt-2 flex w-48 flex-col gap-1 rounded-md bg-gray-300 p-2 shadow-lg dark:bg-gray-800"
-			>
-				<button
-					class="w-full rounded bg-indigo-500 px-3 py-2 text-xs font-medium text-white hover:bg-indigo-600"
-					on:click={() => {
-						if ($isLivestreaming) {
-							addToast('Action unavailable while livestreaming is active.', 'error', 3000);
-							return;
-						}
-						openModal();
-					}}
-				>
-					Setup Spray
-				</button>
-				<button
-					on:click={() => {
-						if ($isLivestreaming) {
-							addToast('Action unavailable while livestreaming is active.', 'error', 3000);
-							return;
-						}
-						showScheduleModal = true;
-						oldSchedule = { ...$schedule };
-					}}
-					class="w-full rounded bg-green-500 px-3 py-2 text-xs font-medium text-white hover:bg-green-600"
-				>
-					Set Schedule
-				</button>
-				<button
-					class="w-full cursor-pointer rounded-md bg-blue-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-blue-600 sm:w-auto dark:bg-blue-600 dark:hover:bg-blue-700"
-					on:click={() => {
-						if ($isLivestreaming) {
-							addToast('Action unavailable while livestreaming is active.', 'error', 3000);
-							return;
-						}
-						openManualPlant();
-					}}
-				>
-					Add Plant
-				</button>
-			</div>
-		</details>
-	</div>
+				START
+			</button>
 
-	<div class="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto md:w-1/3">
-		<button
-			class="w-full cursor-pointer rounded-md px-4 py-2 text-xs font-medium text-white shadow-md transition disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-			class:bg-green-500={!$isScanning}
-			class:bg-gray-400={$isScanning}
-			class:dark:bg-green-600={!$isScanning}
-			class:dark:bg-gray-600={$isScanning}
-			class:hover:brightness-70={!$isScanning}
-			on:click={() => controlRobot(true)}
-			disabled={$isScanning}
-		>
-			START
-		</button>
-
-		<button
-			class="w-full cursor-pointer rounded-md px-4 py-2 text-xs font-medium text-white shadow-md transition disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-			class:bg-red-500={$isScanning}
-			class:bg-gray-400={!$isScanning}
-			class:dark:bg-red-600={$isScanning}
-			class:dark:bg-gray-600={!$isScanning}
-			class:hover:brightness-70={$isScanning}
-			on:click={() => controlRobot(false)}
-			disabled={!$isScanning}
-		>
-			STOP
-		</button>
-	</div>
+			<button
+				class="w-full cursor-pointer rounded-md px-4 py-2 text-xs font-medium text-white shadow-md transition disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+				class:bg-red-500={$isScanning}
+				class:bg-gray-400={!$isScanning}
+				class:dark:bg-red-600={$isScanning}
+				class:dark:bg-gray-600={!$isScanning}
+				class:hover:brightness-70={$isScanning}
+				on:click={() => controlRobot(false)}
+				disabled={!$isScanning}
+			>
+				STOP
+			</button>
+		</div>
+	{/if}
 
 	<button
 		class="w-full rounded-md bg-gray-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-gray-600 sm:w-auto md:hidden dark:bg-gray-700 dark:hover:bg-gray-800"

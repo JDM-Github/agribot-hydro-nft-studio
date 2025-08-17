@@ -3,6 +3,7 @@
 	import { darkMode } from '$lib/stores/theme';
 	import { isConnected, connect, disconnect, currentLink, robotName } from '$lib/stores/connection';
 	import { addToast, removeToast } from '$lib/stores/toast';
+	import { simpleMode } from '$lib/stores/mode';
 	import { goto } from '$app/navigation';
 
 	export let user: any = null;
@@ -19,20 +20,23 @@
 		darkMode.set(!$darkMode);
 		localStorage.setItem('darkMode', `${$darkMode}`);
 	}
+	function toggleSimpleMode() {
+		simpleMode.set(!$simpleMode);
+		localStorage.setItem('simpleMode', `${$simpleMode}`);
+	}
 	function toggleMenu() {
 		isMenuOpen = !isMenuOpen;
 	}
 	function closeMenu() {
 		isMenuOpen = false;
 	}
-	// https://github.com/JDM-Github/instamine.git
 	function handleConnection() {
 		let toastID = addToast('Connecting to AGRI-BOT...', 'loading');
 		if (!$isConnected) {
 			robotName.set(user.prototypeID);
 			currentLink.set(
 				import.meta.env.VITE_ENV === 'production'
-					? user.prototypeID
+					? 'http://' + user.prototypeID + ':8000'
 					: import.meta.env.VITE_DEVELOPMENT_LINK || 'http://127.0.0.1:8000'
 			);
 			connect()
@@ -120,6 +124,14 @@
 				class="cursor-pointer rounded bg-gray-200 p-2 text-black hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
 			>
 				{$darkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
+			</button>
+		</li>
+		<li>
+			<button
+				onclick={toggleSimpleMode}
+				class="cursor-pointer rounded bg-blue-200 p-2 text-black hover:bg-blue-300 dark:bg-blue-700 dark:text-white dark:hover:bg-blue-600"
+			>
+				{$simpleMode ? '🪶 Simple Mode On' : '⚙ Full Mode'}
 			</button>
 		</li>
 	</ul>

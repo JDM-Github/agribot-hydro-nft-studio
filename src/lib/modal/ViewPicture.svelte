@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { capitalize } from "$lib/helpers/utility";
 	import { addToast, removeToast } from "$lib/stores/toast";
 
 	export let modalOpen;
@@ -51,15 +52,11 @@
 			<div class="space-y-2 p-4">
 				<p class="text-sm text-gray-600 dark:text-gray-400">
 					<strong>Plant:</strong>
-					{selectedImage.plantName}
+					{capitalize(selectedImage.plantName)}
 				</p>
 				<p class="text-sm text-gray-600 dark:text-gray-400">
 					<strong>Plant Health:</strong>
-					{selectedImage.plantHealth}
-				</p>
-				<p class="text-sm text-gray-600 dark:text-gray-400">
-					<strong>Location Position:</strong>
-					{selectedImage.locationOnCapture}
+					{capitalize(selectedImage.diseaseName)}
 				</p>
 				<p class="text-sm text-gray-600 dark:text-gray-400">
 					<strong>Image Size:</strong>

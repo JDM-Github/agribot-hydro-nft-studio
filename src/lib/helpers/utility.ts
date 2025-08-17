@@ -16,7 +16,10 @@ export function getBaseApiUrl() {
 		? ''
 		: import.meta.env.VITE_DEVELOPMENT_LINK || 'http://127.0.0.1:8000';
 }
-
+export function capitalize(str: string) {
+	if (!str) return '';
+	return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
 export function getTimestamp() {
 	const now = new Date();
 	const yyyy = now.getFullYear();

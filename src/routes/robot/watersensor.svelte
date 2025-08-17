@@ -7,7 +7,7 @@
 
 	async function fetchWaterSensors() {
 		try {
-			const [success, response] = await RequestHandler.authFetch("/water-sensors", "GET");
+			const [success, response] = await RequestHandler.authFetch("water-sensors", "GET");
 			if (success && response?.readings) {
 				waterSensors = response.readings;
 			}
@@ -16,11 +16,11 @@
 		}
 	}
 
-	// onMount(() => {
-	// 	fetchWaterSensors();
-	// 	refreshInterval = setInterval(fetchWaterSensors, 2000);
-	// 	return () => clearInterval(refreshInterval);
-	// });
+	onMount(() => {
+		fetchWaterSensors();
+		refreshInterval = setInterval(fetchWaterSensors, 2000);
+		return () => clearInterval(refreshInterval);
+	});
 </script>
 
 <div

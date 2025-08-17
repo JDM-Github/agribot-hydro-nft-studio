@@ -26,7 +26,7 @@
 		robotName.set(data.user.prototypeID);
 		currentLink.set(
 			import.meta.env.VITE_ENV === 'production'
-				? data.user.prototypeID
+				? 'http://' + data.user.prototypeID + ':8000'
 				: import.meta.env.VITE_DEVELOPMENT_LINK || 'http://127.0.0.1:8000'
 		);
 

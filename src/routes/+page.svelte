@@ -6,6 +6,7 @@
 	import Camera from './spray/camera.svelte';
 	import Scannedheader from './spray/scannedheader.svelte';
 	import SprayButton from './spray/spraybuttons.svelte';
+	import { simpleMode } from '$lib/stores/mode';
 	import { config as exportedConfig, allPlants } from '$lib/stores/plant';
 	import { get, writable, type Writable } from 'svelte/store';
 	import {
@@ -37,15 +38,18 @@
 	const diseaseSegmentation = writable<string>('');
 	const schedule = writable<{
 		frequency: string;
-		time: string;
-		upto: string;
+		runs: { time: string; upto: string }[];
 		days: string[];
 	}>({
 		frequency: 'monthly',
-		time: '12:00',
-		upto: '14:00',
-		days: ['', '', '']
+		runs: [
+			{ time: '06:00', upto: '07:00' },
+			{ time: '12:00', upto: '13:00' },
+			{ time: '18:00', upto: '19:00' }
+		],
+		days: []
 	});
+
 	let isAlreadyInitialize = false;
 	let initialConfig: any = null;
 	const yoloObjectDetection = writable<any>(null);
@@ -59,6 +63,9 @@
 			disease: {
 				[key: string]: boolean[];
 			};
+			disease_time_spray: {
+				[key: string]: [string, string]; // Time, Upto
+			}
 		}[]
 	> = writable([]);
 
@@ -140,8 +147,8 @@
 	}
 
 	$: if ($isConnected) {
-        initiateEverything();
-    }
+		initiateEverything();
+	}
 
 	onMount(() => {
 		const handler = (event: BeforeUnloadEvent) => {
@@ -326,7 +333,7 @@
 		const toastId = addToast(`${action} scanning...`, 'loading');
 
 		try {
-			const endpoint = state ? '/start_scan' : '/stop_scan';
+			const endpoint = state ? 'start_scan' : 'stop_scan';
 			const [success, data] = await RequestHandler.authFetch(endpoint, 'POST');
 			removeToast(toastId);
 
@@ -359,6 +366,7 @@
 			class="flex h-full flex-col items-center justify-center text-center text-lg font-semibold text-gray-600 dark:text-gray-400"
 		>
 			<p>The device is not connected to AGRI-BOT. Please connect first.</p>
+			<div>{$currentLink}</div>
 		</div>
 	</div>
 	<Footer />
@@ -382,12 +390,14 @@
 	<div
 		class="relative flex min-h-[calc(100vh-95px)] flex-col bg-gray-200 p-4 ease-out lg:px-16 dark:bg-gray-700"
 	>
-		<div class="relative z-10 mb-4 flex flex-col gap-4 md:flex-row">
-			<Camera
-				{detectedPlants}
-				{showCamera}
-				closeCamera={() => (showCamera = false)}
-			/>
+		<div
+			class="relative z-10 mb-4 flex flex-col gap-4 md:flex-row"
+			class:w-6xl={$simpleMode}
+			class:mx-auto={$simpleMode}
+		>
+			{#if !$simpleMode}
+				<Camera {detectedPlants} {showCamera} closeCamera={() => (showCamera = false)} />
+			{/if}
 			<div class="w-full rounded-xl bg-white p-4 shadow-lg md:flex-1 dark:bg-gray-900">
 				<Scannedheader {searchPlant} {revertConfig} />
 				<div

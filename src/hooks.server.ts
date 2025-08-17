@@ -15,9 +15,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 		try {
 			const decoded = jwt.verify(token, JWT_SECRET);
 			event.locals.user = decoded;
-		} catch (err) {
+		} catch (err: any) {
+			console.error('Unexpected token error.');
 			event.cookies.delete('session', { path: '/' });
-			console.error('Invalid session token:', err);
 			event.locals.user = null;
 		}
 	} else {

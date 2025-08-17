@@ -7,7 +7,7 @@
 
     async function fetchTCRT() {
         try {
-            const [success, response] = await RequestHandler.authFetch("/tcrt", "GET");
+            const [success, response] = await RequestHandler.authFetch("tcrt", "POST");
             if (success && response) {
                 tcrtLeft = response.left;
                 tcrtRight = response.right;

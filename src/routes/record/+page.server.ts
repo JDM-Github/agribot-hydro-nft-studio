@@ -20,9 +20,6 @@ export const load = async ({locals}) => {
 			const date = formatFolderSlugToDate(slug);
 			return { date, slug };
 		});
-		console.log(folders);
-		console.log(currentUser);
-
 		return { records: folders };
 	} catch (error) {
 		console.error('Failed to fetch folders:', error);

@@ -6,7 +6,7 @@
 
     async function fetchUltrasonicDistance() {
         try {
-            const [success, response] = await RequestHandler.authFetch("/ultrasonic", "GET");
+            const [success, response] = await RequestHandler.authFetch("ultrasonic", "POST");
             if (success && response) {
                 ultrasonicDistance = response.quick_distance ?? response.last_distance ?? 0;
             }
@@ -15,11 +15,11 @@
         }
     }
 
-    // onMount(() => {
-    //     fetchUltrasonicDistance();
-    //     const interval = setInterval(fetchUltrasonicDistance, 3000);
-    //     return () => clearInterval(interval);
-    // });
+    onMount(() => {
+        fetchUltrasonicDistance();
+        const interval = setInterval(fetchUltrasonicDistance, 1000);
+        return () => clearInterval(interval);
+    });
 </script>
 
 <div
