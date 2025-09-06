@@ -35,8 +35,8 @@
 			<span class="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">Left</span>
 			<div
 				class="h-10 w-full rounded-lg border transition-all"
-				style="background-color: {!tcrtLeft ? '#000000' : '#ffffff'};
-                                            border-color: {!tcrtLeft ? '#aaa' : '#666'};"
+				style="background-color: {tcrtLeft ? '#000000' : '#ffffff'};
+                                            border-color: {tcrtLeft ? '#aaa' : '#666'};"
 			></div>
 		</div>
 
@@ -45,8 +45,8 @@
 			<span class="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">Right</span>
 			<div
 				class="h-10 w-full rounded-lg border transition-all"
-				style="background-color: {!tcrtRight ? '#000000' : '#ffffff'};
-                                        border-color: {!tcrtRight ? '#333333' : '#cccccc'};"
+				style="background-color: {tcrtRight ? '#000000' : '#ffffff'};
+                                        border-color: {tcrtRight ? '#333333' : '#cccccc'};"
 			></div>
 		</div>
 	</div>

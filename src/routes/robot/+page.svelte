@@ -11,9 +11,32 @@
 	import { simpleMode } from '$lib/stores/mode';
 	import RequestHandler from '$lib/utils/request';
 	import { addToast, removeToast } from '$lib/stores/toast';
+	import NotConnected from '$lib/components/NotConnected.svelte';
 
 	let enableWASDinControl = false;
 	let scanning = false;
+	
+	async function controlRobot(move: string) {
+		if (scanning) return;
+		let activeToastId = addToast(`AGRIBOT ${move} command...`, 'loading');
+		try {
+			const [success, response] = await RequestHandler.authFetch(`${move}_robot_loop`, 'POST');
+
+			if (!success) {
+				addToast(`AGRIBOT command failed: ${response?.message || 'Unknown error'}`, 'error', 4000);
+			} else {
+				addToast(`AGRIBOT command "${move}"" run successfully!`, 'success', 3000);
+			}
+		} catch (err: any) {
+			addToast(`⚠️ Network error: ${err.message}`, 'error', 4000);
+			console.error('Error activating scan.', err);
+		} finally {
+			if (activeToastId) {
+				removeToast(activeToastId);
+			}
+			scanning = false;
+		}
+	}
 
 	async function doScan() {
 		if (scanning) return;
@@ -40,16 +63,7 @@
 </script>
 
 {#if !$isConnected}
-	<div
-		class="relative flex min-h-[calc(100vh-95px)] flex-col items-center justify-center bg-gray-200 p-4 ease-out lg:px-16 dark:bg-gray-800"
-	>
-		<div
-			class="flex h-full flex-col items-center justify-center text-center text-lg font-semibold text-gray-600 dark:text-gray-400"
-		>
-			<p>The device is not connected to AGRI-BOT. Please connect first.</p>
-		</div>
-	</div>
-	<Footer />
+	<NotConnected />
 {:else}
 	<div
 		class="relative flex min-h-[calc(100vh-95px)] flex-col bg-gray-200 p-4 ease-out lg:px-16 dark:bg-gray-700"
@@ -79,6 +93,7 @@
 									title="Start or resume robot operation"
 									class="rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 focus:ring-2 focus:ring-green-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-green-500"
 									disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
+									on:click={() => controlRobot('run')}
 								>
 									{$isRobotRunning === 'Running' ? 'RESUME' : 'RUN'}
 								</button>
@@ -96,6 +111,7 @@
 									title="Temporarily pause robot operation"
 									class="rounded-lg bg-yellow-500 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-600 focus:ring-2 focus:ring-yellow-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-yellow-500"
 									disabled={scanning || $isRobotRunning === 'Stopped' || $isRobotRunning === 'Paused'}
+									on:click={() => controlRobot('pause')}
 								>
 									PAUSE
 								</button>
@@ -113,6 +129,7 @@
 									title="Completely stop robot operation immediately"
 									class="rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 focus:ring-2 focus:ring-red-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-red-500"
 									disabled={scanning || $isRobotRunning === 'Stopped'}
+									on:click={() => controlRobot('stop')}
 								>
 									STOP
 								</button>

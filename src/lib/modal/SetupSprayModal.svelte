@@ -7,9 +7,11 @@
 	export let showSprayModal = false;
 	export let allSprays: Writable<string[]>;
 	export let allSpraysActive: Writable<boolean[]>;
+	export let allDurations: Writable<number[]>;
 	export let previousSprays: {
 		spray: string[];
 		active: boolean[];
+		duration?: number[];
 	};
 	export let closeModal: () => void = () => {};
 	let selectedSpray: { info: string; plants: { name: string; disease: string }[] } | null = null;
@@ -48,20 +50,32 @@
 							></div>
 						</label>
 						<span class="w-10 text-sm text-gray-600 lg:text-base dark:text-gray-300">#{i + 1}</span>
+
 						<input
 							type="text"
 							bind:value={$allSprays[i]}
 							placeholder="Enter spray name..."
 							class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none lg:text-base dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
 						/>
+
+						<input
+							type="number"
+							bind:value={$allDurations[i]}
+							min="1"
+							placeholder="2"
+							class="w-20 rounded-md border border-gray-300 bg-white px-2 py-2 text-center text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none lg:text-base dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+						/>
+						<span class="text-sm text-gray-600 dark:text-gray-400">sec</span>
+
 						<button
 							class="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
-							on:click={() => ($allSprays[i] = '')}
+							on:click={() => {
+								$allSprays[i] = '';
+								$allDurations[i] = 2;
+							}}
 						>
 							❌CLEAR
 						</button>
-
-						
 					</div>
 				{/each}
 			</div>
@@ -118,6 +132,7 @@
 					on:click={() => {
 						allSprays.set(previousSprays.spray);
 						allSpraysActive.set(previousSprays.active);
+						allDurations.set(previousSprays.duration ?? Array(previousSprays.spray.length).fill(2));
 						closeModal();
 					}}
 				>

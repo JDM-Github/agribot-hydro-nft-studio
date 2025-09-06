@@ -3,13 +3,13 @@ import { writable as $store, get } from 'svelte/store';
 const robotName = $store<string | null>(null);
 const currentLink = $store<string | null>(null);
 const isConnected = $store(false);
-const isLivestreaming = $store(false);
+const isLivestreaming = $store("Stopped");
 const isScanning = $store(false);
 const isRobotRunning = $store("Stopped");
 
 const resetVariable = () => {
 	isConnected.set(false);
-	isLivestreaming.set(false);
+	isLivestreaming.set("Stopped");
 	isScanning.set(false);
 	isRobotRunning.set('Stopped');
 }

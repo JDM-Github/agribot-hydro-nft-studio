@@ -9,25 +9,31 @@ export default class RequestHandler {
 	static async customFetch(
 		link: string,
 		method: string = 'GET',
-		body: Record<string, any> = {},
+		body: any = {},
 		baseLink: string | null = get(currentLink),
-		token: string | null = null
+		token: string | null = null,
+		newFetch: any = null
 	) {
 		if (!baseLink) return [false, { error: 'No base link provided' }];
 		if (!link) return [false, { error: 'No endpoint provided' }];
 
-		const headers: Record<string, string> = {
-			'Content-Type': 'application/json'
-		};
+		const headers: Record<string, string> = {};
+		if (!(body instanceof FormData)) {
+			headers['Content-Type'] = 'application/json';
+		}
 		if (token) headers.Authorization = `Bearer ${token}`;
 
 		const options: RequestInit = { method, headers };
-		if (method !== 'GET' && Object.keys(body).length > 0) {
-			options.body = JSON.stringify(body);
+		if (method !== 'GET' && body) {
+			options.body = body instanceof FormData ? body : JSON.stringify(body);
 		}
-		console.log(`${baseLink}/${link}`);
 		try {
-			const response = await fetch(`${baseLink}/${link}`, options);
+			let response;
+			if (newFetch) {
+				response = await newFetch(`${baseLink}/${link}`, options);
+			} else {
+				response = await fetch(`${baseLink}/${link}`, options);
+			}
 			const data = await response.json().catch(() => ({}));
 			return [response.ok, data];
 		} catch (error) {
@@ -35,17 +41,19 @@ export default class RequestHandler {
 		}
 	}
 
+
 	static async authFetch(
 		link: string,
 		method: string = 'GET',
 		body: Record<string, any> = {},
-		baseLink: string | null = get(currentLink)
+		baseLink: string | null = get(currentLink),
+		newFetch: any = null
 	) {
 		const robotN = get(robotName);
 		if (!robotN) {
 			return [false, { error: 'Invalid token provided.' }];
 		}
-		return this.customFetch(link, method, body, baseLink, robotN);
+		return this.customFetch(link, method, body, baseLink, robotN, newFetch);
 	}
 
 	static async normalFetch(

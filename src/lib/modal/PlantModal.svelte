@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { writable } from 'svelte/store';
 	import { ChevronDown, ChevronUp } from 'lucide-svelte';
-	import { allPlants } from '$lib/stores/plant';
+	import { allDiseases, allPlants } from '$lib/stores/plant';
 	import { simpleMode } from '$lib/stores/mode';
 
 	let expandedDisease = writable(null);
@@ -35,27 +35,47 @@
 			{#if $simpleMode}
 				<!-- SIMPLE MODE VIEW -->
 				<div class="space-y-3 p-4">
-					<!-- Plant Title -->
 					<h3
-						class="border-b border-gray-300 pb-2 text-2xl font-extrabold tracking-wide text-gray-800 dark:border-gray-700 dark:text-gray-200"
+						class="flex items-center justify-between border-b border-gray-300 pb-2 text-2xl font-extrabold tracking-wide text-gray-800 dark:border-gray-700 dark:text-gray-200"
 					>
-						{allPlants[selectedPlant.key].name}
+						<span>{allPlants[selectedPlant.key].name}</span>
+
+						<!-- Modern Toggle Switch -->
+						<label class="flex cursor-pointer items-center">
+							<span class="mr-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+								>Spray Early</span
+							>
+							<div class="relative">
+								<input
+									type="checkbox"
+									bind:checked={selectedPlant.willSprayEarly}
+									class="sr-only"
+								/>
+								<div
+									class="h-5 w-10 rounded-full bg-gray-300 shadow-inner transition-colors duration-300 dark:bg-gray-600"
+								></div>
+								<div
+									class="dot absolute top-0.5 left-0 h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-300"
+									class:left-5={selectedPlant.willSprayEarly}
+								></div>
+							</div>
+						</label>
 					</h3>
 
 					<!-- Disease List -->
 					<div class="space-y-5">
-						{#each allPlants[selectedPlant.key].diseases as disease}
+						{#each Object.keys(allDiseases) as diseaseKey}
 							<div
 								class="rounded-xl border border-gray-200 bg-gray-50 p-4 shadow-sm transition hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
 							>
 								<!-- Disease Name -->
 								<h4 class="mb-3 text-lg font-semibold text-gray-800 dark:text-gray-200">
-									{disease.name}
+									{allDiseases[diseaseKey].name}
 								</h4>
 
 								<!-- Sprays -->
 								<ul class="mb-4 list-disc space-y-1 pl-6 text-sm text-gray-600 dark:text-gray-400">
-									{#each disease.sprays as spray}
+									{#each allDiseases[diseaseKey].sprays as spray}
 										<li>💧 {spray}</li>
 									{/each}
 								</ul>
@@ -65,7 +85,7 @@
 									<label class="text-sm text-gray-700 dark:text-gray-300">Spray Time:</label>
 									<input
 										type="time"
-										bind:value={selectedPlant.disease_time_spray[disease.name][0]}
+										bind:value={selectedPlant.disease_time_spray[diseaseKey][0]}
 										min="03:00"
 										max="22:00"
 										class="rounded-md border border-gray-400 p-1 text-gray-800 dark:bg-gray-700 dark:text-white"
@@ -73,7 +93,7 @@
 									<span class="text-gray-500">to</span>
 									<input
 										type="time"
-										bind:value={selectedPlant.disease_time_spray[disease.name][1]}
+										bind:value={selectedPlant.disease_time_spray[diseaseKey][1]}
 										min="03:00"
 										max="22:00"
 										class="rounded-md border border-gray-400 p-1 text-gray-800 dark:bg-gray-700 dark:text-white"
@@ -83,19 +103,19 @@
 								<!-- Slot Buttons -->
 								<div class="flex flex-wrap gap-3">
 									<button
-										on:click={() => resetSlot(disease.name)}
+										on:click={() => resetSlot(diseaseKey)}
 										class="rounded-lg px-4 py-2 text-sm font-medium shadow-sm transition-colors"
-										class:bg-red-500={!selectedPlant.disease[disease.name].some((x: any) => x)}
-										class:bg-gray-300={selectedPlant.disease[disease.name].some((x: any) => x)}
-										class:text-white={!selectedPlant.disease[disease.name].some((x: any) => x)}
-										class:text-gray-800={selectedPlant.disease[disease.name].some((x: any) => x)}
+										class:bg-red-500={!selectedPlant.disease[diseaseKey].some((x: any) => x)}
+										class:bg-gray-300={selectedPlant.disease[diseaseKey].some((x: any) => x)}
+										class:text-white={!selectedPlant.disease[diseaseKey].some((x: any) => x)}
+										class:text-gray-800={selectedPlant.disease[diseaseKey].some((x: any) => x)}
 									>
 										None
 									</button>
 
-									{#each selectedPlant.disease[disease.name] as slot, slotIndex}
+									{#each selectedPlant.disease[diseaseKey] as slot, slotIndex}
 										<button
-											on:click={() => toggleSlotBinding(disease.name, slotIndex)}
+											on:click={() => toggleSlotBinding(diseaseKey, slotIndex)}
 											class="rounded-lg px-4 py-2 text-sm font-medium shadow-sm transition-colors"
 											class:bg-green-500={slot}
 											class:bg-gray-300={!slot}
@@ -144,19 +164,43 @@
 				</div>
 
 				<div class="space-y-3 p-4">
-					<h3 class="text-3xl font-bold text-gray-800 dark:text-gray-200">
-						{allPlants[selectedPlant.key].name}
+					<h3
+						class="flex items-center justify-between border-b border-gray-300 pb-2 text-2xl font-extrabold tracking-wide text-gray-800 dark:border-gray-700 dark:text-gray-200"
+					>
+						<span>{allPlants[selectedPlant.key].name}</span>
+
+						<!-- Modern Toggle Switch -->
+						<label class="flex cursor-pointer items-center">
+							<span class="mr-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+								>Spray Early</span
+							>
+							<div class="relative">
+								<input
+									type="checkbox"
+									bind:checked={selectedPlant.willSprayEarly}
+									class="sr-only"
+								/>
+								<div
+									class="h-5 w-10 rounded-full bg-gray-300 shadow-inner transition-colors duration-300 dark:bg-gray-600"
+								></div>
+								<div
+									class="dot absolute top-0.5 left-0 h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-300"
+									class:left-5={selectedPlant.willSprayEarly}
+								></div>
+							</div>
+						</label>
 					</h3>
+
 					<p class="leading-relaxed text-gray-600 dark:text-gray-400">
 						{allPlants[selectedPlant.key].description}
 					</p>
 
 					<div class="max-h-[300px] space-y-6 overflow-y-auto">
-						{#each allPlants[selectedPlant.key].diseases as disease, index}
+						{#each Object.keys(allDiseases) as diseaseKey, index}
 							<div class="rounded-lg bg-gray-100 p-4 shadow-md dark:bg-gray-800">
 								<div class="flex items-center justify-between">
 									<h4 class="text-lg font-semibold text-gray-700 dark:text-gray-300">
-										{disease.name}
+										{allDiseases[diseaseKey].name}
 									</h4>
 									<button on:click={() => toggleDiseaseDetails(index)} class="p-2">
 										{#if $expandedDisease === index}
@@ -170,16 +214,18 @@
 								{#if $expandedDisease === index}
 									<div class="mt-3 space-y-2">
 										<img
-											src={disease.image}
-											alt={disease.name}
+											src={allDiseases[diseaseKey].image}
+											alt={allDiseases[diseaseKey].name}
 											class="w-full rounded-lg object-cover shadow-sm"
 										/>
-										<p class="text-gray-600 dark:text-gray-400">{disease.description}</p>
+										<p class="text-gray-600 dark:text-gray-400">
+											{allDiseases[diseaseKey].description}
+										</p>
 									</div>
 								{/if}
 
 								<ul class="list-disc space-y-1 pl-5 text-gray-600 dark:text-gray-400">
-									{#each disease.sprays as spray}
+									{#each allDiseases[diseaseKey].sprays as spray}
 										<li>💧 {spray}</li>
 									{/each}
 								</ul>
@@ -189,7 +235,7 @@
 									<label class="text-sm text-gray-700 dark:text-gray-300">Spray Time:</label>
 									<input
 										type="time"
-										bind:value={selectedPlant.disease_time_spray[disease.name][0]}
+										bind:value={selectedPlant.disease_time_spray[diseaseKey][0]}
 										min="03:00"
 										max="22:00"
 										class="rounded-md border border-gray-400 p-1 text-gray-800 dark:bg-gray-700 dark:text-white"
@@ -197,7 +243,7 @@
 									<span class="text-gray-500">to</span>
 									<input
 										type="time"
-										bind:value={selectedPlant.disease_time_spray[disease.name][1]}
+										bind:value={selectedPlant.disease_time_spray[diseaseKey][1]}
 										min="03:00"
 										max="22:00"
 										class="rounded-md border border-gray-400 p-1 text-gray-800 dark:bg-gray-700 dark:text-white"
@@ -206,27 +252,19 @@
 
 								<div class="mt-3 flex flex-wrap gap-2">
 									<button
-										on:click={() => resetSlot(disease.name)}
+										on:click={() => resetSlot(diseaseKey)}
 										class="rounded-lg px-3 py-1 text-sm transition"
-										class:bg-red-500={!selectedPlant.disease[disease.name].some(
-											(x: boolean) => x === true
-										)}
-										class:bg-gray-300={selectedPlant.disease[disease.name].some(
-											(x: boolean) => x === true
-										)}
-										class:text-white={!selectedPlant.disease[disease.name].some(
-											(x: boolean) => x === true
-										)}
-										class:text-gray-800={selectedPlant.disease[disease.name].some(
-											(x: boolean) => x === true
-										)}
+										class:bg-red-500={!selectedPlant.disease[diseaseKey].some((x: boolean) => x)}
+										class:bg-gray-300={selectedPlant.disease[diseaseKey].some((x: boolean) => x)}
+										class:text-white={!selectedPlant.disease[diseaseKey].some((x: boolean) => x)}
+										class:text-gray-800={selectedPlant.disease[diseaseKey].some((x: boolean) => x)}
 									>
 										None
 									</button>
 
-									{#each selectedPlant.disease[disease.name] as slot, slotIndex}
+									{#each selectedPlant.disease[diseaseKey] as slot, slotIndex}
 										<button
-											on:click={() => toggleSlotBinding(disease.name, slotIndex)}
+											on:click={() => toggleSlotBinding(diseaseKey, slotIndex)}
 											class="rounded-lg px-3 py-1 text-sm transition"
 											class:bg-green-500={slot}
 											class:bg-gray-300={!slot}

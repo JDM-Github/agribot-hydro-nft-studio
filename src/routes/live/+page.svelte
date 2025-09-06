@@ -2,29 +2,24 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import ViewPicture from '$lib/modal/ViewPicture.svelte';
 	import { writable } from 'svelte/store';
-	import { onDestroy } from 'svelte';
-	import { addToast, confirmToast, removeToast } from '$lib/stores/toast';
+	import { onDestroy, onMount } from 'svelte';
+	import { addToast, removeToast } from '$lib/stores/toast';
 	import { goto } from '$app/navigation';
-	import { currentLink, isConnected, isRobotRunning, isScanning } from '$lib/stores/connection';
+	import { currentLink, isConnected, isLivestreaming, isRobotRunning, isScanning } from '$lib/stores/connection';
 	import RequestHandler from '$lib/utils/request.js';
 	import { simpleMode } from '$lib/stores/mode.js';
 	import { capitalize } from '$lib/helpers/utility.js';
+	import NotConnected from '$lib/components/NotConnected.svelte';
 	export let data;
 
 	let user = data.user || null;
 	let plantHistory: any = data.images || [];
 	let showingCamera = !data.no_camera;
 	let videoFeedUrl = '';
-	let robotIsLivestreaming =
-		data.is_livestreaming == 'Stopped'
-			? 'Stand By'
-			: data.is_livestreaming == 'Paused'
-				? 'Paused'
-				: 'Running';
-	if (data.is_livestreaming == 'Running') {
+	let robotIsLivestreaming = $isLivestreaming;
+	if ($isLivestreaming === 'Running') {
 		videoFeedUrl = `${$currentLink}/video_feed`;
-	} else if (data.is_livestreaming == 'Paused') {
-		videoFeedUrl = data.last_frame;
+		showingCamera = true;
 	}
 
 	let currentDay = new Date().toDateString();
@@ -32,7 +27,7 @@
 
 	let modalOpen = writable(false);
 	let selectedImage = writable<any>(null);
-	let capturedFullFrame = writable<any>("");
+	let capturedFullFrame = writable<any>('');
 	let capturedFullFrameModal = writable(false);
 	export const wasdEnabled = writable(false);
 
@@ -41,6 +36,65 @@
 		modalOpen.set(true);
 	}
 
+	let selectedFile: File | null = null;
+
+	function handleFileChange(event: Event) {
+		const target = event.target as HTMLInputElement;
+		if (target.files && target.files[0]) {
+			selectedFile = target.files[0];
+			uploadImage();
+		}
+	}
+
+	async function uploadImage() {
+		if (!selectedFile) {
+			addToast('No file selected!', 'error', 3000);
+			return;
+		}
+
+		const toastId = addToast('Uploading image...', 'loading');
+		try {
+			const formData = new FormData();
+			formData.append('file', selectedFile);
+
+			const email = user.email || '';
+			if (!email) {
+				removeToast(toastId);
+				addToast('User email not found.', 'error', 3000);
+				return;
+			}
+			const folderName = email.split('@')[0];
+			formData.append('folder', folderName);
+			const [success, data] = await RequestHandler.authFetch(`upload-image`, 'POST', formData);
+
+			if (!success) {
+				removeToast(toastId);
+				addToast('Failed to upload image!', 'error', 3000);
+				return;
+			}
+
+			data.detections.forEach((plant: any) => {
+				const newPlant = {
+					id: Date.now(),
+					src: plant.src,
+					timestamp: plant.timestamp,
+					plantName: plant.plantName,
+					diseaseName: plant.plantHealth,
+					imageSize: plant.imageSize,
+					locationOnCapture: plant.locationOnCapture,
+					generatedDescription: plant.generatedDescription
+				};
+				plantHistory = [newPlant, ...plantHistory].slice(0, 6);
+			});
+
+			removeToast(toastId);
+			addToast('Image uploaded successfully!', 'success', 3000);
+		} catch (err) {
+			console.error(err);
+			removeToast(toastId);
+			addToast('Upload failed!', 'error', 3000);
+		}
+	}
 	async function captureImageAndDisplay() {
 		if ($isScanning) {
 			addToast("Camera is currently scanning. Can't capture.", 'error', 3000);
@@ -51,18 +105,8 @@
 		try {
 			if ($isRobotRunning == 'Running') {
 				removeToast(toastId);
-				addToast("Robot is currently running. Can't capture.", "error");
+				addToast("Robot is currently running. Can't capture.", 'error');
 				return;
-				// if (
-				// 	await confirmToast(
-				// 		'The robot is currently running. Do you want to temporarly stopped it before capturing an image?'
-				// 	)
-				// ) {
-				// 	await RequestHandler.authFetch(`pause_robot_loop`, 'POST', { camera: '1' });
-				// } else {
-				// 	addToast('Image capture cancelled.', 'info', 3000);
-				// 	return;
-				// }
 			}
 			const email = user.email || '';
 			if (!email) {
@@ -90,7 +134,7 @@
 					src: plant.src,
 					timestamp: plant.timestamp,
 					plantName: plant.plantName,
-					plantHealth: plant.plantHealth,
+					diseaseName: plant.plantHealth,
 					imageSize: plant.imageSize,
 					locationOnCapture: plant.locationOnCapture,
 					generatedDescription: plant.generatedDescription
@@ -132,7 +176,7 @@
 				} else if (action === 'Stop') {
 					showingCamera = false;
 					capturedFullFrame.set(null);
-					robotIsLivestreaming = 'Stand By';
+					robotIsLivestreaming = 'Stopped';
 				} else {
 					robotIsLivestreaming = 'Paused';
 				}
@@ -166,16 +210,7 @@
 </script>
 
 {#if !$isConnected}
-	<div
-		class="relative flex min-h-[calc(100vh-95px)] flex-col items-center justify-center bg-gray-200 p-4 ease-out lg:px-16 dark:bg-gray-800"
-	>
-		<div
-			class="flex h-full flex-col items-center justify-center text-center text-lg font-semibold text-gray-600 dark:text-gray-400"
-		>
-			<p>The device is not connected to AGRI-BOT. Please connect first.</p>
-		</div>
-	</div>
-	<Footer />
+	<NotConnected />
 {:else}
 	<div
 		class="relative flex min-h-[calc(100vh-95px)] flex-col
@@ -183,7 +218,9 @@
     p-4 ease-out lg:px-16 dark:from-gray-700 dark:to-gray-800"
 	>
 		<div
-			class="relative z-10 mb-4 flex lg:mx-auto max-h-[100%] flex-col gap-4 md:max-h-[550px] lg:flex-row {$simpleMode ? '' : 'lg:w-10/12'}"
+			class="relative z-10 mb-4 flex max-h-[100%] flex-col gap-4 md:max-h-[550px] lg:mx-auto lg:flex-row {$simpleMode
+				? ''
+				: 'lg:w-10/12'}"
 			class:md:w-4xl={$simpleMode}
 			class:md:mx-auto={$simpleMode}
 		>
@@ -249,7 +286,7 @@
 						<button
 							class="rounded-lg bg-gray-600 px-4 py-2 text-sm text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 sm:text-base dark:bg-gray-700 dark:hover:bg-gray-800"
 							on:click={() => controlLivestream('Pause')}
-							disabled={robotIsLivestreaming === 'Stand By' || robotIsLivestreaming === 'Paused'}
+							disabled={robotIsLivestreaming === 'Stopped' || robotIsLivestreaming === 'Paused'}
 						>
 							Pause
 						</button>
@@ -257,7 +294,7 @@
 						<button
 							class="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:text-base dark:bg-red-700 dark:hover:bg-red-800"
 							on:click={() => controlLivestream('Stop')}
-							disabled={robotIsLivestreaming === 'Stand By'}
+							disabled={robotIsLivestreaming === 'Stopped'}
 						>
 							Stop
 						</button>
@@ -338,8 +375,25 @@
 					<div
 						class="mt-6 rounded-xl border border-gray-200 bg-gray-100 p-4 shadow-lg dark:border-gray-700 dark:bg-gray-800"
 					>
-						<h3 class="text-base font-bold text-gray-700 dark:text-gray-300">DETECTION HISTORY</h3>
-
+						<div class="flex justify-between">
+							<h3 class="text-base font-bold text-gray-700 dark:text-gray-300">
+								DETECTION HISTORY
+							</h3>
+							<input
+								type="file"
+								id="fileInput"
+								class="hidden"
+								accept="image/*"
+								on:change={handleFileChange}
+							/> 
+							<button
+								class="rounded-lg bg-blue-600 px-5 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-800"
+								on:click={() => (document as any).getElementById('fileInput').click()}
+								disabled={robotIsLivestreaming === 'Running'}
+							>
+								Upload Image
+							</button>
+						</div>
 						<div
 							class="scrollbar-hide mt-4 flex min-h-[140px] gap-4 overflow-x-auto px-2 py-2 whitespace-nowrap"
 						>
@@ -377,7 +431,7 @@
 							<button
 								class="rounded-lg bg-blue-600 px-5 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-800"
 								on:click={captureImageAndDisplay}
-								disabled={robotIsLivestreaming === 'Stand By'}
+								disabled={robotIsLivestreaming === 'Stopped'}
 							>
 								Capture
 							</button>
@@ -392,7 +446,7 @@
 							<button
 								class="rounded-lg bg-gray-600 px-5 py-2 text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-700 dark:hover:bg-gray-800"
 								on:click={() => controlLivestream('Pause')}
-								disabled={robotIsLivestreaming === 'Stand By' || robotIsLivestreaming === 'Paused'}
+								disabled={robotIsLivestreaming === 'Stopped' || robotIsLivestreaming === 'Paused'}
 							>
 								Pause
 							</button>
@@ -400,7 +454,7 @@
 							<button
 								class="rounded-lg bg-red-600 px-5 py-2 text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-red-700 dark:hover:bg-red-800"
 								on:click={() => controlLivestream('Stop')}
-								disabled={robotIsLivestreaming === 'Stand By'}
+								disabled={robotIsLivestreaming === 'Stopped'}
 							>
 								Stop
 							</button>
@@ -427,6 +481,7 @@
 		closeModal={() => modalOpen.set(false)}
 		downloadImage={() => {}}
 		selectedImage={$selectedImage}
+		images={plantHistory}
 	/>
 	{#if $capturedFullFrameModal}
 		<button

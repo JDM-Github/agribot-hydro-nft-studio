@@ -1,6 +1,8 @@
 <script lang="ts">
 	import Footer from '$lib/components/Footer.svelte';
+	import NotConnected from '$lib/components/NotConnected.svelte';
 	import ViewPicture from '$lib/modal/ViewPicture.svelte';
+	import { isConnected } from '$lib/stores/connection.js';
 	import { derived, writable, type Writable } from 'svelte/store';
 
 	export let data;
@@ -38,15 +40,30 @@
 	}> = writable(data.folder as any);
 	let thumbnail: null | string = data.thumbnail;
 
+	let filterMode: Writable<'ALL' | 'SCANBOX' | 'ROI'> = writable('ROI');
+
 	let images = writable(data.images);
 	let currentPage = writable(1);
 	const itemsPerPage = 10;
 
-	const paginatedImages = derived([images, currentPage], ([$images, $currentPage]) => {
-		const start = ($currentPage - 1) * itemsPerPage;
-		const end = start + itemsPerPage;
-		return $images.slice().slice(start, end);
+	const filteredImages = derived([images, filterMode], ([$images, $filterMode]) => {
+		if ($filterMode === 'SCANBOX') {
+			return $images.filter((img) => img.plantName === 'SCANBOX');
+		}
+		if ($filterMode === 'ROI') {
+			return $images.filter((img) => img.plantName !== 'SCANBOX');
+		}
+		return $images;
 	});
+
+	const paginatedImages = derived(
+		[filteredImages, currentPage],
+		([$filteredImages, $currentPage]) => {
+			const start = ($currentPage - 1) * itemsPerPage;
+			const end = start + itemsPerPage;
+			return $filteredImages.slice(start, end);
+		}
+	);
 
 	function nextPage() {
 		if ($currentPage < Math.ceil($images.length / itemsPerPage)) {
@@ -61,6 +78,9 @@
 	}
 </script>
 
+{#if !$isConnected}
+	<NotConnected />
+{:else}
 <main
 	class="relative flex min-h-[calc(100vh-95px)] flex-col bg-gray-200 p-4 transition-all duration-500 ease-out lg:px-16 dark:bg-gray-700"
 >
@@ -138,23 +158,61 @@
 				<button
 					class="flex items-center justify-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-600"
 					on:click={() => {
-						window.open(`/api/download/${$folder.id}`, "_blank");
+						window.open(`/api/download/${$folder.id}`, '_blank');
 					}}
 				>
 					Download All
+				</button>
+				<button
+					class="flex items-center justify-center gap-2 rounded-lg bg-gray-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-600"
+					on:click={() => {
+						window.location.href = '/record';
+					}}
+				>
+					Back
 				</button>
 			</div>
 		</div>
 
 		<div class="flex w-full flex-col rounded-xl bg-white p-4 shadow-lg dark:bg-gray-900">
 			<div
-				class="flex flex-col gap-2 rounded-2xl border border-gray-200 bg-[#fafffc] p-2 dark:border-gray-700 dark:bg-gray-900"
+				class="flex justify-between gap-2 rounded-2xl border border-gray-200 bg-[#fafffc] p-2 dark:border-gray-700 dark:bg-gray-900"
 			>
 				<div class="flex items-center gap-2">
 					<span class="text-xl sm:text-2xl">📄</span>
 					<h2 class="text-base font-bold text-gray-400 sm:text-lg dark:text-gray-300">
 						{$folder.name}
 					</h2>
+				</div>
+
+				<div class="flex items-center gap-2">
+					<button
+						class="rounded-md px-3 py-1 text-sm font-semibold"
+						class:bg-green-600={$filterMode === 'ALL'}
+						class:text-white={$filterMode === 'ALL'}
+						class:dark:text-green-500={$filterMode !== 'ALL'}
+						on:click={() => filterMode.set('ALL')}
+					>
+						All
+					</button>
+					<button
+						class="rounded-md px-3 py-1 text-sm font-semibold"
+						class:bg-green-600={$filterMode === 'SCANBOX'}
+						class:text-white={$filterMode === 'SCANBOX'}
+						class:dark:text-green-500={$filterMode !== 'SCANBOX'}
+						on:click={() => filterMode.set('SCANBOX')}
+					>
+						Scanbox
+					</button>
+					<button
+						class="rounded-md px-3 py-1 text-sm font-semibold"
+						class:bg-green-600={$filterMode === 'ROI'}
+						class:text-white={$filterMode === 'ROI'}
+						class:dark:text-green-500={$filterMode !== 'ROI'}
+						on:click={() => filterMode.set('ROI')}
+					>
+						ROI
+					</button>
 				</div>
 			</div>
 
@@ -193,12 +251,13 @@
 				>
 					Prev
 				</button>
-				<span class="text-sm font-semibold text-gray-700 dark:text-gray-300"
-					>Page {$currentPage} of {Math.ceil($images.length / itemsPerPage)}</span
-				>
+				<span class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+					Page {$currentPage} of {Math.ceil($filteredImages.length / itemsPerPage)}
+				</span>
+
 				<button
 					on:click={nextPage}
-					disabled={$currentPage === Math.ceil($images.length / itemsPerPage)}
+					disabled={$currentPage === Math.ceil($filteredImages.length / itemsPerPage)}
 					class="rounded-md bg-gray-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
 				>
 					Next
@@ -209,4 +268,11 @@
 </main>
 <Footer />
 
-<ViewPicture modalOpen={$modalOpen} {closeModal} {downloadImage} selectedImage={$selectedImage} images={images} />
+<ViewPicture
+	modalOpen={$modalOpen}
+	{closeModal}
+	{downloadImage}
+	selectedImage={$selectedImage}
+	{images}
+/>
+{/if}

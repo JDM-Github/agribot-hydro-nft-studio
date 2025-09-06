@@ -26,10 +26,9 @@
 		robotName.set(data.user.prototypeID);
 		currentLink.set(
 			import.meta.env.VITE_ENV === 'production'
-				? 'http://' + data.user.prototypeID + ':8000'
+				? 'https://' + data.user.prototypeID + '.tail13df43.ts.net:8000'
 				: import.meta.env.VITE_DEVELOPMENT_LINK || 'http://127.0.0.1:8000'
 		);
-
 		if (!$isConnected) {
 			let toastID = addToast(`Connecting to AGRI-BOT...`, 'loading');
 			connect()
@@ -51,11 +50,12 @@
 				}
 			});
 		}
+
 	}
 
 	const fetchRobotStatus = async () => {
 		try {
-			if ($isConnected) {
+			if ($isConnected && !data.isInLogin) {
 				const [ok, data] = await RequestHandler.authFetch('check-status', 'GET');
 				if (!ok) throw new Error('Failed to reach robot');
 
@@ -71,8 +71,7 @@
 	};
 
 	onMount(() => {
-		connectToRobot();
-		fetchRobotStatus();
+		// connectToRobot();
 		statusInterval = setInterval(fetchRobotStatus, 3000);
 	});
 

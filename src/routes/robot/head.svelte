@@ -4,7 +4,7 @@
 	import RequestHandler from '$lib/utils/request';
 
 	export let scanning;
-	let servoHorizontal = 0;
+	let servoHorizontal = 90;
 	let servoVertical = 165;
 
 	async function adjustServo(axis: string, angle: number) {
@@ -41,8 +41,8 @@
 		<input
 			disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
 			type="range"
-			min="95"
-			max="105"
+			min="0"
+			max="180"
 			class="flex-1 accent-blue-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-30"
 			bind:value={servoHorizontal}
 			on:change={(e: any) => adjustServo('horizontal', e.target.value)}
@@ -50,8 +50,8 @@
 		<input
 			disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
 			type="number"
-			min="95"
-			max="105"
+			min="0"
+			max="180"
 			class="w-16 rounded-md border border-gray-300 bg-white p-1 text-center text-sm dark:border-gray-600 dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-30"
 			bind:value={servoHorizontal}
 			on:keydown={(e: KeyboardEvent) => {
@@ -62,7 +62,6 @@
 		/>
 	</div>
 
-	<!-- Servo Vertical -->
 	<div class="flex items-center gap-3">
 		<!-- svelte-ignore a11y_label_has_associated_control -->
 		<label class="w-32 text-sm font-semibold text-gray-600 dark:text-gray-400">
@@ -112,7 +111,7 @@
 		<button
 			disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
 			class="flex-1 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 focus:ring-2 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-30"
-			on:click={() => adjustServo('horizontal', 92)}
+			on:click={() => adjustServo('horizontal', 0)}
 		>
 			LOOK LEFT
 		</button>
@@ -120,7 +119,7 @@
 		<button
 			disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
 			class="flex-1 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 focus:ring-2 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-30"
-			on:click={() => adjustServo('horizontal', 110)}
+			on:click={() => adjustServo('horizontal', 180)}
 		>
 			LOOK RIGHT
 		</button>
@@ -129,7 +128,7 @@
 			disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
 			class="flex-1 rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 focus:ring-2 focus:ring-green-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-30"
 			on:click={() => {
-				// adjustServo('horizontal', 90);
+				adjustServo('horizontal', 90);
 				adjustServo('vertical', 165);
 			}}
 		>

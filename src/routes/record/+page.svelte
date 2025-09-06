@@ -3,6 +3,7 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import { writable, derived } from 'svelte/store';
 	import { isConnected } from '$lib/stores/connection';
+	import NotConnected from '$lib/components/NotConnected.svelte';
 
 	export let data;
 	let records = writable(data.records);
@@ -36,16 +37,7 @@
 </script>
 
 {#if !$isConnected}
-	<div
-		class="relative flex min-h-[calc(100vh-95px)] flex-col items-center justify-center bg-gray-200 p-4 ease-out lg:px-16 dark:bg-gray-800"
-	>
-		<div
-			class="flex h-full flex-col items-center justify-center text-center text-lg font-semibold text-gray-600 dark:text-gray-400"
-		>
-			<p>The device is not connected to AGRI-BOT. Please connect first.</p>
-		</div>
-	</div>
-	<Footer />
+	<NotConnected />
 {:else}
 	<main
 		class="relative flex min-h-[calc(100vh-95px)] flex-col

@@ -23,6 +23,11 @@
 	export let stageClassification: Writable<string>;
 	export let diseaseSegmentation: Writable<string>;
 
+	export const objectDetectionConfidence = writable(0.3);
+	export const stageClassificationConfidence = writable(0.3);
+	export const diseaseSegmentationConfidence = writable(0.3);
+	const confidenceOptions = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9];
+
 	export let saveConfig;
 	export let downloadConfig;
 	export let uploadConfig;
@@ -52,7 +57,7 @@
 	let showScheduleModal = false;
 	let oldSchedule: any = {};
 	function confirmChange() {
-		if ($isLivestreaming) {
+		if ($isLivestreaming !== 'Stopped') {
 			addToast('Action unavailable while livestreaming is active.', 'error', 3000);
 			return;
 		}
@@ -73,12 +78,12 @@
 	class="mx-auto flex flex-col items-center justify-between space-y-2 rounded-lg p-3 md:flex-row md:space-y-0 md:space-x-4 dark:bg-gray-900"
 >
 	{#if !$simpleMode}
-		<div class="flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto md:w-1/3">
+		<div class="flex w-full flex-row flex-wrap items-center justify-center gap-2 sm:w-auto md:w-1/3">
 			<details class="relative w-full sm:w-auto">
 				<summary
 					class="w-full cursor-pointer rounded-md bg-gray-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-950"
 				>
-					Model Selection Actions
+					Model Actions
 				</summary>
 
 				<div
@@ -94,9 +99,10 @@
 						<select
 							bind:value={$objectDetection}
 							on:change={() => confirmChange()}
-							class="w-full rounded-md bg-yellow-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700"
+							class="max-h-40 w-full overflow-y-auto rounded-md bg-yellow-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-yellow-600
+                            dark:bg-yellow-600 dark:hover:bg-yellow-700"
 						>
-							{#each $yoloObjectDetection as model}
+							{#each [...$yoloObjectDetection].sort( (a, b) => a.version.localeCompare(b.version) ) as model}
 								<option value={model.version}>{model.version}</option>
 							{/each}
 						</select>
@@ -106,7 +112,7 @@
 						<select
 							bind:value={$stageClassification}
 							on:change={(event: any) => {
-								if ($isLivestreaming) {
+								if ($isLivestreaming !== 'Stopped') {
 									addToast('Action unavailable while livestreaming is active.', 'error', 3000);
 									return;
 								}
@@ -123,7 +129,7 @@
 							}}
 							class="w-full rounded-md bg-purple-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700"
 						>
-							{#each $yoloStageClassification as model}
+							{#each [...$yoloStageClassification].sort( (a, b) => a.version.localeCompare(b.version) ) as model}
 								<option value={model.version}>{model.version}</option>
 							{/each}
 						</select>
@@ -133,7 +139,7 @@
 						<select
 							bind:value={$diseaseSegmentation}
 							on:change={(event: any) => {
-								if ($isLivestreaming) {
+								if ($isLivestreaming !== 'Stopped') {
 									addToast('Action unavailable while livestreaming is active.', 'error', 3000);
 									return;
 								}
@@ -150,8 +156,80 @@
 							}}
 							class="w-full rounded-md bg-rose-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-rose-600 dark:bg-rose-600 dark:hover:bg-rose-700"
 						>
-							{#each $maskRCNNSegmentation as model}
+							{#each [...$maskRCNNSegmentation].sort( (a, b) => a.version.localeCompare(b.version) ) as model}
 								<option value={model.version}>{model.version}</option>
+							{/each}
+						</select>
+					</div>
+				</div>
+			</details>
+
+			<details class="relative w-full sm:w-auto">
+				<summary
+					class="w-full cursor-pointer rounded-md bg-gray-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-950"
+				>
+					Model Confidence
+				</summary>
+
+				<div
+					class="absolute z-10 mt-2 flex flex-row w-full items-center justify-center gap-2 rounded-md bg-gray-300 p-2 shadow-lg md:w-80 dark:bg-gray-800"
+				>
+					<div class="relative w-full sm:w-auto">
+						<!-- svelte-ignore a11y_label_has_associated_control -->
+						<label class="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-200">
+							Object Detection Confidence
+						</label>
+						<select
+							bind:value={$objectDetectionConfidence}
+							on:change={() =>
+								addToast(
+									`Object Detection confidence set to ${Math.round($objectDetectionConfidence * 100)}%`,
+									'success'
+								)}
+							class="w-full rounded-md bg-yellow-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700"
+						>
+							{#each confidenceOptions as c}
+								<option value={c}>{Math.round(c * 100)}%</option>
+							{/each}
+						</select>
+					</div>
+
+					<div class="relative w-full sm:w-auto">
+						<!-- svelte-ignore a11y_label_has_associated_control -->
+						<label class="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-200">
+							Stage Classification Confidence
+						</label>
+						<select
+							bind:value={$stageClassificationConfidence}
+							on:change={() =>
+								addToast(
+									`Stage Classification confidence set to ${Math.round($stageClassificationConfidence * 100)}%`,
+									'success'
+								)}
+							class="w-full rounded-md bg-purple-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700"
+						>
+							{#each confidenceOptions as c}
+								<option value={c}>{Math.round(c * 100)}%</option>
+							{/each}
+						</select>
+					</div>
+
+					<div class="relative w-full sm:w-auto">
+						<!-- svelte-ignore a11y_label_has_associated_control -->
+						<label class="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-200">
+							Disease Segmentation Confidence
+						</label>
+						<select
+							bind:value={$diseaseSegmentationConfidence}
+							on:change={() =>
+								addToast(
+									`Disease Segmentation confidence set to ${Math.round($diseaseSegmentationConfidence * 100)}%`,
+									'success'
+								)}
+							class="w-full rounded-md bg-rose-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-rose-600 dark:bg-rose-600 dark:hover:bg-rose-700"
+						>
+							{#each confidenceOptions as c}
+								<option value={c}>{Math.round(c * 100)}%</option>
 							{/each}
 						</select>
 					</div>
@@ -205,7 +283,7 @@
 					<button
 						class="w-full rounded bg-indigo-500 px-3 py-2 text-xs font-medium text-white hover:bg-indigo-600"
 						on:click={() => {
-							if ($isLivestreaming) {
+							if ($isLivestreaming !== 'Stopped') {
 								addToast('Action unavailable while livestreaming is active.', 'error', 3000);
 								return;
 							}
@@ -216,7 +294,7 @@
 					</button>
 					<button
 						on:click={() => {
-							if ($isLivestreaming) {
+							if ($isLivestreaming !== 'Stopped') {
 								addToast('Action unavailable while livestreaming is active.', 'error', 3000);
 								return;
 							}
@@ -230,7 +308,7 @@
 					<button
 						class="w-full cursor-pointer rounded-md bg-blue-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-blue-600 sm:w-auto dark:bg-blue-600 dark:hover:bg-blue-700"
 						on:click={() => {
-							if ($isLivestreaming) {
+							if ($isLivestreaming !== 'Stopped') {
 								addToast('Action unavailable while livestreaming is active.', 'error', 3000);
 								return;
 							}
@@ -252,7 +330,7 @@
 			<button
 				class="rounded bg-indigo-500 px-4 py-3 text-sm font-medium text-white hover:bg-indigo-600"
 				on:click={() => {
-					if ($isLivestreaming) {
+					if ($isLivestreaming !== 'Stopped') {
 						addToast('Action unavailable while livestreaming is active.', 'error', 3000);
 						return;
 					}
@@ -263,7 +341,7 @@
 			</button>
 			<button
 				on:click={() => {
-					if ($isLivestreaming) {
+					if ($isLivestreaming !== 'Stopped') {
 						addToast('Action unavailable while livestreaming is active.', 'error', 3000);
 						return;
 					}
@@ -277,7 +355,7 @@
 			<button
 				class="rounded bg-blue-500 px-4 py-3 text-sm font-medium text-white hover:bg-blue-600"
 				on:click={() => {
-					if ($isLivestreaming) {
+					if ($isLivestreaming !== 'Stopped') {
 						addToast('Action unavailable while livestreaming is active.', 'error', 3000);
 						return;
 					}

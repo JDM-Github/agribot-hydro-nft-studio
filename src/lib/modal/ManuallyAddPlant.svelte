@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getTimestamp } from '$lib/helpers/utility';
-	import { allPlants } from '$lib/stores/plant';
+	import { allDiseases, allPlants } from '$lib/stores/plant';
 	import type { Writable } from 'svelte/store';
 	import { get } from 'svelte/store';
 
@@ -10,6 +10,7 @@
 		{
 			key: string;
 			timestamp: string;
+			willSprayEarly: boolean;
 			disabled: boolean;
 			disease: {
 				[key: string]: boolean[];
@@ -24,13 +25,16 @@
 			key,
 			timestamp: getTimestamp(),
 			disabled: false,
+			willSprayEarly: false,
 			disease: {},
 			disease_time_spray: {}
 		};
-		plant.diseases.forEach((d: any) => {
-			newEntry.disease[d.name] = Array(4).fill(false);
-			newEntry.disease_time_spray[d.name] = ['03:00', '22:00'];
+		Object.keys(allDiseases).forEach((diseaseKey) => {
+			newEntry.disease[diseaseKey] = Array(4).fill(false);
+			newEntry.disease_time_spray[diseaseKey] = ['03:00', '22:00'];
 		});
+
+		alert(JSON.stringify(newEntry));
 		detectedPlants.update((curr) => [...curr, newEntry]);
 	}
 

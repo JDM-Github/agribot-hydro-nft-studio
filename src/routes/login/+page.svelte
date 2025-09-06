@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import Footer from '$lib/components/Footer.svelte';
 	import { addToast, removeToast } from '$lib/stores/toast';
 	import RequestHandler from '$lib/utils/request';
@@ -40,6 +41,40 @@
 		} catch (error) {
 			console.error('Registration error:', error);
 			removeToast(toastId);
+			addToast('An unexpected error occurred.', 'error', 3000);
+		}
+	};
+
+	const loginSubmit = async (event: Event) => {
+		event.preventDefault();
+
+		const toastId = addToast('Trying to login...', 'loading');
+		try {
+			const res = await fetch('/api/user/login', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					type: 'login',
+					email,
+					password
+				}),
+				credentials: 'same-origin'
+			});
+			const response = await res.json();
+			if (res.ok && response.success) {
+				localStorage.setItem('userConfig', JSON.stringify(response.config));
+				removeToast(toastId);
+				addToast('Login successful!', 'success', 3000);
+				await goto('/', { invalidateAll: true });
+			} else {
+				removeToast(toastId);
+				addToast('Invalid email or password.', 'error', 3000);
+			}
+		} catch (error) {
+			removeToast(toastId);
+			console.error('Registration error:', error);
 			addToast('An unexpected error occurred.', 'error', 3000);
 		}
 	};
@@ -173,7 +208,7 @@
 			{isRegister ? 'Create Your Account' : 'Login to Your Account'}
 		</h3>
 
-		<form class="mt-6 space-y-4">
+		<form class="mt-6 space-y-4" on:submit={(isRegister) ? registerSubmit : loginSubmit} method="POST">
 			{#if isRegister}
 				<div>
 					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="fname"
@@ -206,6 +241,7 @@
 				<input
 					id="remail"
 					type="email"
+					bind:value={email}
 					placeholder="Your Email"
 					class="w-full rounded-md border p-3 focus:border-green-500 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
 				/>
@@ -218,6 +254,7 @@
 				<input
 					id="rpass"
 					type="password"
+					bind:value={password}
 					placeholder="Your Password"
 					class="w-full rounded-md border p-3 focus:border-green-500 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
 				/>

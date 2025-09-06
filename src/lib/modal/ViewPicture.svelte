@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { capitalize } from "$lib/helpers/utility";
-	import { addToast, removeToast } from "$lib/stores/toast";
+	import { capitalize } from '$lib/helpers/utility';
+	import { addToast, removeToast } from '$lib/stores/toast';
 
 	export let modalOpen;
 	export let closeModal: () => void;
@@ -9,7 +9,7 @@
 	export let images: any;
 
 	async function deleteImage(public_id: string) {
-		const toastId = addToast("Deleting image...", "loading");
+		const toastId = addToast('Deleting image...', 'loading');
 		const res = await fetch('/api/delete-image', {
 			method: 'DELETE',
 			headers: { 'Content-Type': 'application/json' },
@@ -17,7 +17,7 @@
 		});
 		if (!res.ok) {
 			removeToast(toastId);
-			addToast("Failed to delete image", "error");
+			addToast('Failed to delete image', 'error');
 			console.error('Failed to delete image');
 			return false;
 		}
@@ -25,19 +25,22 @@
 		removeToast(toastId);
 		const result = await res.json();
 		if (result.success) {
-			addToast("Successfully deleted image.", "success");
+			addToast('Successfully deleted image.', 'success');
 			images.update((imgs: any) => imgs.filter((img: any) => img.id !== public_id));
 			closeModal();
-	}
+		}
 
-	return result.success;
+		return result.success;
 	}
 </script>
 
 {#if modalOpen}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+		<!-- conditionally change width -->
 		<div
-			class="relative w-full max-w-lg rounded-lg border border-gray-300 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900"
+			class={`relative w-full ${selectedImage.plantName === 'SCANBOX' ? 'max-w-3xl' : 'max-w-lg'} 
+                    rounded-lg border border-gray-300 bg-white shadow-xl 
+                    dark:border-gray-700 dark:bg-gray-900`}
 		>
 			<button
 				class="absolute top-3 right-3 rounded-full bg-gray-200 p-2 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
@@ -47,7 +50,12 @@
 			</button>
 
 			<div class="relative">
-				<img class="w-full rounded-t-lg object-cover max-h-100" src={selectedImage.src} alt="Zoomed" />
+				<img
+					class={`w-full rounded-t-lg object-contain 
+                           ${selectedImage.plantName === 'SCANBOX' ? 'max-h-[500px]' : 'max-h-[500px]'}`}
+					src={selectedImage.src}
+					alt="Zoomed"
+				/>
 				<div
 					class="absolute bottom-0 left-0 w-full bg-gray-300/50 p-2 text-center text-sm text-white dark:bg-gray-900/50"
 				>
@@ -56,22 +64,30 @@
 			</div>
 
 			<div class="space-y-2 p-4">
-				<p class="text-sm text-gray-600 dark:text-gray-400">
-					<strong>Plant:</strong>
-					{capitalize(selectedImage.plantName)}
-				</p>
-				<p class="text-sm text-gray-600 dark:text-gray-400">
-					<strong>Plant Health:</strong>
-					{capitalize(selectedImage.diseaseName)}
-				</p>
-				<p class="text-sm text-gray-600 dark:text-gray-400">
-					<strong>Image Size:</strong>
-					{selectedImage.imageSize}
-				</p>
-				<p class="text-sm text-gray-600 dark:text-gray-400">
-					<strong>AI Analysis:</strong>
-					{selectedImage.generatedDescription}
-				</p>
+				{#if selectedImage.plantName !== 'SCANBOX'}
+					<p class="text-sm text-gray-600 dark:text-gray-400">
+						<strong>Plant:</strong>
+						{capitalize(selectedImage.plantName)}
+					</p>
+					<p class="text-sm text-gray-600 dark:text-gray-400">
+						<strong>Plant Health:</strong>
+						{capitalize(selectedImage.diseaseName)}
+					</p>
+					<p class="text-sm text-gray-600 dark:text-gray-400">
+						<strong>Image Size:</strong>
+						{selectedImage.imageSize}
+					</p>
+					<p
+						class="max-h-40 overflow-y-auto text-sm whitespace-pre-wrap text-gray-600 dark:text-gray-400"
+					>
+						<strong>AI Analysis:</strong><br/>{selectedImage.generatedDescription}
+					</p>
+				{:else}
+					<p class="text-sm text-gray-600 dark:text-gray-400">
+						<strong>Image Size:</strong>
+						{selectedImage.imageSize}
+					</p>
+				{/if}
 
 				<button
 					class="mt-2 w-full rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800"

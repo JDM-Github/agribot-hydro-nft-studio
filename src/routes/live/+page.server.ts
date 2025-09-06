@@ -137,7 +137,6 @@ export const load = async ({ fetch, locals, url }) => {
 
 		if (!response.ok) {
 			return {
-				is_livestreaming: 'Stopped',
 				no_camera: true,
 				last_frame: null,
 				images,
@@ -146,7 +145,6 @@ export const load = async ({ fetch, locals, url }) => {
 
 		const data = await response.json();
 		return {
-			is_livestreaming: data.is_livestreaming,
 			no_camera: data.no_camera,
 			last_frame: data.last_frame,
 			images,
@@ -155,7 +153,6 @@ export const load = async ({ fetch, locals, url }) => {
 		console.error('Fetch failed:', err);
 
 		return {
-			is_livestreaming: 'Stopped',
 			no_camera: true,
 			last_frame: null,
 			images,

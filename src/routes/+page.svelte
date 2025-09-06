@@ -22,6 +22,7 @@
 	import RequestHandler from '$lib/utils/request';
 	import { beforeNavigate } from '$app/navigation';
 	import { deepEqual, validateAndNormalizeConfig } from '$lib/helpers/utility';
+	import NotConnected from '$lib/components/NotConnected.svelte';
 	export let data;
 
 	let showManualPlant = false;
@@ -33,6 +34,8 @@
 	// ---------------------------------------
 	const allSprays = writable(['', '', '', '']);
 	const allSpraysActive = writable([true, true, true, true]);
+	const allDurations = writable([2, 2, 2, 2]);
+
 	const objectDetection = writable<string>('');
 	const stageClassification = writable<string>('');
 	const diseaseSegmentation = writable<string>('');
@@ -55,17 +58,22 @@
 	const yoloObjectDetection = writable<any>(null);
 	const yoloStageClassification = writable<any>(null);
 	const maskRCNNSegmentation = writable<any>(null);
+	const objectDetectionConfidence = writable(0.3);
+	const stageClassificationConfidence = writable(0.3);
+	const diseaseSegmentationConfidence = writable(0.3);
+
 	let detectedPlants: Writable<
 		{
 			key: string;
 			timestamp: string;
 			disabled: boolean;
+			willSprayEarly: boolean;
 			disease: {
 				[key: string]: boolean[];
 			};
 			disease_time_spray: {
-				[key: string]: [string, string]; // Time, Upto
-			}
+				[key: string]: [string, string]; 
+			};
 		}[]
 	> = writable([]);
 
@@ -82,19 +90,24 @@
 		return {
 			sprays: {
 				spray: get(allSprays),
-				active: get(allSpraysActive)
+				active: get(allSpraysActive),
+				duration: get(allDurations)
 			},
 			detectedPlants: get(detectedPlants),
 			schedule: get(schedule),
 			objId: $yoloObjectDetection.find((w: any) => w.version == $objectDetection).id,
 			stageId: $yoloStageClassification.find((w: any) => w.version == $stageClassification).id,
-			segmentationId: $maskRCNNSegmentation.find((w: any) => w.version == $diseaseSegmentation).id
+			segmentationId: $maskRCNNSegmentation.find((w: any) => w.version == $diseaseSegmentation).id,
+			objectDetectionConfidence: get(objectDetectionConfidence),
+			stageClassificationConfidence: get(stageClassificationConfidence),
+			diseaseSegmentationConfidence: get(diseaseSegmentationConfidence)
 		};
 	}
 
 	function applyConfig(config: any) {
 		allSprays.set(config.sprays?.spray ?? ['', '', '', '']);
 		allSpraysActive.set(config.sprays?.active ?? [true, true, true, true]);
+		allDurations.set(config.sprays?.duration ?? [2, 2, 2, 2]);
 		objectDetection.set(
 			data.models.yoloobjectdetection.find((w: any) => w.id === config.objId)?.version ||
 				data.models.yoloobjectdetection[0].version ||
@@ -119,6 +132,9 @@
 				days: ['', '', '']
 			}
 		);
+		objectDetectionConfidence.set(config.objectDetectionConfidence ?? 0.3);
+		stageClassificationConfidence.set(config.stageClassificationConfidence ?? 0.3);
+		diseaseSegmentationConfidence.set(config.diseaseSegmentationConfidence ?? 0.3);
 	}
 
 	function initiateEverything() {
@@ -152,7 +168,7 @@
 
 	onMount(() => {
 		const handler = (event: BeforeUnloadEvent) => {
-			if (isConfigDirty() || showCamera || showSprayModal || showManualPlant) {
+			if (isConfigDirty() || $isScanning || showSprayModal || showManualPlant) {
 				event.preventDefault();
 			}
 		};
@@ -168,7 +184,7 @@
 			if (!leave) {
 				navigation.cancel();
 			}
-		} else if (showCamera) {
+		} else if ($isScanning) {
 			const leave = confirm('Camera is open. Close it before leaving?');
 			if (!leave) {
 				navigation.cancel();
@@ -203,13 +219,17 @@
 		const configData = {
 			sprays: {
 				spray: $allSprays,
-				active: $allSpraysActive
+				active: $allSpraysActive,
+				duration: $allDurations
 			},
 			detectedPlants: $detectedPlants,
 			schedule: $schedule,
 			objId: $yoloObjectDetection.find((w: any) => w.version == $objectDetection).id,
 			stageId: $yoloStageClassification.find((w: any) => w.version == $stageClassification).id,
-			segmentationId: $maskRCNNSegmentation.find((w: any) => w.version == $diseaseSegmentation).id
+			segmentationId: $maskRCNNSegmentation.find((w: any) => w.version == $diseaseSegmentation).id,
+			objectDetectionConfidence: $objectDetectionConfidence,
+			stageClassificationConfidence: $stageClassificationConfidence,
+			diseaseSegmentationConfidence: $diseaseSegmentationConfidence
 		};
 		const blob = new Blob([JSON.stringify(configData, null, 2)], { type: 'text/plain' });
 		const url = URL.createObjectURL(blob);
@@ -224,7 +244,7 @@
 	}
 
 	function uploadConfig() {
-		if ($isLivestreaming) {
+		if ($isLivestreaming !== 'Stopped') {
 			addToast('Action unavailable while livestreaming is active.', 'error', 3000);
 			return;
 		}
@@ -258,7 +278,7 @@
 	}
 
 	const saveConfig = async () => {
-		if ($isLivestreaming) {
+		if ($isLivestreaming !== 'Stopped') {
 			addToast('Action unavailable while livestreaming is active.', 'error', 3000);
 			return;
 		}
@@ -303,7 +323,7 @@
 	};
 
 	function disabledPlant() {
-		if ($isLivestreaming) {
+		if ($isLivestreaming !== 'Stopped') {
 			addToast('Action unavailable while livestreaming is active.', 'error', 3000);
 			return;
 		}
@@ -311,7 +331,7 @@
 	}
 
 	async function removePlant(key: string) {
-		if ($isLivestreaming) {
+		if ($isLivestreaming !== 'Stopped') {
 			addToast('Action unavailable while livestreaming is active.', 'error', 3000);
 			return;
 		}
@@ -324,7 +344,7 @@
 	}
 
 	async function controlRobot(state: boolean) {
-		if ($isLivestreaming) {
+		if ($isLivestreaming !== 'Stopped') {
 			addToast('Action unavailable while livestreaming is active.', 'error', 3000);
 			return;
 		}
@@ -359,17 +379,7 @@
 </script>
 
 {#if !$isConnected}
-	<div
-		class="relative flex min-h-[calc(100vh-95px)] flex-col items-center justify-center bg-gray-200 p-4 ease-out lg:px-16 dark:bg-gray-800"
-	>
-		<div
-			class="flex h-full flex-col items-center justify-center text-center text-lg font-semibold text-gray-600 dark:text-gray-400"
-		>
-			<p>The device is not connected to AGRI-BOT. Please connect first.</p>
-			<div>{$currentLink}</div>
-		</div>
-	</div>
-	<Footer />
+	<NotConnected />
 {:else if $isRobotRunning != 'Stopped'}
 	<div
 		class="relative flex min-h-[calc(100vh-95px)] flex-col items-center justify-center bg-gray-200 p-4 ease-out lg:px-16 dark:bg-gray-800"
@@ -426,7 +436,7 @@
 												<button
 													class="rounded bg-green-300 px-1 py-0.5 font-semibold text-black hover:bg-green-400"
 													on:click|stopPropagation={() => {
-														if ($isLivestreaming) {
+														if ($isLivestreaming !== 'Stopped') {
 															addToast(
 																'Action unavailable while livestreaming is active.',
 																'error',
@@ -457,7 +467,7 @@
 											class="rounded-md bg-green-500 p-2 text-white shadow-sm hover:bg-green-600 dark:bg-transparent dark:hover:bg-transparent dark:hover:text-green-400"
 											aria-label="View plant details"
 											on:click={() => {
-												if ($isLivestreaming) {
+												if ($isLivestreaming !== 'Stopped') {
 													addToast(
 														'Action unavailable while livestreaming is active.',
 														'error',
@@ -497,7 +507,11 @@
 					<SprayButton
 						{controlRobot}
 						openModal={() => {
-							previousSprays = { spray: [...$allSprays], active: [...$allSpraysActive] };
+							previousSprays = {
+								spray: [...$allSprays],
+								active: [...$allSpraysActive],
+								duration: [...$allDurations]
+							};
 							showSprayModal = true;
 						}}
 						openCamera={() => (showCamera = true)}
@@ -512,6 +526,9 @@
 						{downloadConfig}
 						{uploadConfig}
 						openManualPlant={() => (showManualPlant = true)}
+						{objectDetectionConfidence}
+						{stageClassificationConfidence}
+						{diseaseSegmentationConfidence}
 					/>
 				{/if}
 			</div>
@@ -536,6 +553,7 @@
 		}}
 		{allSprays}
 		{allSpraysActive}
+		{allDurations}
 		{previousSprays}
 	/>
 	<ManuallyAddPlant
