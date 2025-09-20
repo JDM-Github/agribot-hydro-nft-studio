@@ -482,6 +482,7 @@
 		downloadImage={() => {}}
 		selectedImage={$selectedImage}
 		images={plantHistory}
+		noDownloadDelete={true}
 	/>
 	{#if $capturedFullFrameModal}
 		<button

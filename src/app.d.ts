@@ -1,5 +1,6 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
+declare module 'nodemailer';
 declare global {
 	namespace App {
 		// interface Error {}
@@ -10,7 +11,5 @@ declare global {
 		
 	}
 }
-
-
 
 export {};

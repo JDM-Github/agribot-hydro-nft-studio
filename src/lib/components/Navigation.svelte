@@ -15,7 +15,7 @@
 		{ name: 'RECORDS', path: '/record' },
 		{ name: 'LOGS', path: '/logs' },
 		{ name: 'ROBOT', path: '/robot' },
-		{ name: "MANAGE WIFI", path: '/wifi'}
+		{ name: 'MANAGE WIFI', path: '/wifi' }
 	];
 
 	function toggleDarkMode() {
@@ -130,19 +130,33 @@
 
 	<!-- DESKTOP NAV -->
 	<ul class="hidden items-center space-x-5 md:flex">
-		{#if user && $isConnected}
-			{#each records as item}
+		{#if user}
+			{#if $isConnected}
+				{#each records as item}
+					<li>
+						<button
+							on:click={() => changePath(item.path)}
+							class="cursor-pointer font-medium hover:text-green-500 {page.url.pathname ===
+							item.path
+								? 'font-bold text-green-600'
+								: 'text-gray-800 dark:text-gray-300'}"
+						>
+							{item.name}
+						</button>
+					</li>
+				{/each}
+			{:else}
 				<li>
 					<button
-						on:click={() => changePath(item.path)}
-						class="cursor-pointer font-medium hover:text-green-500 {page.url.pathname === item.path
+						on:click={() => changePath('/record')}
+						class="cursor-pointer font-medium hover:text-green-500 {page.url.pathname === '/record'
 							? 'font-bold text-green-600'
 							: 'text-gray-800 dark:text-gray-300'}"
 					>
-						{item.name}
+						RECORDS
 					</button>
 				</li>
-			{/each}
+			{/if}
 		{/if}
 
 		<li>

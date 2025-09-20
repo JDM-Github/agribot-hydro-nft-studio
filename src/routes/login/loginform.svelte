@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { addToast, removeToast } from '$lib/stores/toast';
+	import { Eye, EyeOff } from 'lucide-svelte';
 	let email = '';
 	let password = '';
+	let showPassword = false;
 
 	const loginSubmit = async (event: Event) => {
 		event.preventDefault();
@@ -65,14 +67,27 @@
 			<label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="passId"
 				>Password</label
 			>
-			<input
-				bind:value={password}
-				id="passId"
-				type="password"
-				name="password"
-				placeholder="Your Password"
-				class="w-full rounded-md border p-3 focus:border-green-500 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-700 dark:text-white"
-			/>
+			<div class="relative">
+				<input
+					bind:value={password}
+					id="passId"
+					type={showPassword ? "text" : "password"}
+					name="password"
+					placeholder="Your Password"
+					class="w-full rounded-md border p-3 focus:border-green-500 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-700 dark:text-white"
+				/>
+				<button
+					type="button"
+					class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-green-600 dark:hover:text-green-400"
+					on:click={() => (showPassword = !showPassword)}
+				>
+					{#if showPassword}
+						<EyeOff class="h-5 w-5" />
+					{:else}
+						<Eye class="h-5 w-5" />
+					{/if}
+				</button>
+			</div>
 		</div>
 		<button
 			type="submit"

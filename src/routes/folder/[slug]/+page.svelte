@@ -47,6 +47,7 @@
 	const itemsPerPage = 10;
 
 	const filteredImages = derived([images, filterMode], ([$images, $filterMode]) => {
+		currentPage.set(1);
 		if ($filterMode === 'SCANBOX') {
 			return $images.filter((img) => img.plantName === 'SCANBOX');
 		}
@@ -78,9 +79,6 @@
 	}
 </script>
 
-{#if !$isConnected}
-	<NotConnected />
-{:else}
 <main
 	class="relative flex min-h-[calc(100vh-95px)] flex-col bg-gray-200 p-4 transition-all duration-500 ease-out lg:px-16 dark:bg-gray-700"
 >
@@ -275,4 +273,3 @@
 	selectedImage={$selectedImage}
 	{images}
 />
-{/if}

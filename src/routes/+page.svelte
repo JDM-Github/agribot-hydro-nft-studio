@@ -135,6 +135,7 @@
 		objectDetectionConfidence.set(config.objectDetectionConfidence ?? 0.3);
 		stageClassificationConfidence.set(config.stageClassificationConfidence ?? 0.3);
 		diseaseSegmentationConfidence.set(config.diseaseSegmentationConfidence ?? 0.3);
+
 	}
 
 	function initiateEverything() {

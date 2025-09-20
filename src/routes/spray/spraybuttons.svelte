@@ -23,9 +23,9 @@
 	export let stageClassification: Writable<string>;
 	export let diseaseSegmentation: Writable<string>;
 
-	export const objectDetectionConfidence = writable(0.3);
-	export const stageClassificationConfidence = writable(0.3);
-	export const diseaseSegmentationConfidence = writable(0.3);
+	export let objectDetectionConfidence;
+	export let diseaseSegmentationConfidence;
+	export let stageClassificationConfidence;
 	const confidenceOptions = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9];
 
 	export let saveConfig;

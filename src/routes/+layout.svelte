@@ -71,7 +71,6 @@
 	};
 
 	onMount(() => {
-		// connectToRobot();
 		statusInterval = setInterval(fetchRobotStatus, 3000);
 	});
 

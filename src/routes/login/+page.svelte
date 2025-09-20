@@ -1,10 +1,14 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import Footer from '$lib/components/Footer.svelte';
+	import EmailVerification from '$lib/modal/EmailVerification.svelte';
+	import TermsAndCondition from '$lib/modal/TermsAndCondition.svelte';
 	import { addToast, removeToast } from '$lib/stores/toast';
 	import RequestHandler from '$lib/utils/request';
+	import { Eye, EyeOff } from 'lucide-svelte';
 	import Loginform from './loginform.svelte';
 
+	let openTerms = false;
 	let isRegister = false;
 	function toggleForm() {
 		isRegister = !isRegister;
@@ -15,34 +19,83 @@
 	let password = '';
 	let confirmPassword = '';
 
+	let showVerification = false;
+	let showPassword = false;
+	let showConfirmPassword = false;
 	const registerSubmit = async (e: Event) => {
 		e.preventDefault();
-		const toastId = addToast('Creating account...', 'loading');
-		try {
-			const response = await RequestHandler.fetchData('post', 'user/create', {
-				fullName,
-				prototypeIP,
-				email,
-				password,
-				confirmPassword
-			});
-			if (response.success) {
-				removeToast(toastId);
-				addToast('Registered successfully!', 'success', 3000);
-				fullName = '';
-				prototypeIP = '';
-				email = '';
-			} else {
-				removeToast(toastId);
-				addToast(response.message || 'Registration failed.', 'error', 3000);
-			}
-			password = '';
-			confirmPassword = '';
-		} catch (error) {
-			console.error('Registration error:', error);
-			removeToast(toastId);
-			addToast('An unexpected error occurred.', 'error', 3000);
+		if (!fullName || !prototypeIP || !email || !password || !confirmPassword) {
+			addToast('Please fill out all fields.', 'error', 3000);
+			return;
 		}
+
+		if (!acceptedTerms) {
+			addToast('You must accept the Terms & Conditions.', 'error', 3000);
+			return;
+		}
+
+		if (password !== confirmPassword) {
+			addToast('Passwords do not match.', 'error', 3000);
+			return;
+		}
+		const strongPasswordRegex =
+			/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+		if (!strongPasswordRegex.test(password)) {
+			addToast(
+				'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character.',
+				'error',
+				5000
+			);
+			return;
+		}
+		const toastId = addToast('Sending registration request to account...', 'loading');
+
+		try {
+			const res = await fetch('/api/user/send-verification', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ email })
+			});
+
+			const data = await res.json();
+			removeToast(toastId);
+
+			if (res.ok && data.success) {
+				addToast('Verification code sent! Check your email.', 'success', 3000);
+				showVerification = true;
+			} else {
+				addToast(data.message || 'Failed to send verification code.', 'error', 3000);
+			}
+		} catch (error) {
+			console.error('Verification error:', error);
+			removeToast(toastId);
+			addToast('Unexpected error while sending verification.', 'error', 3000);
+		}
+		// try {
+		// 	const response = await RequestHandler.fetchData('post', 'user/create', {
+		// 		fullName,
+		// 		prototypeIP,
+		// 		email,
+		// 		password,
+		// 		confirmPassword
+		// 	});
+		// 	if (response.success) {
+		// 		removeToast(toastId);
+		// 		addToast('Registered successfully!', 'success', 3000);
+		// 		fullName = '';
+		// 		prototypeIP = '';
+		// 		email = '';
+		// 	} else {
+		// 		removeToast(toastId);
+		// 		addToast(response.message || 'Registration failed.', 'error', 3000);
+		// 	}
+		// 	password = '';
+		// 	confirmPassword = '';
+		// } catch (error) {
+		// 	console.error('Registration error:', error);
+		// 	removeToast(toastId);
+		// 	addToast('An unexpected error occurred.', 'error', 3000);
+		// }
 	};
 
 	const loginSubmit = async (event: Event) => {
@@ -78,9 +131,11 @@
 			addToast('An unexpected error occurred.', 'error', 3000);
 		}
 	};
+	let acceptedTerms = false;
 </script>
 
 <svelte:head>
+	<script src="https://js.hcaptcha.com/1/api.js" async defer></script>
 	<title>{`REGISTRATION | AGRI-BOT Studio`}</title>
 </svelte:head>
 
@@ -157,13 +212,26 @@
 							<label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="rpass">
 								Password
 							</label>
-							<input
-								id="rpass"
-								type="password"
-								placeholder="Create Password"
-								bind:value={password}
-								class="w-full rounded-md border p-3 focus:border-green-500 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-700 dark:text-white"
-							/>
+							<div class="relative">
+								<input
+									id="rpass"
+									type={showPassword ? 'text' : 'password'}
+									placeholder="Create Password"
+									bind:value={password}
+									class="w-full rounded-md border p-3 focus:border-green-500 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-700 dark:text-white"
+								/>
+								<button
+									type="button"
+									class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-green-600 dark:hover:text-green-400"
+									on:click={() => (showPassword = !showPassword)}
+								>
+									{#if showPassword}
+										<EyeOff class="h-5 w-5" />
+									{:else}
+										<Eye class="h-5 w-5" />
+									{/if}
+								</button>
+							</div>
 						</div>
 
 						<div>
@@ -173,15 +241,51 @@
 							>
 								Confirm Password
 							</label>
-							<input
-								id="crpass"
-								type="password"
-								placeholder="Confirm Password"
-								bind:value={confirmPassword}
-								class="w-full rounded-md border p-3 focus:border-green-500 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-700 dark:text-white"
-							/>
+							<div class="relative">
+								<input
+									id="crpass"
+									type={showConfirmPassword ? 'text' : 'password'}
+									placeholder="Confirm Password"
+									bind:value={confirmPassword}
+									class="w-full rounded-md border p-3 focus:border-green-500 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-700 dark:text-white"
+								/>
+								<button
+									type="button"
+									class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-green-600 dark:hover:text-green-400"
+									on:click={() => (showConfirmPassword = !showConfirmPassword)}
+								>
+									{#if showConfirmPassword}
+										<EyeOff class="h-5 w-5" />
+									{:else}
+										<Eye class="h-5 w-5" />
+									{/if}
+								</button>
+							</div>
 						</div>
 					</div>
+
+					<div class="flex items-start gap-2">
+						<input
+							id="terms"
+							type="checkbox"
+							bind:checked={acceptedTerms}
+							class="mt-1 h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+						/>
+						<label for="terms" class="text-sm text-gray-600 dark:text-gray-300">
+							I agree to the
+							<button
+								type="button"
+								on:click={() => (openTerms = true)}
+								class="text-green-600 hover:underline dark:text-green-400"
+							>
+								Terms & Conditions
+							</button>
+						</label>
+					</div>
+
+					<!-- <div class="flex items-start gap-2">
+						<div class="h-captcha" data-sitekey="ES_4cb193d3061644b380bc5794beb2fce4"></div>
+					</div> -->
 
 					<button
 						type="submit"
@@ -208,7 +312,11 @@
 			{isRegister ? 'Create Your Account' : 'Login to Your Account'}
 		</h3>
 
-		<form class="mt-6 space-y-4" on:submit={(isRegister) ? registerSubmit : loginSubmit} method="POST">
+		<form
+			class="mt-6 space-y-4"
+			on:submit={isRegister ? registerSubmit : loginSubmit}
+			method="POST"
+		>
 			{#if isRegister}
 				<div>
 					<label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="fname"
@@ -270,3 +378,16 @@
 	</div>
 </section>
 <Footer />
+
+{#if openTerms}
+	<TermsAndCondition closeTerms={() => (openTerms = false)} />
+{/if}
+{#if showVerification}
+	<EmailVerification
+		onClose={() => (showVerification = false)}
+		onVerified={() => {
+			showVerification = false;
+			goto('/', { invalidateAll: true });
+		}}
+	/>
+{/if}
