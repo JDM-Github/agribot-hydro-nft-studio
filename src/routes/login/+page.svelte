@@ -4,7 +4,6 @@
 	import EmailVerification from '$lib/modal/EmailVerification.svelte';
 	import TermsAndCondition from '$lib/modal/TermsAndCondition.svelte';
 	import { addToast, removeToast } from '$lib/stores/toast';
-	import RequestHandler from '$lib/utils/request';
 	import { Eye, EyeOff } from 'lucide-svelte';
 	import Loginform from './loginform.svelte';
 
@@ -283,10 +282,6 @@
 						</label>
 					</div>
 
-					<!-- <div class="flex items-start gap-2">
-						<div class="h-captcha" data-sitekey="ES_4cb193d3061644b380bc5794beb2fce4"></div>
-					</div> -->
-
 					<button
 						type="submit"
 						class="w-full rounded-md bg-green-600 py-3 font-semibold text-white transition hover:bg-green-700"
@@ -306,7 +301,6 @@
 		</div>
 	</div>
 
-	<!-- Mobile View -->
 	<div class="block w-full max-w-lg rounded-lg bg-white p-6 shadow-xl md:hidden dark:bg-gray-800">
 		<h3 class="text-center text-2xl font-bold text-green-700 dark:text-green-400">
 			{isRegister ? 'Create Your Account' : 'Login to Your Account'}
