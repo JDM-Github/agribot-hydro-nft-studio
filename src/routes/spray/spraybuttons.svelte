@@ -2,46 +2,55 @@
 	import RadarChartComponent from '$lib/components/RadarChartComponent.svelte';
 	import SetSchedule from '$lib/components/SetSchedule.svelte';
 	import { addToast } from '$lib/stores/toast';
-	import { writable, type Writable } from 'svelte/store';
+	import { get, type Writable } from 'svelte/store';
 	import { isLivestreaming, isScanning } from '$lib/stores/connection';
 	import { simpleMode } from '$lib/stores/mode';
+	import type { Config } from '$lib/class/config';
+	import type { FunctionType, WritableModel, WritableModelArray, WritableNumber, WritableString } from '$lib/type';
+	import type { Model } from '$lib/types/model';
 
 	export let controlRobot;
-	export let openModal;
+	export let openSprayModal;
 	export let openCamera;
-	export let openManualPlant: () => void = () => {};
+	export let openManualPlant: FunctionType;
 
-	export let schedule: Writable<{
-		frequency: string;
-		runs: { time: string; upto: string }[];
-		days: string[];
-	}>;
-	export let yoloObjectDetection: any;
-	export let yoloStageClassification: any;
-	export let maskRCNNSegmentation: any;
-	export let objectDetection: Writable<string>;
-	export let stageClassification: Writable<string>;
-	export let diseaseSegmentation: Writable<string>;
+	export let config: Config;
+	const objectDetection: WritableString = config.objectDetectionVersion;
+	const stageClassification: WritableString = config.stageClassificationVersion;
+	const diseaseSegmentation: WritableString = config.diseaseSegmentationVersion;
+	const objectDetectionConfidence: WritableNumber = config.objectDetectionConfidence;
+	const diseaseSegmentationConfidence: WritableNumber = config.diseaseSegmentationConfidence;
+	const stageClassificationConfidence: WritableNumber = config.stageClassificationConfidence;
 
-	export let objectDetectionConfidence;
-	export let diseaseSegmentationConfidence;
-	export let stageClassificationConfidence;
+	export let yoloObjectDetection: WritableModelArray;
+	export let yoloStageClassification: WritableModelArray;
+	export let maskRCNNSegmentation: WritableModelArray;
+
 	const confidenceOptions = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9];
-
 	export let saveConfig;
 	export let downloadConfig;
 	export let uploadConfig;
 
+	let openId: string | null = null;
+	function handleToggle(id: string, event: Event) {
+		const detail = event.currentTarget as HTMLDetailsElement;
+		if (detail.open) {
+			openId = id;
+		} else if (openId === id) {
+			openId = null;
+		}
+	}
+
 	function transformModels(models: any) {
 		const output: any = {};
-		models.forEach((item: any) => {
+		models.forEach((item: Model) => {
 			const modelKey = `${item.version}`;
 			output[modelKey] = {
-				accuracy: parseFloat(item.accuracy),
-				recall: parseFloat(item.recall),
-				precision: parseFloat(item.precision),
-				mAP50: parseFloat(item.mAP50),
-				mAP50_95: parseFloat(item.mAP50_95)
+				accuracy: item.accuracy,
+				recall: item.recall,
+				precision: item.precision,
+				mAP50: item.mAP50,
+				mAP50_95: item.mAP50_95
 			};
 		});
 		return output;
@@ -52,34 +61,23 @@
 		diseaseSegmentationMaskRCNN: transformModels($maskRCNNSegmentation)
 	};
 
-	let previousModel = writable($objectDetection);
 	let showRadarModal = false;
 	let showScheduleModal = false;
 	let oldSchedule: any = {};
-	function confirmChange() {
-		if ($isLivestreaming !== 'Stopped') {
-			addToast('Action unavailable while livestreaming is active.', 'error', 3000);
-			return;
-		}
-
-		previousModel.set($objectDetection);
-		addToast('Object detection model changed!', 'success', 3000);
-		setTimeout(() => {
-			addToast(
-				'Changes staged. Remember to click "Save Configuration" to apply them.',
-				'info',
-				5000
-			);
-		}, 10);
-	}
 </script>
 
 <div
 	class="mx-auto flex flex-col items-center justify-between space-y-2 rounded-lg p-3 md:flex-row md:space-y-0 md:space-x-4 dark:bg-gray-900"
 >
 	{#if !$simpleMode}
-		<div class="flex w-full flex-row flex-wrap items-center justify-center gap-2 sm:w-auto md:w-1/3">
-			<details class="relative w-full sm:w-auto">
+		<div
+			class="flex w-full flex-row flex-wrap items-center justify-center gap-2 sm:w-auto md:w-1/3"
+		>
+			<details
+				class="relative w-full sm:w-auto"
+				open={openId === 'model'}
+				on:toggle={(e) => handleToggle('model', e)}
+			>
 				<summary
 					class="w-full cursor-pointer rounded-md bg-gray-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-950"
 				>
@@ -98,7 +96,20 @@
 					<div class="relative w-full sm:w-auto">
 						<select
 							bind:value={$objectDetection}
-							on:change={() => confirmChange()}
+							on:change={() => {
+								if ($isLivestreaming !== 'Stopped') {
+									addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+									return;
+								}
+								addToast('Object detection model changed!', 'success', 3000);
+								setTimeout(() => {
+									addToast(
+										'Changes staged. Remember to click "Save Configuration" to apply them.',
+										'info',
+										5000
+									);
+								}, 10);
+							}}
 							class="max-h-40 w-full overflow-y-auto rounded-md bg-yellow-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-yellow-600
                             dark:bg-yellow-600 dark:hover:bg-yellow-700"
 						>
@@ -111,13 +122,11 @@
 					<div class="relative w-full sm:w-auto">
 						<select
 							bind:value={$stageClassification}
-							on:change={(event: any) => {
+							on:change={() => {
 								if ($isLivestreaming !== 'Stopped') {
 									addToast('Action unavailable while livestreaming is active.', 'error', 3000);
 									return;
 								}
-
-								stageClassification.set(event.target.value);
 								addToast('Stage classification model changed!', 'success', 3000);
 								setTimeout(() => {
 									addToast(
@@ -138,13 +147,11 @@
 					<div class="relative w-full sm:w-auto">
 						<select
 							bind:value={$diseaseSegmentation}
-							on:change={(event: any) => {
+							on:change={() => {
 								if ($isLivestreaming !== 'Stopped') {
 									addToast('Action unavailable while livestreaming is active.', 'error', 3000);
 									return;
 								}
-
-								diseaseSegmentation.set(event.target.value);
 								addToast('Disease segmentation model changed!', 'success', 3000);
 								setTimeout(() => {
 									addToast(
@@ -164,7 +171,11 @@
 				</div>
 			</details>
 
-			<details class="relative w-full sm:w-auto">
+			<details
+				class="relative w-full sm:w-auto"
+				open={openId === 'model-conf'}
+				on:toggle={(e) => handleToggle('model-conf', e)}
+			>
 				<summary
 					class="w-full cursor-pointer rounded-md bg-gray-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-950"
 				>
@@ -172,7 +183,7 @@
 				</summary>
 
 				<div
-					class="absolute z-10 mt-2 flex flex-row w-full items-center justify-center gap-2 rounded-md bg-gray-300 p-2 shadow-lg md:w-80 dark:bg-gray-800"
+					class="absolute z-10 mt-2 flex w-full flex-row items-center justify-center gap-2 rounded-md bg-gray-300 p-2 shadow-lg md:w-80 dark:bg-gray-800"
 				>
 					<div class="relative w-full sm:w-auto">
 						<!-- svelte-ignore a11y_label_has_associated_control -->
@@ -183,7 +194,9 @@
 							bind:value={$objectDetectionConfidence}
 							on:change={() =>
 								addToast(
-									`Object Detection confidence set to ${Math.round($objectDetectionConfidence * 100)}%`,
+									`Object Detection confidence set to ${Math.round(
+										get(config.objectDetectionConfidence) * 100
+									)}%`,
 									'success'
 								)}
 							class="w-full rounded-md bg-yellow-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700"
@@ -203,7 +216,9 @@
 							bind:value={$stageClassificationConfidence}
 							on:change={() =>
 								addToast(
-									`Stage Classification confidence set to ${Math.round($stageClassificationConfidence * 100)}%`,
+									`Stage Classification confidence set to ${Math.round(
+										get(config.stageClassificationConfidence) * 100
+									)}%`,
 									'success'
 								)}
 							class="w-full rounded-md bg-purple-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700"
@@ -223,7 +238,9 @@
 							bind:value={$diseaseSegmentationConfidence}
 							on:change={() =>
 								addToast(
-									`Disease Segmentation confidence set to ${Math.round($diseaseSegmentationConfidence * 100)}%`,
+									`Disease Segmentation confidence set to ${Math.round(
+										get(config.diseaseSegmentationConfidence) * 100
+									)}%`,
 									'success'
 								)}
 							class="w-full rounded-md bg-rose-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-rose-600 dark:bg-rose-600 dark:hover:bg-rose-700"
@@ -240,8 +257,11 @@
 
 	<div class="mx-auto flex w-full flex-wrap items-center justify-center gap-2 sm:w-auto md:w-1/2">
 		{#if !$simpleMode}
-			<!-- Full mode: your existing details menus -->
-			<details class="relative w-full sm:w-auto">
+			<details
+				class="relative w-full sm:w-auto"
+				open={openId === 'config'}
+				on:toggle={(e) => handleToggle('config', e)}
+			>
 				<summary
 					class="w-full cursor-pointer rounded-md bg-gray-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-950"
 				>
@@ -271,7 +291,11 @@
 				</div>
 			</details>
 
-			<details class="relative w-full sm:w-auto">
+			<details
+				class="relative w-full sm:w-auto"
+				open={openId === 'action'}
+				on:toggle={(e) => handleToggle('action', e)}
+			>
 				<summary
 					class="w-full cursor-pointer rounded-md bg-gray-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-950"
 				>
@@ -287,7 +311,7 @@
 								addToast('Action unavailable while livestreaming is active.', 'error', 3000);
 								return;
 							}
-							openModal();
+							openSprayModal();
 						}}
 					>
 						Setup Spray
@@ -299,7 +323,7 @@
 								return;
 							}
 							showScheduleModal = true;
-							oldSchedule = { ...$schedule };
+							oldSchedule = { ...get(config.schedule) };
 						}}
 						class="w-full rounded bg-green-500 px-3 py-2 text-xs font-medium text-white hover:bg-green-600"
 					>
@@ -320,7 +344,6 @@
 				</div>
 			</details>
 		{:else}
-			<!-- Simple mode: slightly larger, cleaner buttons -->
 			<button
 				on:click={saveConfig}
 				class="rounded bg-blue-500 px-4 py-3 text-sm font-medium text-white hover:bg-blue-600"
@@ -334,7 +357,7 @@
 						addToast('Action unavailable while livestreaming is active.', 'error', 3000);
 						return;
 					}
-					openModal();
+					openSprayModal();
 				}}
 			>
 				Setup Spray
@@ -346,7 +369,7 @@
 						return;
 					}
 					showScheduleModal = true;
-					oldSchedule = { ...$schedule };
+					oldSchedule = { ...get(config.schedule) };
 				}}
 				class="rounded bg-green-500 px-4 py-3 text-sm font-medium text-white hover:bg-green-600"
 			>
@@ -425,21 +448,21 @@
 				<RadarChartComponent
 					title="YOLOv8 Object Detection"
 					models={$yoloObjectDetection.map((m: any) => m.version)}
-					selected={$objectDetection}
+					selected={get(config.objectDetectionVersion)}
 					dataMap={modelPerformance.objectDetectionionYolo}
 					modelType={'PlantOD'}
 				/>
 				<RadarChartComponent
 					title="YOLOv8 Stage Classification"
 					models={$yoloStageClassification.map((m: any) => m.version)}
-					selected={$stageClassification}
+					selected={get(config.stageClassificationVersion)}
 					dataMap={modelPerformance.stageClassificationYolo}
 					modelType={'StageCLS'}
 				/>
 				<RadarChartComponent
 					title="Mask-RCNN Disease DiseaseSegmentation"
 					models={$maskRCNNSegmentation.map((m: any) => m.version)}
-					selected={$diseaseSegmentation}
+					selected={get(config.diseaseSegmentationVersion)}
 					dataMap={modelPerformance.diseaseSegmentationMaskRCNN}
 					modelType={'DiseaseSeg'}
 				/>
@@ -449,10 +472,10 @@
 {/if}
 
 <SetSchedule
-	{schedule}
+	schedule={config.schedule}
 	{showScheduleModal}
 	onClose={() => {
-		schedule.set(oldSchedule);
+		config.schedule.set(oldSchedule);
 		showScheduleModal = false;
 	}}
 	onSave={() => {

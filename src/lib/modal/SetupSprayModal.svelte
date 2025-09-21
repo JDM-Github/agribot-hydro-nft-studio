@@ -2,23 +2,25 @@
 	import { simpleMode } from '$lib/stores/mode';
 	import { recommendedSprays } from '$lib/stores/plant';
 	import { addToast } from '$lib/stores/toast';
+	import type { Spray } from '$lib/type';
 	import type { Writable } from 'svelte/store';
 
 	export let showSprayModal = false;
-	export let allSprays: Writable<string[]>;
-	export let allSpraysActive: Writable<boolean[]>;
-	export let allDurations: Writable<number[]>;
-	export let previousSprays: {
-		spray: string[];
-		active: boolean[];
-		duration?: number[];
-	};
+	export let sprays: Writable<{
+		spray: [string, string, string, string];
+		active: [boolean, boolean, boolean, boolean];
+		duration: [number, number, number, number];
+	}>;
+	export let previousSprays: Spray;
 	export let closeModal: () => void = () => {};
+
 	let selectedSpray: { info: string; plants: { name: string; disease: string }[] } | null = null;
 	let selectedSprayPosition = { x: 0, y: 0 };
+
 	function applyRecommended(index: number, sprayName: string) {
-		$allSprays[index] = sprayName;
+		$sprays.spray[index] = sprayName;
 	}
+
 	function showSprayInfo(event: MouseEvent, sprayName: string) {
 		const spray = recommendedSprays.find((s) => s.name === sprayName);
 		if (spray) {
@@ -26,6 +28,7 @@
 			selectedSprayPosition = { x: event.clientX, y: event.clientY };
 		}
 	}
+
 	function hideSprayInfo() {
 		selectedSpray = null;
 	}
@@ -41,10 +44,10 @@
 			<h2 class="text-xl font-bold text-gray-800 lg:text-2xl dark:text-gray-200">Setup Spray</h2>
 
 			<div class="mt-4 flex flex-col gap-3">
-				{#each $allSprays as spray, i}
+				{#each $sprays.spray as spray, i}
 					<div class="flex items-center gap-3">
 						<label class="relative inline-flex cursor-pointer items-center">
-							<input type="checkbox" bind:checked={$allSpraysActive[i]} class="peer sr-only" />
+							<input type="checkbox" bind:checked={$sprays.active[i]} class="peer sr-only" />
 							<div
 								class="peer h-5 w-9 rounded-full bg-gray-300 peer-checked:bg-blue-500 peer-focus:ring-2 peer-focus:ring-blue-300 peer-focus:outline-none after:absolute after:top-0.5 after:left-0.5 after:h-4 after:w-4 after:rounded-full after:border after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-4 peer-checked:after:border-white dark:bg-gray-600 dark:peer-checked:bg-blue-600 dark:peer-focus:ring-blue-800"
 							></div>
@@ -53,14 +56,14 @@
 
 						<input
 							type="text"
-							bind:value={$allSprays[i]}
+							bind:value={$sprays.spray[i]}
 							placeholder="Enter spray name..."
 							class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none lg:text-base dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
 						/>
 
 						<input
 							type="number"
-							bind:value={$allDurations[i]}
+							bind:value={$sprays.duration[i]}
 							min="1"
 							placeholder="2"
 							class="w-20 rounded-md border border-gray-300 bg-white px-2 py-2 text-center text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none lg:text-base dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
@@ -70,8 +73,8 @@
 						<button
 							class="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
 							on:click={() => {
-								$allSprays[i] = '';
-								$allDurations[i] = 2;
+								$sprays.spray[i] = '';
+								$sprays.duration[i] = 2;
 							}}
 						>
 							❌CLEAR
@@ -91,7 +94,7 @@
 								class="relative flex items-center gap-2 rounded-md bg-green-500 px-3 py-1 text-sm text-white hover:bg-green-600 lg:text-base dark:bg-green-500 dark:hover:bg-green-800"
 								on:click={() =>
 									applyRecommended(
-										$allSprays.findIndex((s: string) => s === ''),
+										$sprays.spray.findIndex((s: string) => s === ''),
 										spray.name
 									)}
 								on:mouseenter={(event) => showSprayInfo(event, spray.name)}
@@ -130,9 +133,17 @@
 				<button
 					class="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 lg:text-base"
 					on:click={() => {
-						allSprays.set(previousSprays.spray);
-						allSpraysActive.set(previousSprays.active);
-						allDurations.set(previousSprays.duration ?? Array(previousSprays.spray.length).fill(2));
+						sprays.set({
+							spray: [...previousSprays.spray] as [string, string, string, string],
+							active: [...previousSprays.active] as [boolean, boolean, boolean, boolean],
+							duration: (previousSprays.duration ??
+								Array(previousSprays.spray.length).fill(2)) as [
+								number,
+								number,
+								number,
+								number
+							]
+						});
 						closeModal();
 					}}
 				>

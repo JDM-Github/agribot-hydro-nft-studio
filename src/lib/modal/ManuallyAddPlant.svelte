@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getTimestamp } from '$lib/helpers/utility';
+	import { getTimestamp } from '$utils/time';
 	import { allDiseases, allPlants } from '$lib/stores/plant';
 	import type { Writable } from 'svelte/store';
 	import { get } from 'svelte/store';
@@ -33,8 +33,6 @@
 			newEntry.disease[diseaseKey] = Array(4).fill(false);
 			newEntry.disease_time_spray[diseaseKey] = ['03:00', '22:00'];
 		});
-
-		alert(JSON.stringify(newEntry));
 		detectedPlants.update((curr) => [...curr, newEntry]);
 	}
 

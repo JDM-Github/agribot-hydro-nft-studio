@@ -146,6 +146,16 @@
 					</li>
 				{/each}
 			{:else}
+			<li>
+					<button
+						on:click={() => changePath('/')}
+						class="cursor-pointer font-medium hover:text-green-500 {page.url.pathname === '/'
+							? 'font-bold text-green-600'
+							: 'text-gray-800 dark:text-gray-300'}"
+					>
+						SETUP
+					</button>
+				</li>
 				<li>
 					<button
 						on:click={() => changePath('/record')}

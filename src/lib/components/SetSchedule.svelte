@@ -12,7 +12,6 @@
 	export let onSave;
 
 	$: selectedDays = [...($schedule.days || [])];
-
 	let errors: string[] = [];
 
 	const toMinutes = (t: string) => {
@@ -124,7 +123,7 @@
 								on:click={() => toggleDay(day)}
 								class="rounded-md px-3 py-1 text-sm text-white transition
 									{selectedDays.includes(day)
-									? 'bg-green-700 hover:bg-green-800'
+									? 'bg-green-900 hover:bg-green-950'
 									: 'bg-green-500 hover:bg-green-600'}">{day}</button
 							>
 						{/each}
@@ -132,7 +131,6 @@
 				</div>
 
 				<div>
-					<!-- svelte-ignore a11y_label_has_associated_control -->
 					<label class="font-semibold text-gray-800 dark:text-white">How Often</label>
 					<select
 						bind:value={$schedule.frequency}

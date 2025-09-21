@@ -2,17 +2,31 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
+
+		<!-- Favicon -->
 		<link rel="icon" href="%sveltekit.assets%/LOGO.ico" />
+
+		<!-- Responsive viewport -->
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+		<!-- SEO and Accessibility -->
+		<meta name="description" content="AGRIBOT – Smart Greenhouse Automation System" />
+		<meta name="author" content="John Doe, 2025" />
+
+		<!-- Theme color for browsers -->
+		<meta name="theme-color" content="#1a1a1a" />
+
+		<!-- Injected by SvelteKit -->
 		%sveltekit.head%
 	</head>
+
 	<body data-sveltekit-preload-data="hover" class="dark">
 		<div style="display: contents">%sveltekit.body%</div>
-	</body>
-	<footer>
+
+		<!-- External libraries -->
 		<script
 			type="module"
 			src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"
 		></script>
-	</footer>
+	</body>
 </html>

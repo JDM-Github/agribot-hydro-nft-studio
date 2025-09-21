@@ -12,12 +12,17 @@
 		"moduleResolution": "bundler",
 		"baseUrl": ".",
 		"paths": {
-			"$lib/*": ["./src/lib/*"]
+			"$root/*": ["./src/*"],
+			"$lib/*": ["./src/lib/*"],
+			"$stores/*": ["src/lib/stores/*"],
+			"$helpers/*": ["src/lib/helpers/*"],
+			"$utils/*": ["src/lib/utils/*"],
+			"$modal/*": ["src/lib/modal/*"],
+			"$components/*": ["src/lib/components/*"],
+			"$routes/*": ["src/routes/*"],
+			"$class/*": ["src/lib/class/*"],
+			"$constant/*": ["src/lib/constant/*"],
+			"$services/*": ["src/lib/services/*"],
 		}
 	}
-	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias
-	// except $lib which is handled by https://svelte.dev/docs/kit/configuration#files
-	//
-	// If you want to overwrite includes/excludes, make sure to copy over the relevant includes/excludes
-	// from the referenced tsconfig.json - TypeScript does not merge them in
 }

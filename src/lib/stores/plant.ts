@@ -1,3 +1,5 @@
+import type { ConfigType, DetectedPlant } from "$lib/type";
+
 export type Plant = {
 	name: string;
 	type: string;
@@ -111,22 +113,6 @@ export const allDiseases: Record<string, Disease> = {
 		sprays: ['Calcium Nitrate Spray'],
 		severity: 'Moderate'
 	}
-};
-
-export const config = {
-	detectedPlants: [],
-	sprays: {
-		spray: ['', '', '', ''],
-		active: [true, true, true, true]
-	},
-	schedule: {
-		frequency: 'monthly',
-		time: '12:00',
-		days: ['', '', '']
-	},
-	objectDetection: '',
-	stageClassification: '',
-	diseaseSegmentation: ''
 };
 
 export const recommendedSprays = [

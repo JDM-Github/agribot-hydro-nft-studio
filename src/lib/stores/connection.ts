@@ -7,7 +7,7 @@ const isLivestreaming = $store("Stopped");
 const isScanning = $store(false);
 const isRobotRunning = $store("Stopped");
 
-const resetVariable = () => {
+export const resetVariable = () => {
 	isConnected.set(false);
 	isLivestreaming.set("Stopped");
 	isScanning.set(false);

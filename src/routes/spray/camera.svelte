@@ -136,7 +136,7 @@
 		<ul class="space-y-2 pt-2 text-sm text-gray-600 dark:text-gray-400">
 			<li class="flex justify-between">
 				<span class="font-medium text-gray-500 dark:text-gray-300">URL:</span>
-				{$currentLink}
+				{$currentLink || "NOT CONNECTED"}
 			</li>
 			<li class="flex justify-between">
 				<span class="font-medium text-gray-500 dark:text-gray-300">Status:</span>

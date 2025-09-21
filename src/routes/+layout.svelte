@@ -1,91 +1,108 @@
 <script lang="ts">
-	import '../app.css';
-	let { data, children } = $props();
-	import Navigation from '$lib/components/Navigation.svelte';
-	import Toast from '$lib/components/ToastContainer.svelte';
-	import { onMount, onDestroy } from 'svelte';
+/**
+ * @file +layout.svelte
+ * @description Main layout component for AGRI-BOT Studio.
+ * 				Handles navigation, toast notifications, and live robot connection/status updates.
+ * 
+ * @author  AGRIBOT Team
+ * @created 2025-09-21
+ * @lastUpdated 2025-09-21
+*/
 
-	import { addToast, removeToast } from '$lib/stores/toast';
-	import {
-		connect,
-		isConnected,
-		isRobotRunning,
-		isLivestreaming,
-		isScanning,
-		currentLink,
-		robotName
-	} from '$lib/stores/connection';
-	import RequestHandler from '$lib/utils/request';
+// ----------------------------
+// Global Styles
+// ----------------------------
+import '$root/app.css';
 
-	let statusInterval: any;
-	function connectToRobot() {
-		if (!data.user) {
-			return;
+// ----------------------------
+// Svelte core
+// ----------------------------
+import { onMount, onDestroy } from 'svelte';
+
+// ----------------------------
+// UI Components
+// ----------------------------
+import Navigation from '$components/Navigation.svelte';
+import Toast from '$components/ToastContainer.svelte';
+
+// ----------------------------
+// Svelte Stores
+// ----------------------------
+import { addToast } from '$stores/toast';
+import {
+	isConnected,
+	isRobotRunning,
+	isLivestreaming,
+	isScanning,
+	resetVariable
+
+} from '$stores/connection';
+
+// ----------------------------
+// Utilities
+// ----------------------------
+import RequestHandler from '$utils/request';
+
+// ----------------------------
+// Props & state
+// ----------------------------
+let { data, children } = $props();
+let statusInterval: any;
+
+// ----------------------------
+// Functions
+// ----------------------------
+
+/**
+ * Fetch current robot status periodically
+ */
+const fetchRobotStatus = async () => {
+	try {
+		if (data.isInLogin) {
+			resetVariable();
 		}
+		else if ($isConnected) {
+			const [ok, status] = await RequestHandler.authFetch('check-status', 'GET');
+			if (!ok) throw new Error('Failed to reach robot');
 
-		robotName.set(data.user.prototypeID);
-		currentLink.set(
-			import.meta.env.VITE_ENV === 'production'
-				? 'https://' + data.user.prototypeID + '.tail13df43.ts.net:8000'
-				: import.meta.env.VITE_DEVELOPMENT_LINK || 'http://127.0.0.1:8000'
-		);
-		if (!$isConnected) {
-			let toastID = addToast(`Connecting to AGRI-BOT...`, 'loading');
-			connect()
-				.then(() => {
-					removeToast(toastID);
-					if ($isConnected) {
-						addToast('Successfully connected to AGRI-BOT.', 'success', 3000);
-					} else {
-						addToast('Failed to connect to AGRI-BOT.', 'error', 3000);
-					}
-				})
-				.catch(() => {
-					addToast('Failed to connect to AGRI-BOT.', 'error', 3000);
-				});
-		} else {
-			connect().then(() => {
-				if (!$isConnected) {
-					addToast('Failed to connect to AGRI-BOT.', 'error', 3000);
-				}
-			});
+			isLivestreaming.set(status.is_livestreaming);
+			isScanning.set(status.is_scanning);
+			isRobotRunning.set(status.robot_loop_state);
 		}
-
+	} catch (error) {
+		console.error('Connection issue detected, trying to reconnect...', error);
+		addToast('Connection lost, attempting to reconnect...', 'error', 3000);
+		resetVariable();
 	}
+};
 
-	const fetchRobotStatus = async () => {
-		try {
-			if ($isConnected && !data.isInLogin) {
-				const [ok, data] = await RequestHandler.authFetch('check-status', 'GET');
-				if (!ok) throw new Error('Failed to reach robot');
+// ----------------------------
+// Lifecycle hooks
+// ----------------------------
+onMount(() => {
+	statusInterval = setInterval(fetchRobotStatus, 3000);
+});
 
-				isLivestreaming.set(data.is_livestreaming);
-				isScanning.set(data.is_scanning);
-				isRobotRunning.set(data.robot_loop_state);
-			}
-		} catch (error) {
-			console.error('Connection issue detected, trying to reconnect...');
-			addToast('Connection lost, attempting to reconnect...', 'error', 3000);
-			connectToRobot();
-		}
-	};
-
-	onMount(() => {
-		statusInterval = setInterval(fetchRobotStatus, 3000);
-	});
-
-	onDestroy(() => {
-		clearInterval(statusInterval);
-	});
+onDestroy(() => {
+	clearInterval(statusInterval);
+});
 </script>
 
+<!-- ----------------------------
+Head for SEO
+---------------------------- -->
 <svelte:head>
 	<title>{data.title}</title>
 	<meta name="description" content={data.description} />
 </svelte:head>
+
 <svelte:body class:dark={data.isDarkMode} />
 
+<!-- ----------------------------
+Layout Content
+---------------------------- -->
 <Toast />
+
 <main class="bg-white pt-16 dark:bg-gray-800">
 	<Navigation user={data.user} />
 	{@render children()}

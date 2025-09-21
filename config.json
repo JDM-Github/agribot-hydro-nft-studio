@@ -1,0 +1,152 @@
+{
+  "detectedPlants": [
+    {
+      "key": "green oak lettuce",
+      "timestamp": "2025-09-21 21:46:01",
+      "disabled": false,
+      "willSprayEarly": true,
+      "disease": {
+        "alternaria": [
+          true,
+          true,
+          false,
+          false
+        ],
+        "anthracnose": [
+          false,
+          true,
+          true,
+          false
+        ],
+        "dark spot": [
+          true,
+          false,
+          false,
+          false
+        ],
+        "insect-damage": [
+          false,
+          false,
+          true,
+          true
+        ],
+        "leaf miner": [
+          true,
+          true,
+          false,
+          false
+        ],
+        "leaf spot": [
+          false,
+          false,
+          true,
+          true
+        ],
+        "powedery mildew": [
+          true,
+          true,
+          false,
+          false
+        ],
+        "sun deficient": [
+          false,
+          true,
+          false,
+          false
+        ],
+        "tip burn": [
+          false,
+          true,
+          true,
+          false
+        ]
+      },
+      "disease_time_spray": {
+        "alternaria": [
+          "03:00",
+          "22:00"
+        ],
+        "anthracnose": [
+          "03:00",
+          "22:00"
+        ],
+        "dark spot": [
+          "03:00",
+          "22:00"
+        ],
+        "insect-damage": [
+          "03:00",
+          "22:00"
+        ],
+        "leaf miner": [
+          "03:00",
+          "22:00"
+        ],
+        "leaf spot": [
+          "03:00",
+          "22:00"
+        ],
+        "powedery mildew": [
+          "03:00",
+          "22:00"
+        ],
+        "sun deficient": [
+          "03:00",
+          "22:00"
+        ],
+        "tip burn": [
+          "03:00",
+          "22:00"
+        ]
+      }
+    }
+  ],
+  "schedule": {
+    "frequency": "monthly",
+    "runs": [
+      {
+        "time": "06:00",
+        "upto": "07:00"
+      },
+      {
+        "time": "12:00",
+        "upto": "13:00"
+      },
+      {
+        "time": "18:00",
+        "upto": "19:00"
+      }
+    ],
+    "days": [
+      "Friday",
+      "Thursday",
+      "Wednesday"
+    ]
+  },
+  "sprays": {
+    "spray": [
+      "sdad",
+      "ar",
+      "asdasd",
+      "34234"
+    ],
+    "active": [
+      true,
+      true,
+      false,
+      true
+    ],
+    "duration": [
+      6,
+      2,
+      5,
+      2
+    ]
+  },
+  "objectDetection": "",
+  "stageClassification": "",
+  "diseaseSegmentation": "",
+  "objectDetectionConfidence": 0.7,
+  "stageClassificationConfidence": 0.3,
+  "diseaseSegmentationConfidence": 0.6
+}

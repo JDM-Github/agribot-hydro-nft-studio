@@ -29,7 +29,6 @@ function createWindow() {
 }
 
 contextMenu();
-
 function loadVite(port) {
 	mainWindow.loadURL(`http://localhost:${port}`).catch(() => {
 		setTimeout(() => loadVite(port), 200);
