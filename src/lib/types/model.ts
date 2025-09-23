@@ -18,18 +18,46 @@ export type Model = {
     /** Model version string (e.g., "v1.0.0") */
     version: string;
 
-    /** Overall accuracy of the model (0 to 1) */
-    accuracy: number;
+    /** Optional short description of the model */
+    description: string;
 
     /** Precision score of the model (0 to 1) */
-    precision: number;
+    precision: string;
 
     /** Recall score of the model (0 to 1) */
-    recall: number;
+    recall: string;
 
     /** Mean Average Precision at IoU=0.5 (0 to 1) */
-    mAP50: number;
+    mAP50: string;
 
     /** Mean Average Precision at IoU=0.5:0.95 (0 to 1) */
-    mAP50_95: number;
+    mAP50_95: string;
+
+    /** Top-1 accuracy (optional, -1 if not applicable) */
+    accuracy_top1: string;
+
+    /** Top-5 accuracy (optional, -1 if not applicable) */
+    accuracy_top5: string;
+};
+
+
+export type ModelArray = Model[];
+
+/** Dictionary of models keyed by version */
+export type TransformModel = {
+    [version: string]: {
+        description: string;
+
+        accuracy_top1: number;
+
+        accuracy_top5: number;
+
+        precision: number;
+
+        recall: number;
+
+        mAP50: number;
+
+        mAP50_95: number;
+    };
 };

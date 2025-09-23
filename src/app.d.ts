@@ -24,6 +24,7 @@ declare global {
 
 		interface Locals {
 			user: any | null;
+			auth: string | null;
 		}
 		// Future extensions can include:
 		// interface PageData { ... }

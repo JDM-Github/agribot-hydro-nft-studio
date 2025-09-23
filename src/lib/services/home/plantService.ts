@@ -12,8 +12,7 @@ import { get } from 'svelte/store';
 import { config } from '$services/home/configService';
 import { addToast, removeToast } from '$stores/toast';
 import RequestHandler from '$utils/request';
-import type { DetectedPlant } from '$lib/type';
-import { allPlants } from '$stores/plant';
+import type { DetectedPlant, PlantListTransformed } from '$lib/type';
 import { isLivestreaming } from '$stores/connection';
 
 /**
@@ -67,7 +66,7 @@ export async function removePlant(key: string) {
  * @param search - Search string to filter by name
  * @returns Filtered array of detected plants
  */
-export function filterDetectedPlants(plants: DetectedPlant[], search: string): DetectedPlant[] {
+export function filterDetectedPlants(plants: DetectedPlant[], allPlants: PlantListTransformed, search: string): DetectedPlant[] {
     return plants.filter((p) => {
         const name = allPlants[p.key]?.name?.toLowerCase() ?? '';
         return name.includes(search.trim().toLowerCase());

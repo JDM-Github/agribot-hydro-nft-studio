@@ -1,267 +1,165 @@
 <script lang="ts">
-	import { allPlants } from '$lib/stores/plant';
-	import RequestHandler from '$lib/utils/request';
-	import { onDestroy, onMount } from 'svelte';
-	import { currentLink, isScanning } from '$lib/stores/connection';
+/**
+ * @file Camera.svelte
+ * @description Manages the robot camera view for both desktop and mobile. Handles fetching
+ *              detected plant results and camera information on intervals. Integrates with
+ *              stores for plant data and utilities for robot scanner status.
+ * 
+ * @props
+ *   - detectedPlants: Writable<DetectedPlantArray> store of detected plants.
+ *   - showCamera: Boolean flag to toggle camera visibility.
+ *   - closeCamera: FunctionType to close the camera view.
+ * 
+ * @imports
+ *   - onMount, onDestroy: Svelte lifecycle hooks for managing intervals.
+ *   - Writable: Svelte store type.
+ *   - RequestHandler: Utility for authenticated API requests.
+ *   - CAMERA_INFO: Constant containing default camera configuration.
+ *   - CameraInfo: Type definition for camera information.
+ *   - DetectedPlantArray, FunctionType: Type definitions for props.
+ *   - LabelResultArray: Type definition for latest detection results.
+ *   - isRobotNotScanning, isRobotScannerBusy: Utilities for scanner state checks.
+ *   - Cameradesktop, Cameramobile: Components for rendering camera views.
+ * 
+ * @lifecycle
+ *   - onMount: Starts intervals for fetching results and camera info.
+ *   - onDestroy: Cleans up intervals on component unmount.
+ * 
+ * @intervals
+ *   - fetchResults: Every 1s, retrieves latest detected plant results.
+ *   - fetchCameraInfo: Every 100ms, retrieves and updates camera information.
+ * 
+ * @author      AGRIBOT Team
+ * @created     2025-09-22
+ * @lastUpdated 2025-09-22
+ */
 
-	export let detectedPlants;
-	export let showCamera = false;
-	export let closeCamera;
+// ----------------------------
+// Imports
+// ----------------------------
 
-	let latestResults: { label: string; timestamp: string }[] = [];
-	const fetchResults = async () => {
-		if (!$isScanning) return;
+// Svelte
+import { onMount, onDestroy } from 'svelte';
+import type { Writable } from 'svelte/store';
 
-		const [success, data] = await RequestHandler.authFetch('latest_results', 'GET');
-		if (!success) return;
+// Utils
+import RequestHandler from '$utils/request';
+import { isRobotNotScanning, isRobotScannerBusy } from '$utils/robotStatus';
 
-		latestResults = data;
-		let newPlant = [...$detectedPlants];
-		for (const result of latestResults) {
-			const exists = newPlant.some((plant) => plant.key === result.label);
+// Constants
+import { CAMERA_INFO } from '$constant/cameraInfo';
 
-			if (!exists && allPlants[result.label]) {
-				newPlant.push({
-					key: result.label,
-					timestamp: result.timestamp,
-					disabled: false,
-					disease: Object.fromEntries(allPlants[result.label].diseases.map((d) => [d.name, []])),
-					disease_time_spray: Object.fromEntries(
-						allPlants[result.label].diseases.map((d) => [d.name, ['03:00', '22:00']])
-					)
-					// newEntry.disease_time_spray[d.name] = ['03:00', '22:00'];
-				});
-			}
-		}
-		detectedPlants.set(newPlant);
-	};
+// Types
+import type { CameraInfo } from '$types/cameraInfo';
+import type { DetectedPlantArray, FunctionType, PlantList } from '$lib/type';
+import type { LabelResultArray } from '$types/labelResult';
 
-	let intervalId: NodeJS.Timeout;
-	let intervalId2: NodeJS.Timeout;
-	onMount(() => {
-		intervalId = setInterval(fetchResults, 1000);
-		intervalId2 = setInterval(fetchCameraInfo, 100);
-	});
-	onDestroy(() => {
-		clearInterval(intervalId);
-		clearInterval(intervalId2);
-	});
+// Components
+import Cameradesktop from '$routes/spray/cameradesktop.svelte';
+import Cameramobile from '$routes/spray/cameramobile.svelte';
 
-	let cameraInfo = {
-		status: 'false',
-		resolution: 'NOT SET',
-		fps: 0,
-		ip: 'NOT SET',
-		detectionConf: null
-	};
-	const fetchCameraInfo = async () => {
-		if (!$isScanning) {
-			cameraInfo = {
-				status: 'false',
-				resolution: 'NOT SET',
-				fps: 0,
-				ip: 'NOT SET',
-				detectionConf: null
-			};
-			return;
-		}
+// ----------------------------
+// Props
+// ----------------------------
+export let allPlants: PlantList;
+export let detectedPlants: Writable<DetectedPlantArray>;
+export let showCamera: boolean = false;
+export let closeCamera: FunctionType;
 
-		try {
-			const [cameraSuccess, cameraData] = await RequestHandler.authFetch('camera_info', 'GET');
-			let updatedInfo = {
-				status: 'false',
-				resolution: 'NOT SET',
-				fps: 0,
-				ip: cameraInfo.ip,
-				detectionConf: null
-			};
+// ----------------------------
+// Local state
+// ----------------------------
+let intervalId: NodeJS.Timeout;
+let intervalId2: NodeJS.Timeout;
+let cameraInfo: CameraInfo = CAMERA_INFO;
 
-			if (cameraSuccess && cameraData) {
-				updatedInfo = { ...updatedInfo, ...cameraData };
-			}
+// ----------------------------
+// Functions
+// ----------------------------
+const fetchResults = async () => {
+    if (isRobotScannerBusy() || isRobotNotScanning()) return;
 
-			if (!updatedInfo.ip || updatedInfo.ip === 'NOT SET') {
-				try {
-					const ipResponse = await fetch('https://api.ipify.org?format=json');
-					if (ipResponse.ok) {
-						const ipData = await ipResponse.json();
-						updatedInfo.ip = ipData.ip;
-					} else {
-						updatedInfo.ip = 'Unavailable';
-					}
-				} catch (err) {
-					console.warn('Failed to fetch public IP:', err);
-					updatedInfo.ip = 'Unavailable';
-				}
-			}
+    const [success, data] = await RequestHandler.authFetch('latest_results', 'GET');
+    if (!success) return;
 
-			cameraInfo = updatedInfo;
-		} catch (err) {
-			console.error('Error fetching camera info:', err);
-			cameraInfo = {
-				status: 'false',
-				resolution: 'NOT SET',
-				fps: 0,
-				ip: 'Unavailable',
-				detectionConf: null
-			};
-		}
-	};
+    const latestResults: LabelResultArray = data;
+    let newPlant = [...$detectedPlants];
+
+    for (const result of latestResults) {
+        const exists = newPlant.some((plant) => plant.key === result.label);
+        const plant = allPlants.find((p) => p.name === result.label);
+
+        if (!exists && plant) {
+            newPlant.push({
+                key: plant.name,
+                image: plant.image,
+                timestamp: result.timestamp,
+                disabled: false,
+                disease: Object.fromEntries(
+                    plant.diseases.map((d) => [d.name, []])
+                ),
+                disease_time_spray: Object.fromEntries(
+                    plant.diseases.map((d) => [d.name, ['03:00', '22:00']])
+                ),
+                willSprayEarly: false,
+            });
+        }
+    }
+    detectedPlants.set(newPlant);
+};
+
+
+const fetchCameraInfo = async () => {
+    if (isRobotScannerBusy() || isRobotNotScanning()) {
+        cameraInfo = CAMERA_INFO;
+        return;
+    }
+
+    try {
+        const [cameraSuccess, cameraData] = await RequestHandler.authFetch('camera_info', 'GET');
+        let updatedInfo = { ...CAMERA_INFO, ip: cameraInfo.ip };
+
+        if (cameraSuccess && cameraData) updatedInfo = { ...updatedInfo, ...cameraData };
+
+        // Fetch public IP if not set
+        if (!updatedInfo.ip || updatedInfo.ip === 'NOT SET') {
+            try {
+                const ipResponse = await fetch('https://api.ipify.org?format=json');
+                updatedInfo.ip = ipResponse.ok ? (await ipResponse.json()).ip : 'Unavailable';
+            } catch (err) {
+                console.warn('Failed to fetch public IP:', err);
+                updatedInfo.ip = 'Unavailable';
+            }
+        }
+
+        cameraInfo = updatedInfo;
+    } catch (err) {
+        console.error('Error fetching camera info:', err);
+        cameraInfo = CAMERA_INFO;
+    }
+};
+
+// ----------------------------
+// Lifecycle
+// ----------------------------
+onMount(() => {
+    intervalId = setInterval(fetchResults, 1000);
+    intervalId2 = setInterval(fetchCameraInfo, 100);
+});
+
+onDestroy(() => {
+    clearInterval(intervalId);
+    clearInterval(intervalId2);
+});
 </script>
 
-<div
-	class="hidden w-full transform overflow-hidden rounded-2xl bg-white shadow-lg duration-500 ease-out md:max-w-md md:flex-none lg:block dark:bg-gray-900"
->
-	<div
-		class="relative flex h-64 items-center justify-center overflow-hidden rounded-xl bg-gray-100 shadow-inner md:h-80 dark:bg-gray-800"
-	>
-		{#if $isScanning}
-			<img
-				src={`${$currentLink}/scan_feed`}
-				alt="Scanning Feed"
-				class="max-h-full max-w-full rounded-md border object-contain dark:border-gray-600"
-			/>
-		{:else}
-			<span class="flex items-center gap-2 text-base font-medium text-gray-700 dark:text-gray-300">
-				📷 Live Camera Feed
-			</span>
-		{/if}
-	</div>
 
-	<div class="space-y-4 divide-y divide-gray-100 p-4 dark:divide-gray-700">
-		<h3 class="flex items-center gap-2 text-lg font-bold text-gray-700 dark:text-gray-300">
-			<span class="text-green-500">🎥</span> Camera Information
-		</h3>
 
-		<ul class="space-y-2 pt-2 text-sm text-gray-600 dark:text-gray-400">
-			<li class="flex justify-between">
-				<span class="font-medium text-gray-500 dark:text-gray-300">URL:</span>
-				{$currentLink || "NOT CONNECTED"}
-			</li>
-			<li class="flex justify-between">
-				<span class="font-medium text-gray-500 dark:text-gray-300">Status:</span>
-				{#if cameraInfo.status === 'online'}
-					<span
-						class="inline-flex items-center gap-1 font-medium text-green-600 dark:text-green-400"
-						>● Online</span
-					>
-				{:else}
-					<span class="inline-flex items-center gap-1 font-medium text-red-600 dark:text-red-400"
-						>● Offline</span
-					>
-				{/if}
-			</li>
-			<li class="flex justify-between">
-				<span class="font-medium text-gray-500 dark:text-gray-300">Resolution:</span>
-				{cameraInfo.resolution}
-			</li>
-			<li class="flex justify-between">
-				<span class="font-medium text-gray-500 dark:text-gray-300">Frame Rate:</span>
-				{cameraInfo.fps} FPS
-			</li>
-			<li class="flex justify-between">
-				<span class="font-medium text-gray-500 dark:text-gray-300">Public IP:</span>
-				{cameraInfo.ip}
-			</li>
-			<li class="flex justify-between">
-				<span class="font-medium text-gray-500 dark:text-gray-300">Using Detection Confidence:</span
-				>
-				{cameraInfo.detectionConf ?? 'N/A'}
-			</li>
-		</ul>
-	</div>
-</div>
+<!-- --------------------------------------------------------------------------------------- -->
+<!-- --------------------------------------------------------------------------------------- -->
+<!-- --------------------------------------------------------------------------------------- -->
+<!-- --------------------------------------------------------------------------------------- -->
+<!-- --------------------------------------------------------------------------------------- -->
 
-<!-- MOBILE VIEW -->
-<div
-	class="fixed inset-0 z-40 bg-black/80 transition-opacity duration-500 ease-out lg:hidden"
-	class:opacity-0={!showCamera}
-	class:opacity-100={showCamera}
-	class:pointer-events-none={!showCamera}
-	class:pointer-events-auto={showCamera}
-></div>
-
-<div
-	class="fixed inset-0 z-40 bg-black/80 transition-opacity duration-500 ease-out lg:hidden"
-	class:opacity-0={!showCamera}
-	class:opacity-100={showCamera}
-	class:pointer-events-none={!showCamera}
-	class:pointer-events-auto={showCamera}
-></div>
-
-<div
-	class="fixed top-[80px] left-1/2 z-50 w-11/12 -translate-x-1/2 transform rounded-2xl bg-white shadow-lg transition-all duration-500 ease-out sm:block lg:hidden dark:bg-gray-900"
-	class:opacity-0={!showCamera}
-	class:opacity-100={showCamera}
-	class:translate-y-16={!showCamera}
-	class:translate-y-0={showCamera}
-	class:pointer-events-none={!showCamera}
-	class:pointer-events-auto={showCamera}
->
-	<!-- Camera Feed / Placeholder -->
-	<div
-		class="relative flex h-64 items-center justify-center rounded-xl bg-gray-100 shadow-inner dark:bg-gray-800"
-	>
-		{#if $isScanning}
-			<img
-				src={`${$currentLink}/scan_feed`}
-				alt="Scanning Feed"
-				class="h-auto w-full max-w-[90%] rounded-md border dark:border-gray-600"
-			/>
-		{:else}
-			<span class="flex items-center gap-2 text-base font-medium text-gray-700 dark:text-gray-300">
-				📷 Mobile Camera Feed
-			</span>
-		{/if}
-	</div>
-
-	<div class="space-y-4 p-4">
-		<h3 class="flex items-center gap-2 text-lg font-bold text-gray-700 dark:text-gray-300">
-			<span class="text-green-500">🎥</span> Camera Information
-		</h3>
-
-		<ul class="space-y-2 pt-2 text-sm text-gray-600 dark:text-gray-400">
-			<li class="flex justify-between">
-				<span class="font-medium text-gray-500 dark:text-gray-300">URL:</span>
-				{$currentLink}
-			</li>
-			<li class="flex justify-between">
-				<span class="font-medium text-gray-500 dark:text-gray-300">Status:</span>
-				{#if cameraInfo.status === 'online'}
-					<span
-						class="inline-flex items-center gap-1 font-medium text-green-600 dark:text-green-400"
-					>
-						● Online
-					</span>
-				{:else}
-					<span class="inline-flex items-center gap-1 font-medium text-red-600 dark:text-red-400">
-						● Offline
-					</span>
-				{/if}
-			</li>
-			<li class="flex justify-between">
-				<span class="font-medium text-gray-500 dark:text-gray-300">Resolution:</span>
-				{cameraInfo.resolution ?? 'N/A'}
-			</li>
-			<li class="flex justify-between">
-				<span class="font-medium text-gray-500 dark:text-gray-300">Frame Rate:</span>
-				{cameraInfo.fps ?? 'N/A'} FPS
-			</li>
-			<li class="flex justify-between">
-				<span class="font-medium text-gray-500 dark:text-gray-300">Public IP:</span>
-				{cameraInfo.ip ?? 'N/A'}
-			</li>
-			<li class="flex justify-between">
-				<span class="font-medium text-gray-500 dark:text-gray-300">Detection Confidence:</span>
-				{cameraInfo.detectionConf ?? 'N/A'}
-			</li>
-		</ul>
-
-		<button
-			class="flex w-full items-center justify-center rounded-xl bg-red-800 p-2 text-white shadow-lg transition hover:bg-red-700"
-			on:click={closeCamera}
-		>
-			Close Camera
-		</button>
-	</div>
-</div>
+<Cameradesktop cameraInfo={cameraInfo}/>
+<Cameramobile cameraInfo={cameraInfo} showCamera={showCamera} closeCamera={closeCamera}/>

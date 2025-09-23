@@ -11,6 +11,7 @@
 import type { Handle } from "@sveltejs/kit";
 import { JWT_SECRET } from "$env/static/private";
 import jwt from "jsonwebtoken";
+
 /**
  * Global handle function
  * 
@@ -21,23 +22,33 @@ import jwt from "jsonwebtoken";
  */
 export const handle: Handle = async ({ event, resolve }) => {
 	const token = event.cookies.get("session");
+	const robotToken = event.cookies.get("robot_session");
 
 	if (token) {
 		try {
-			// Verify and decode JWT
 			const decoded = jwt.verify(token, JWT_SECRET);
 			event.locals.user = decoded;
 		} catch (err: unknown) {
-			// Invalid or expired token
 			console.error("Invalid session token:", err);
 			event.cookies.delete("session", { path: "/" });
 			event.locals.user = null;
 		}
 	} else {
-		// No token found
 		event.locals.user = null;
 	}
 
-	// Continue request lifecycle
+	if (robotToken) {
+		try {
+			const decoded = jwt.verify(robotToken, JWT_SECRET);
+			event.locals.auth = decoded;
+		} catch (err) {
+			console.error("Invalid robot session:", err);
+			event.cookies.delete("robot_session", { path: "/" });
+			event.locals.auth = null;
+		}
+	} else {
+		event.locals.auth = null;
+	}
+
 	return resolve(event);
 };

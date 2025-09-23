@@ -23,6 +23,7 @@
 			"$class/*": ["src/lib/class/*"],
 			"$constant/*": ["src/lib/constant/*"],
 			"$services/*": ["src/lib/services/*"],
+			"$types/*": ["src/lib/types/*"],
 		}
 	}
 }

@@ -23,7 +23,8 @@ export default defineConfig({
 			$routes: path.resolve('./src/routes'),
 			$class: path.resolve('./src/lib/class'),
 			$constant: path.resolve('./src/lib/constant'),
-			$services: path.resolve('./src/lib/services')
+			$services: path.resolve('./src/lib/services'),
+			$types: path.resolve('./src/lib/types')
 		}
 	}
 });

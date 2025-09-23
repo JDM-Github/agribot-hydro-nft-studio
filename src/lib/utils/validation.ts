@@ -1,7 +1,7 @@
-import { allPlants } from '$stores/plant';
-import type { DetectedPlant, Schedule } from '$lib/type';
+import type { DetectedPlant, PlantListTransformed, Schedule, WritableModelArray } from '$lib/type';
 import { getTimestamp, addMinutes, isValid24HourTime, isValidTimestamp } from '$utils/time';
 import { VALID_DAYS, VALID_FREQUENCIES } from "$constant/index";
+import { get } from 'svelte/store';
 
 function normalizeSchedule(input: any): Schedule {
     const rawFrequency =
@@ -51,7 +51,13 @@ function normalizeSchedule(input: any): Schedule {
     return { frequency, runs, days };
 }
 
-export function validateAndNormalizeConfig(input: any): any {
+export function validateAndNormalizeConfig(
+    input: any,
+    allPlants: PlantListTransformed,
+    yoloObjectDetection: WritableModelArray,
+    yoloStageClassification: WritableModelArray,
+    maskRCNNSegmentation: WritableModelArray,
+): any {
     if (typeof input !== 'object' || input === null) {
         throw new Error('Invalid configuration: not an object');
     }
@@ -92,14 +98,26 @@ export function validateAndNormalizeConfig(input: any): any {
     };
 
     const schedule: Schedule = normalizeSchedule(input);
-    const objectDetection =
+    let objectDetection =
         typeof input.objectDetection === "string" ? input.objectDetection : "";
 
-    const stageClassification =
+    let stageClassification =
         typeof input.stageClassification === "string" ? input.stageClassification : "";
 
-    const diseaseSegmentation =
+    let diseaseSegmentation =
         typeof input.diseaseSegmentation === "string" ? input.diseaseSegmentation : "";
+    
+    objectDetection = objectDetection && objectDetection !== ""
+        ? objectDetection
+        : get(yoloObjectDetection)[0]?.version || "";
+
+    stageClassification = stageClassification && stageClassification !== ""
+        ? stageClassification
+        : get(yoloStageClassification)[0]?.version || "";
+
+    diseaseSegmentation = diseaseSegmentation && diseaseSegmentation !== ""
+        ? diseaseSegmentation
+        : get(maskRCNNSegmentation)[0]?.version || "";
 
     const normalizeConfidence = (val: any, def = 0.3) =>
         typeof val === 'number' && val >= 0 && val <= 1 ? val : def;
@@ -158,6 +176,7 @@ export function validateAndNormalizeConfig(input: any): any {
                     timestamp: isValidTimestamp(plant.timestamp)
                         ? plant.timestamp
                         : getTimestamp(),
+                    image: plant.image,
                     disabled: !!plant.disabled,
                     willSprayEarly: !!plant.willSprayEarly,
                     disease,
@@ -165,6 +184,8 @@ export function validateAndNormalizeConfig(input: any): any {
                 };
             })
         : [];
+    
+        
 
     return {
         sprays,

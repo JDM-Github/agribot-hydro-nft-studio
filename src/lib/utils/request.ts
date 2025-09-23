@@ -2,8 +2,10 @@ import { currentLink, robotName } from '$lib/stores/connection';
 import { get } from 'svelte/store';
 
 export default class RequestHandler {
-	static development = import.meta.env.MODE === 'development';
-	static baseURL = 'https://agribot-hydro-nft-admin.netlify.app';
+	static development = import.meta.env.VITE_MODE === 'development';
+	static baseURL = RequestHandler.development
+        ? 'http://localhost:8888'
+        : 'https://agribot-hydro-nft-admin.netlify.app';
 	static apiLink = '.netlify/functions/api';
 
 	static async customFetch(

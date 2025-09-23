@@ -15,7 +15,6 @@ import { get, writable, type Writable } from "svelte/store";
 import { config as newConfig } from "$stores/config";
 import type { DetectedPlant, ConfigType, Schedule, Spray, WritableNumber, WritableString } from "$lib/type";
 import { deepEqual } from "$utils/deepEqual";
-
 /**
  * Config class
  * 
@@ -115,16 +114,31 @@ class Config {
     /**
      * Download the current configuration as a JSON file.
      */
-    downloadConfig() {
+    async downloadConfig() {
         const config = this.getCurrentConfig();
-        const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
+
+        const res = await fetch('/api/image/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(config)
+        });
+
+        if (!res.ok) {
+            throw new Error('Failed to generate image');
+        }
+
+        const blob = await res.blob();
         const url = URL.createObjectURL(blob);
+
         const a = document.createElement("a");
         a.href = url;
-        a.download = "config.json";
+        a.download = `AGRIBOT_Config_${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
         a.click();
         URL.revokeObjectURL(url);
     }
+
 }
 
 export { Config };

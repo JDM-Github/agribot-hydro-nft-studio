@@ -1,66 +1,91 @@
 <script lang="ts">
 /**
  * @file +page.svelte
- * @description Main setup page logic for AGRIBOT. Handles configuration, plant management,
- *              robot control, and UI interactions. Uses reactive Svelte stores and services.
- *
+ * @description Main spray management page. Handles camera view, spraying setup,
+ *              plant detection list, configuration management, navigation guards,
+ *              and modal handling for plant selection and spraying actions.
+ * 
+ * @props
+ *   - data: Initial payload containing model data (YOLO, Mask R-CNN, etc.)
+ * 
+ * @imports
+ *   - beforeNavigate: SvelteKit navigation hook
+ *   - derived, writable, Readable: Svelte store utilities
+ *   - onMount, onDestroy: Svelte lifecycle functions
+ *   - Footer, PlantModal, ManuallyAddPlant, SetupSprayModal: Modal/UI components
+ *   - Camera, Scannedheader, SprayButton, Detectedplantlist, Stoprobot: Route components
+ *   - simpleMode, isRobotRunning, isLivestreaming, isScanning: Store states
+ *   - addToast: Toast notifications
+ *   - confirmBeforeLeave: Utility for guarded navigation
+ *   - configService: Config-related services (initiate, save, revert, download, upload)
+ *   - plantService: Plant-related services (disable, filter, remove)
+ *   - robotService: Robot control functions
+ *   - Types: DetectedPlant, DetectedPlantArray, Spray, Writable types
+ * 
+ * @localState
+ *   - searchPlant: Search query for detected plants
+ *   - isAlreadyInitialize: Ensures config initialization only once
+ *   - yoloObjectDetection, yoloStageClassification, maskRCNNSegmentation: Model stores
+ *   - showManualPlant, showCamera, showModal, showSprayModal: Modal visibility toggles
+ *   - selectedPlant, selectedPlantIndex: Currently selected plant info
+ *   - previousSprays: Backup of sprays before editing
+ *   - filteredDetectedPlantsStore: Derived store filtering plants by search query
+ * 
+ * @functions
+ *   - onSelectPlant: Handles selecting a detected plant, opening PlantModal
+ *   - openSprayModal: Opens spray setup modal, saving old configuration
+ *   - changeCamera: Toggles camera view
+ * 
+ * @navigation
+ *   - Adds beforeunload handler for unsaved changes
+ *   - Uses beforeNavigate to confirm before leaving if config, camera, or modals are active
+ * 
  * @author      AGRIBOT Team
- * @created     2025-04-21
- * @lastUpdated 2025-09-21
+ * @created     2025-09-22
+ * @lastUpdated 2025-09-22
  */
 
 // ----------------------------
-// SvelteKit navigation helpers
+// Imports
 // ----------------------------
+
+// SvelteKit navigation
 import { beforeNavigate } from '$app/navigation';
 
-// ----------------------------
-// Svelte core lifecycle & reactive state
-// ----------------------------
+// Svelte core
 import { derived, type Readable } from 'svelte/store';
 import { onMount, onDestroy } from 'svelte';
 import { get, writable } from 'svelte/store';
 
-// ----------------------------
-// Type definitions & classes
-// ----------------------------
+// Types
 import type {
 	DetectedPlant,
 	DetectedPlantArray,
+	PlantList,
+	PlantListTransformed,
 	Spray,
 	WritableBoolean,
 	WritableModelArray,
 	WritableString
 } from '$lib/type';
 
-// ----------------------------
-// UI Components
-// ----------------------------
+// Components
 import Footer from '$components/Footer.svelte';
-
-// Modal components for plant management
 import PlantModal from '$modal/PlantModal.svelte';
 import ManuallyAddPlant from '$modal/ManuallyAddPlant.svelte';
 import SetupSprayModal from '$modal/SetupSprayModal.svelte';
-
-// Spray page UI components
 import Camera from '$routes/spray/camera.svelte';
 import Scannedheader from '$routes/spray/scannedheader.svelte';
 import SprayButton from '$routes/spray/spraybuttons.svelte';
+import Detectedplantlist from '$routes/spray/detectedplantlist.svelte';
+import Stoprobot from '$routes/spray/stoprobot.svelte';
 
-// ----------------------------
-// Svelte stores
-// ----------------------------
-// Application mode
+// Stores
 import { simpleMode } from '$stores/mode';
-// Robot & livestream status
 import { isRobotRunning, isLivestreaming, isScanning } from '$stores/connection';
-// Toast/notification helpers
 import { addToast } from '$stores/toast';
 
-// ----------------------------
-// Utility functions / Services
-// ----------------------------
+// Utils & Services
 import { confirmBeforeLeave } from '$utils/navigation';
 import {
 	config,
@@ -70,69 +95,63 @@ import {
 	uploadConfig,
 	saveConfig
 } from '$services/home/configService.js';
-import { disablePlant, filterDetectedPlants, removePlant } from '$services/home/plantService.js';
+import {
+	disablePlant,
+	filterDetectedPlants,
+	removePlant
+} from '$services/home/plantService.js';
 import { controlRobot } from '$services/home/robotService.js';
-import Detectedplantlist from './spray/detectedplantlist.svelte';
-	import Stoprobot from './spray/stoprobot.svelte';
+import { transformPlantList } from '$root/lib/utils/transform.js';
 
 // ----------------------------
-// Props & reactive variables
+// Props
 // ----------------------------
 export let data;
 
-// Search term for filtering detected plants
+// ----------------------------
+// Stores & State
+// ----------------------------
 const searchPlant: WritableString = writable<string>('');
-
-// Initialization state to prevent double initialization
 const isAlreadyInitialize: WritableBoolean = writable<boolean>(false);
 
-// Model arrays from server data
 const yoloObjectDetection: WritableModelArray = writable(data.models.yoloobjectdetection);
 const yoloStageClassification: WritableModelArray = writable(data.models.yolostageclassification);
 const maskRCNNSegmentation: WritableModelArray = writable(data.models.maskrcnnsegmentation);
+const allPlants: PlantList = data.plants;
+const allPlantsTransformed: PlantListTransformed = transformPlantList(data.plants);
 
-// UI state flags
 let showManualPlant: boolean = false;
 let showCamera: boolean = false;
 let showModal: boolean = false;
 let showSprayModal: boolean = false;
 
-// Currently selected plant info
 let selectedPlantIndex: number = -1;
 let selectedPlant: DetectedPlant | null = null;
 let previousSprays: Spray | null = null;
 
-// ----------------------------
-// Derived & reactive stores
-// ----------------------------
-// Filtered plants based on search term and detected plants
+// Derived store for filtering detected plants
 const filteredDetectedPlantsStore: Readable<DetectedPlantArray> = derived(
 	[config.detectedPlants, searchPlant],
-	([$detectedPlants, $searchPlant]) => filterDetectedPlants($detectedPlants, $searchPlant)
+	([$detectedPlants, $searchPlant]) => filterDetectedPlants($detectedPlants, allPlantsTransformed, $searchPlant)
 );
 
 // ----------------------------
-// Lifecycle hooks
+// Lifecycle
 // ----------------------------
 onMount(() => {
-	// Initialize configuration from localStorage
-	initiateConfig(isAlreadyInitialize);
-
-	// Warn user if trying to close/refresh page with unsaved changes
+	initiateConfig(isAlreadyInitialize, yoloObjectDetection, yoloStageClassification, maskRCNNSegmentation);
 	const handler = (event: BeforeUnloadEvent) => {
 		if (config.isDirty() || $isScanning || showSprayModal || showManualPlant) {
-			event.preventDefault();
+		event.preventDefault();
 		}
 	};
-
 	window.addEventListener('beforeunload', handler);
 	onDestroy(() => window.removeEventListener('beforeunload', handler));
 });
 
 // ----------------------------
-// Navigation guards
+// Navigation Guards
 // ----------------------------
-// Prompt user before leaving page if certain conditions are met
 beforeNavigate((navigation) => {
 	if (confirmBeforeLeave(config.isDirty(), 'You have unsaved changes. Leave anyway?', navigation)) return;
 	if (confirmBeforeLeave($isScanning, 'Camera is open. Close it before leaving?', navigation)) return;
@@ -141,15 +160,11 @@ beforeNavigate((navigation) => {
 });
 
 // ----------------------------
-// Event handlers / UI functions
+// Methods
 // ----------------------------
-
 /**
  * Handle selecting a plant from the list.
  * Opens the PlantModal unless livestream is active.
- *
- * @param plant - The detected plant object that was selected
- * @param index - Index of the selected plant in the list
  */
 function onSelectPlant(plant: DetectedPlant, index: number) {
 	if ($isLivestreaming !== 'Stopped') {
@@ -165,101 +180,108 @@ function onSelectPlant(plant: DetectedPlant, index: number) {
  * Open spray setup modal and store previous spray configuration.
  */
 function openSprayModal() {
-	previousSprays = {
-		spray: [...get(config.sprays).spray],
-		active: [...get(config.sprays).active],
-		duration: [...get(config.sprays).duration]
-	};
-	showSprayModal = true;
+    previousSprays = {
+        spray: [...get(config.sprays).spray],
+        active: [...get(config.sprays).active],
+        duration: [...get(config.sprays).duration]
+    };
+    showSprayModal = true;
 }
 
 /**
- * Toggle camera display
- * @param camera - true to show, false to hide
+ * Toggle camera display.
  */
 function changeCamera(camera: boolean) {
-	showCamera = camera;
+    showCamera = camera;
 }
 </script>
 
+
+
+<!-- --------------------------------------------------------------------------------------- -->
+<!-- --------------------------------------------------------------------------------------- -->
+<!-- --------------------------------------------------------------------------------------- -->
+<!-- --------------------------------------------------------------------------------------- -->
+<!-- --------------------------------------------------------------------------------------- -->
+
 {#if $isRobotRunning != 'Stopped'}
-	<!-- Display stop robot UI if robot is running -->
-	<Stoprobot />
+    <Stoprobot />
 {:else}
-	<!-- Main spray dashboard layout -->
-	<div class="relative flex min-h-[calc(100vh-95px)] flex-col bg-gray-200 p-4 ease-out lg:px-16 dark:bg-gray-700">
-		<div
-			class="relative z-10 mb-4 flex flex-col gap-4 md:flex-row"
-			class:w-6xl={$simpleMode}
-			class:mx-auto={$simpleMode}
-		>
-			{#if !$simpleMode}
-				<!-- Camera view -->
-				<Camera
-					detectedPlants={config.detectedPlants}
-					{showCamera}
-					closeCamera={() => changeCamera(false)}
-				/>
-			{/if}
-			<div class="w-full rounded-xl bg-white p-4 shadow-lg md:flex-1 dark:bg-gray-900">
-				<!-- Header with search and revert config -->
-				<Scannedheader
-					{searchPlant}
-					{revertConfig}
-				/>
-				<div
-					class="mx-2 max-h-[250px] space-y-2 overflow-y-auto rounded-xl border border-gray-200 bg-gray-100 p-2 md:max-h-[400px] dark:border-gray-700 dark:bg-gray-800"
-				>
-					<!-- Detected plants list -->
-					<Detectedplantlist
-						plants={$filteredDetectedPlantsStore}
-						onSelectPlant={onSelectPlant}
-					/>
-				</div>
+    <div class="relative flex min-h-[calc(100vh-95px)] flex-col bg-gray-200 p-4 ease-out lg:px-16 dark:bg-gray-700">
+        <div
+            class="relative z-10 mb-4 flex flex-col gap-4 md:flex-row"
+            class:w-6xl={$simpleMode}
+            class:mx-auto={$simpleMode}
+        >
+            {#if !$simpleMode}
+                <Camera
+                    allPlants={allPlants}
+                    detectedPlants={config.detectedPlants}
+                    {showCamera}
+                    closeCamera={() => changeCamera(false)}
+                />
+            {/if}
+            <div class="w-full rounded-xl bg-white p-4 shadow-lg md:flex-1 dark:bg-gray-900">
+                <Scannedheader
+                    {searchPlant}
+                    {revertConfig}
+                />
+                <div
+                    class="mx-2 max-h-[250px] space-y-2 overflow-y-auto rounded-xl border border-gray-200 bg-gray-100 p-2 md:max-h-[400px] dark:border-gray-700 dark:bg-gray-800"
+                >
+                    <Detectedplantlist
+                        plants={$filteredDetectedPlantsStore}
+                        onSelectPlant={onSelectPlant}
+                    />
+                </div>
 
-				<!-- Spray control panel -->
-				<SprayButton
-					{controlRobot}
-					openSprayModal={openSprayModal}
-					openCamera={() => changeCamera(true)}
-					{config}
-					{yoloObjectDetection}
-					{yoloStageClassification}
-					{maskRCNNSegmentation}
-					saveConfig={() => saveConfig(data)}
-					{downloadConfig}
-					{uploadConfig}
-					openManualPlant={() => (showManualPlant = true)}
-				/>
-			</div>
-		</div>
-	</div>
+                <SprayButton
+                    {controlRobot}
+                    openSprayModal={openSprayModal}
+                    openCamera={() => changeCamera(true)}
+                    {config}
+                    {yoloObjectDetection}
+                    {yoloStageClassification}
+                    {maskRCNNSegmentation}
+                    saveConfig={() => saveConfig(data)}
+                    {downloadConfig}
+                    uploadConfig={() => uploadConfig(
+                        allPlantsTransformed,
+                        yoloObjectDetection,
+                        yoloStageClassification,
+                        maskRCNNSegmentation,
+                    )}
+                    openManualPlant={() => (showManualPlant = true)}
+                />
+            </div>
+        </div>
+    </div>
 
-	<!-- Plant detail modal -->
-	<PlantModal
-		{removePlant}
-		disabledPlant={() => disablePlant(selectedPlantIndex)}
-		{selectedPlant}
-		slots={get(config.sprays).spray}
-		bind:showModal
-		closeModal={() => (showModal = false)}
-	/>
+    <PlantModal
+        {removePlant}
+        allPlantsTransformed={allPlantsTransformed}
+        disabledPlant={() => disablePlant(selectedPlantIndex)}
+        {selectedPlant}
+        slots={config.sprays}
+        bind:showModal
+        closeModal={() => (showModal = false)}
+    />
 
-	<!-- Spray setup modal -->
-	{#if previousSprays !== null}
-		<SetupSprayModal
-			bind:showSprayModal
-			closeModal={() => (showSprayModal = false)}
-			sprays={config.sprays}
-			{previousSprays}
-		/>
-	{/if}
+    {#if previousSprays !== null}
+        <SetupSprayModal
+            bind:showSprayModal
+            closeModal={() => (showSprayModal = false)}
+            sprays={config.sprays}
+            {previousSprays}
+        />
+    {/if}
 
-	<!-- Manual plant addition modal -->
-	<ManuallyAddPlant
-		detectedPlants={config.detectedPlants}
-		showModal={showManualPlant}
-		closeModal={() => (showManualPlant = false)}
-	/>
+    <ManuallyAddPlant
+        allPlants={allPlants}
+        allPlantsTransformed={allPlantsTransformed}
+        detectedPlants={config.detectedPlants}
+        showModal={showManualPlant}
+        closeModal={() => (showManualPlant = false)}
+    />
 {/if}
 <Footer />

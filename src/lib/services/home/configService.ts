@@ -13,9 +13,10 @@ import { Config } from '$class/config';
 import RequestHandler from '$utils/request';
 import { addToast, confirmToast, removeToast } from '$stores/toast';
 import { validateAndNormalizeConfig } from '$utils/validation';
-import type { WritableBoolean } from '$lib/type';
+import type { PlantListTransformed, WritableBoolean, WritableModelArray } from '$lib/type';
 import { get } from 'svelte/store';
 import { isLivestreaming } from '$lib/stores/connection';
+import { ImageWithJSON } from '$class/imageJson';
 
 /** Shared configuration instance */
 export const config: Config = new Config();
@@ -24,14 +25,32 @@ export const config: Config = new Config();
  * Initialize configuration from localStorage if not already initialized.
  * @param isAlreadyInitialize - Writable boolean flag to prevent multiple initializations
  */
-export function initiateConfig(isAlreadyInitialize: WritableBoolean) {
+export function initiateConfig(
+    isAlreadyInitialize: WritableBoolean,
+    yoloObjectDetection: WritableModelArray,
+    yoloStageClassification: WritableModelArray,
+    maskRCNNSegmentation: WritableModelArray,
+) {
     if (!get(isAlreadyInitialize)) {
         try {
             isAlreadyInitialize.set(true);
             const stored = localStorage.getItem('userConfig');
             if (stored) {
                 const parsed = JSON.parse(stored);
+                parsed.objectDetection = parsed.objectDetection && parsed.objectDetection !== ""
+                    ? parsed.objectDetection
+                    : get(yoloObjectDetection)[0]?.version || "";
+
+                parsed.stageClassification = parsed.stageClassification && parsed.stageClassification !== ""
+                    ? parsed.stageClassification
+                    : get(yoloStageClassification)[0]?.version || "";
+
+                parsed.diseaseSegmentation = parsed.diseaseSegmentation && parsed.diseaseSegmentation !== ""
+                    ? parsed.diseaseSegmentation
+                    : get(maskRCNNSegmentation)[0]?.version || "";
+
                 config.applyConfig(parsed);
+                config.saveConfig();
                 addToast('Loaded configuration from localStorage.', 'info', 3000);
             }
         } catch (err) {
@@ -54,15 +73,22 @@ export async function revertConfig() {
 /**
  * Download the current configuration as a JSON file.
  */
-export function downloadConfig() {
-    config.downloadConfig();
+export async function downloadConfig() {
+    const toastId = addToast('Downloading configuration...', 'loading');
+    await config.downloadConfig();
+    removeToast(toastId);
     addToast('Configuration downloaded successfully.', 'success', 3000);
 }
 
 /**
- * Upload a configuration from a JSON file, validate it, and apply it.
+ * Upload a configuration from a PNG image, validate it, and apply it.
  */
-export function uploadConfig() {
+export function uploadConfig(
+    allPlants: PlantListTransformed,
+    yoloObjectDetection: WritableModelArray,
+    yoloStageClassification: WritableModelArray,
+    maskRCNNSegmentation: WritableModelArray,
+) {
     if (get(isLivestreaming) !== 'Stopped') {
         addToast('Action unavailable while livestreaming.', 'error', 3000);
         return;
@@ -70,25 +96,37 @@ export function uploadConfig() {
 
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'application/json';
+    input.accept = 'image/png';
 
-    input.onchange = (event: any) => {
+    input.onchange = async (event: any) => {
         const file = event.target.files[0];
         if (!file) return;
 
         const reader = new FileReader();
         reader.onload = (e: any) => {
             try {
-                const parsed = JSON.parse(e.target.result as string);
-                const validated = validateAndNormalizeConfig(parsed);
+                const arrayBuffer = e.target.result as ArrayBuffer;
+                const buffer = new Uint8Array(arrayBuffer);
+
+                const parsed = ImageWithJSON.readImageBuffer(buffer);
+                if (!parsed) throw new Error("No config data found in PNG");
+
+                const validated = validateAndNormalizeConfig(
+                    parsed,
+                    allPlants,
+                    yoloObjectDetection,
+                    yoloStageClassification,
+                    maskRCNNSegmentation,
+                );
                 config.applyConfig(validated);
-                addToast('Configuration loaded successfully.', 'success', 3000);
+
+                addToast('Configuration loaded successfully from image.', 'success', 3000);
             } catch (err) {
-                addToast('Invalid configuration file.', 'error', 3000);
+                addToast('Invalid configuration image.', 'error', 3000);
                 console.error('uploadConfig error:', err);
             }
         };
-        reader.readAsText(file);
+        reader.readAsArrayBuffer(file);
     };
 
     input.click();
@@ -121,6 +159,7 @@ export async function saveConfig(data: any) {
         removeToast(toastId);
 
         if (response.success) {
+            config.saveConfig();
             const [success, _] = await RequestHandler.authFetch('update-config', 'POST', {
                 config: currentConfig
             });

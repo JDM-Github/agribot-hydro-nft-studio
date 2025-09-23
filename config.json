@@ -143,9 +143,9 @@
       2
     ]
   },
-  "objectDetection": "",
+  "objectDetection": "Model1",
   "stageClassification": "",
-  "diseaseSegmentation": "",
+  "diseaseSegmentation": "Model1",
   "objectDetectionConfidence": 0.7,
   "stageClassificationConfidence": 0.3,
   "diseaseSegmentationConfidence": 0.6

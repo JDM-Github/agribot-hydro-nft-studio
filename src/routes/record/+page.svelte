@@ -175,9 +175,7 @@
 				{#each $paginatedRecords as record, index}
 					<div class="flex flex-col items-center">
 						<button
-							class="group relative flex h-[100px] w-[100px] cursor-pointer items-center justify-center rounded-3xl
-					   bg-gray-200 hover:bg-gray-300 sm:h-[120px] sm:w-[120px]
-					   md:h-[140px] md:w-[140px] lg:h-[120px] lg:w-[160px] dark:bg-gray-800 dark:hover:bg-gray-700"
+							class="group relative flex h-[100px] w-[100px] cursor-pointer items-center justify-center rounded-3xl bg-gray-200 hover:bg-gray-300 sm:h-[120px] sm:w-[120px] md:h-[140px] md:w-[140px] lg:h-[120px] lg:w-[160px] dark:bg-gray-800 dark:hover:bg-gray-700"
 							style="animation-delay: {index * 50}ms;"
 							aria-label="but"
 							on:click={() => readMore(record.slug)}
@@ -189,10 +187,7 @@
 								viewBox="0 0 24 24"
 								stroke-width="1.5"
 								stroke="currentColor"
-								class="h-16 w-16 text-green-300 transition-colors
-						   duration-300 group-hover:text-green-600
-						   sm:h-20 sm:w-20
-						   md:h-24 md:w-24 dark:text-green-300 dark:group-hover:text-green-400"
+								class="h-16 w-16 text-green-300 transition-colors duration-300 group-hover:text-green-600 sm:h-20 sm:w-20 md:h-24 md:w-24 dark:text-green-300 dark:group-hover:text-green-400"
 							>
 								<path
 									stroke-linecap="round"

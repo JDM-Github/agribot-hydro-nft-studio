@@ -1,33 +1,52 @@
 <script lang="ts">
 /**
  * @file +layout.svelte
- * @description Main layout component for AGRI-BOT Studio.
- * 				Handles navigation, toast notifications, and live robot connection/status updates.
+ * @description Root layout component for the AGRIBOT application.
+ *              Handles global navigation, toast notifications, and robot connection
+ *              status monitoring. Provides context for child routes.
  * 
- * @author  AGRIBOT Team
- * @created 2025-09-21
- * @lastUpdated 2025-09-21
-*/
+ * @props
+ *   - data: Layout data object (title, description, user info, dark mode, etc.).
+ *   - children: Render function for nested routes.
+ * 
+ * @imports
+ *   - app.css: Global stylesheet for the application.
+ *   - Navigation: Top navigation component.
+ *   - Toast: Global toast notification container.
+ *   - addToast: Store action for displaying toast messages.
+ *   - isConnected, isRobotRunning, isLivestreaming, isScanning, resetVariable:
+ *       Connection state stores and reset function.
+ *   - RequestHandler: Utility for authenticated API requests.
+ *   - onMount, onDestroy: Svelte lifecycle functions.
+ * 
+ * @localState
+ *   - statusInterval: Interval handler for polling robot status.
+ * 
+ * @functions
+ *   - fetchRobotStatus: Periodically checks robot status via API and updates stores.
+ * 
+ * @lifecycle
+ *   - onMount: Starts polling for robot status every 3s.
+ *   - onDestroy: Clears polling interval on component teardown.
+ * 
+ * @author      AGRIBOT Team
+ * @created     2025-09-22
+ * @lastUpdated 2025-09-22
+ */
 
 // ----------------------------
-// Global Styles
+// Imports
 // ----------------------------
 import '$root/app.css';
 
-// ----------------------------
-// Svelte core
-// ----------------------------
+// Svelte lifecycle
 import { onMount, onDestroy } from 'svelte';
 
-// ----------------------------
-// UI Components
-// ----------------------------
+// Components
 import Navigation from '$components/Navigation.svelte';
 import Toast from '$components/ToastContainer.svelte';
 
-// ----------------------------
-// Svelte Stores
-// ----------------------------
+// Stores
 import { addToast } from '$stores/toast';
 import {
 	isConnected,
@@ -35,33 +54,32 @@ import {
 	isLivestreaming,
 	isScanning,
 	resetVariable
-
 } from '$stores/connection';
 
-// ----------------------------
-// Utilities
-// ----------------------------
+// Utils
 import RequestHandler from '$utils/request';
 
 // ----------------------------
-// Props & state
+// Props
 // ----------------------------
 let { data, children } = $props();
+
+// ----------------------------
+// Local State
+// ----------------------------
 let statusInterval: any;
 
 // ----------------------------
-// Functions
+// Methods
 // ----------------------------
-
 /**
- * Fetch current robot status periodically
+ * Fetch the latest robot status from backend and update stores.
  */
 const fetchRobotStatus = async () => {
 	try {
 		if (data.isInLogin) {
 			resetVariable();
-		}
-		else if ($isConnected) {
+		} else if ($isConnected) {
 			const [ok, status] = await RequestHandler.authFetch('check-status', 'GET');
 			if (!ok) throw new Error('Failed to reach robot');
 
@@ -77,7 +95,7 @@ const fetchRobotStatus = async () => {
 };
 
 // ----------------------------
-// Lifecycle hooks
+// Lifecycle
 // ----------------------------
 onMount(() => {
 	statusInterval = setInterval(fetchRobotStatus, 3000);
@@ -88,9 +106,7 @@ onDestroy(() => {
 });
 </script>
 
-<!-- ----------------------------
-Head for SEO
----------------------------- -->
+
 <svelte:head>
 	<title>{data.title}</title>
 	<meta name="description" content={data.description} />
@@ -98,9 +114,6 @@ Head for SEO
 
 <svelte:body class:dark={data.isDarkMode} />
 
-<!-- ----------------------------
-Layout Content
----------------------------- -->
 <Toast />
 
 <main class="bg-white pt-16 dark:bg-gray-800">

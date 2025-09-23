@@ -36,6 +36,7 @@ export type DetectedPlant = {
 	timestamp: string;                           // Detection time
 	disabled: boolean;                           // Flag to ignore this plant in processing
 	willSprayEarly: boolean;                     // Indicates if the plant should be sprayed earlier than scheduled
+	image?: string;
 	disease: {
 		[key: string]: boolean[];                // Disease classification results by model key
 	};
@@ -94,5 +95,25 @@ export type ConfigType = {
 	diseaseSegmentationConfidence: number;       // Confidence threshold for disease segmentation
 };
 
+export type FunctionType = () => void;
 
-export type FunctionType = () => {};
+export interface Disease {
+	name: string;
+	description: string;
+	image: string;
+	sprays: string[];
+}
+
+// one plant
+export interface Plant {
+	name: string;
+	image: string;
+	description: string;
+	diseases: Disease[];
+}
+
+export type PlantList = Plant[];
+
+export type PlantListTransformed = {
+	[key: string]: Plant
+};

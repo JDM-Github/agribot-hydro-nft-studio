@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { getTimestamp } from '$utils/time';
-	import { allDiseases, allPlants } from '$lib/stores/plant';
 	import type { Writable } from 'svelte/store';
 	import { get } from 'svelte/store';
+	import type { PlantListTransformed, PlantList } from '$lib/type';
 
+	export let allPlants: PlantList;
+	export let allPlantsTransformed: PlantListTransformed;
 	export let showModal: boolean;
 	export let closeModal: () => void;
 	export let detectedPlants: Writable<
@@ -19,19 +21,20 @@
 	>;
 
 	function addPlantToDetected(key: string) {
-		const plant = allPlants[key];
+		const plant = allPlantsTransformed[key];
 		if (!plant) return;
 		const newEntry: any = {
 			key,
+			image: plant.image,
 			timestamp: getTimestamp(),
 			disabled: false,
 			willSprayEarly: false,
 			disease: {},
 			disease_time_spray: {}
 		};
-		Object.keys(allDiseases).forEach((diseaseKey) => {
-			newEntry.disease[diseaseKey] = Array(4).fill(false);
-			newEntry.disease_time_spray[diseaseKey] = ['03:00', '22:00'];
+		allPlantsTransformed[key].diseases.forEach((disease: any) => {
+			newEntry.disease[disease.name] = Array(4).fill(false);
+			newEntry.disease_time_spray[disease.name] = ['03:00', '22:00'];
 		});
 		detectedPlants.update((curr) => [...curr, newEntry]);
 	}
@@ -51,7 +54,7 @@
 			<h2 class="mb-5 text-xl font-semibold text-gray-800 dark:text-white">Add Plant</h2>
 
 			<div class="grid max-h-[65vh] gap-5 overflow-y-auto">
-				{#each Object.entries(allPlants) as [key, plant]}
+				{#each allPlants as plant}
 					<div
 						class="flex flex-col gap-3 rounded-md border border-gray-300 p-3 dark:border-gray-700"
 					>
@@ -59,19 +62,18 @@
 							<img src={plant.image} alt={plant.name} class="h-20 w-20 rounded object-cover" />
 							<div class="flex-1">
 								<p class="text-base font-medium text-gray-700 dark:text-gray-200">{plant.name}</p>
-								<p class="text-sm text-gray-500 dark:text-gray-400">{plant.type}</p>
 							</div>
-							{#if $detectedPlants.some((p: any) => p.key === key)}
+							{#if $detectedPlants.some((p: any) => p.key === plant.name)}
 								<button
 									class="rounded bg-red-500 px-4 py-2 text-sm text-white shadow hover:bg-red-600"
-									on:click={() => removePlantFromDetected(key)}
+									on:click={() => removePlantFromDetected(plant.name)}
 								>
 									Remove
 								</button>
 							{:else}
 								<button
 									class="rounded bg-green-500 px-4 py-2 text-sm text-white shadow hover:bg-green-600"
-									on:click={() => addPlantToDetected(key)}
+									on:click={() => addPlantToDetected(plant.name)}
 								>
 									Add
 								</button>
