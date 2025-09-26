@@ -14,6 +14,7 @@
 		{ name: 'LIVE', path: '/live' },
 		{ name: 'RECORDS', path: '/record' },
 		{ name: 'LOGS', path: '/logs' },
+		{ name: 'NOTIFICATIONS', path: '/notification' },
 		{ name: 'ROBOT', path: '/robot' },
 		{ name: 'MANAGE WIFI', path: '/wifi' }
 	];
@@ -148,6 +149,16 @@
 			{:else}
 			<li>
 					<button
+						on:click={() => changePath('/talescale')}
+						class="cursor-pointer font-medium hover:text-green-500 {page.url.pathname === '/talescale'
+							? 'font-bold text-green-600'
+							: 'text-gray-800 dark:text-gray-300'}"
+					>
+						HOME
+					</button>
+				</li>
+			<li>
+					<button
 						on:click={() => changePath('/')}
 						class="cursor-pointer font-medium hover:text-green-500 {page.url.pathname === '/'
 							? 'font-bold text-green-600'
@@ -164,6 +175,16 @@
 							: 'text-gray-800 dark:text-gray-300'}"
 					>
 						RECORDS
+					</button>
+				</li>
+				<li>
+					<button
+						on:click={() => changePath('/notification')}
+						class="cursor-pointer font-medium hover:text-green-500 {page.url.pathname === '/notification'
+							? 'font-bold text-green-600'
+							: 'text-gray-800 dark:text-gray-300'}"
+					>
+						NOTIFICATIONS
 					</button>
 				</li>
 			{/if}

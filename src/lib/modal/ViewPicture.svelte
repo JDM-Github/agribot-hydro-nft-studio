@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { capitalize } from '$lib/helpers/utility';
 	import { addToast, removeToast } from '$lib/stores/toast';
+	import { capitalize } from '$utils/string';
 
 	export let modalOpen;
 	export let closeModal: () => void;

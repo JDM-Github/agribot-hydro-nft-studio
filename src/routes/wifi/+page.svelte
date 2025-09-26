@@ -1,5 +1,4 @@
 <script lang="ts">
-
 	import Footer from "$components/Footer.svelte";
 	import NotConnected from "$components/NotConnected.svelte";
 	import { isConnected } from "$stores/connection";
@@ -8,6 +7,7 @@
 	import Selectedssid from "./selectedssid.svelte";
 	import Wifiheader from "./wifiheader.svelte";
 
+	export let data;
 	let showPassword: boolean = false;
 	const wifi = new WifiManager();
 	$: if (wifi.priority > 10) wifi.priority = 10;
@@ -15,7 +15,7 @@
 </script>
 
 {#if !$isConnected}
-	<NotConnected />
+	<NotConnected user={data.user}/>
 {:else}
 	<main
 		class="relative flex min-h-[calc(100vh-95px)] flex-col bg-gradient-to-b from-gray-200 to-gray-300 p-4 dark:from-gray-700 dark:to-gray-800"

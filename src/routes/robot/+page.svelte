@@ -13,6 +13,7 @@
 	import { addToast, removeToast } from '$lib/stores/toast';
 	import NotConnected from '$lib/components/NotConnected.svelte';
 
+	export let data;
 	let enableWASDinControl = false;
 	let scanning = false;
 	
@@ -63,7 +64,7 @@
 </script>
 
 {#if !$isConnected}
-	<NotConnected />
+	<NotConnected user={data.user}/>
 {:else}
 	<div
 		class="relative flex min-h-[calc(100vh-95px)] flex-col bg-gray-200 p-4 ease-out lg:px-16 dark:bg-gray-700"

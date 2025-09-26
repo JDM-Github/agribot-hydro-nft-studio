@@ -22,8 +22,6 @@ import jwt from "jsonwebtoken";
  */
 export const handle: Handle = async ({ event, resolve }) => {
 	const token = event.cookies.get("session");
-	const robotToken = event.cookies.get("robot_session");
-
 	if (token) {
 		try {
 			const decoded = jwt.verify(token, JWT_SECRET);
@@ -35,19 +33,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	} else {
 		event.locals.user = null;
-	}
-
-	if (robotToken) {
-		try {
-			const decoded = jwt.verify(robotToken, JWT_SECRET);
-			event.locals.auth = decoded;
-		} catch (err) {
-			console.error("Invalid robot session:", err);
-			event.cookies.delete("robot_session", { path: "/" });
-			event.locals.auth = null;
-		}
-	} else {
-		event.locals.auth = null;
 	}
 
 	return resolve(event);

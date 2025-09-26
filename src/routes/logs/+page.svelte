@@ -5,7 +5,7 @@
 	import { simpleMode } from '$lib/stores/mode';
 	import NotConnected from '$lib/components/NotConnected.svelte';
 	import { isConnected } from '$lib/stores/connection';
-
+	export let data;
 	let logs: string[] = [];
 	let filteredLogs: string[] = [];
 	let intervalId: any;
@@ -222,7 +222,7 @@
 </script>
 
 {#if !$isConnected}
-	<NotConnected />
+	<NotConnected user={data.user}/>
 {:else}
 	<div
 		class="relative flex min-h-[calc(100vh-95px)] flex-col bg-gray-200 p-4 ease-out lg:px-16 dark:bg-gray-700"

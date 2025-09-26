@@ -3,7 +3,7 @@ import { CLOUDINARY_NAME, CLOUDINARY_API, CLOUDINARY_SECRET } from '$env/static/
 cloudinary.config({
 	cloud_name: CLOUDINARY_NAME,
 	api_key: CLOUDINARY_API,
-	api_secret: CLOUDINARY_SECRET,
+	api_secret: CLOUDINARY_SECRET,	
 	secure: true
 });
 

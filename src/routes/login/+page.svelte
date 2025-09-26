@@ -6,6 +6,7 @@
 	import { addToast, removeToast } from '$lib/stores/toast';
 	import { Eye, EyeOff } from 'lucide-svelte';
 	import Loginform from './loginform.svelte';
+	import RequestHandler from '$root/lib/utils/request';
 
 	let openTerms = false;
 	let isRegister = false;
@@ -21,6 +22,10 @@
 	let showVerification = false;
 	let showPassword = false;
 	let showConfirmPassword = false;
+	let verificationCode = '';
+
+	let isEmailSend = false;
+
 	const registerSubmit = async (e: Event) => {
 		e.preventDefault();
 		if (!fullName || !prototypeIP || !email || !password || !confirmPassword) {
@@ -47,54 +52,27 @@
 			);
 			return;
 		}
-		const toastId = addToast('Sending registration request to account...', 'loading');
-
+		const toastId = addToast('Sending verification code...', 'loading');
 		try {
-			const res = await fetch('/api/user/send-verification', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ email })
+			const response = await RequestHandler.fetchData('POST', `user/send-code`, {
+				email,
+				fullName: fullName,
+				prototypeID: prototypeIP
 			});
-
-			const data = await res.json();
 			removeToast(toastId);
-
-			if (res.ok && data.success) {
-				addToast('Verification code sent! Check your email.', 'success', 3000);
+			if (response.success) {
 				showVerification = true;
+				isEmailSend = false;
+				verificationCode = response.code;
+				addToast(`Verification code sent to ${email}`, 'success', 2000);
 			} else {
-				addToast(data.message || 'Failed to send verification code.', 'error', 3000);
+				addToast(response.message || 'Failed to send verification code.', 'error', 3000);
 			}
-		} catch (error) {
-			console.error('Verification error:', error);
+		} catch (err) {
 			removeToast(toastId);
-			addToast('Unexpected error while sending verification.', 'error', 3000);
+			console.error('An unexpected error occurred:', err);
+			addToast(`An unexpected error occurred: ${err}`, 'error', 3000);
 		}
-		// try {
-		// 	const response = await RequestHandler.fetchData('post', 'user/create', {
-		// 		fullName,
-		// 		prototypeIP,
-		// 		email,
-		// 		password,
-		// 		confirmPassword
-		// 	});
-		// 	if (response.success) {
-		// 		removeToast(toastId);
-		// 		addToast('Registered successfully!', 'success', 3000);
-		// 		fullName = '';
-		// 		prototypeIP = '';
-		// 		email = '';
-		// 	} else {
-		// 		removeToast(toastId);
-		// 		addToast(response.message || 'Registration failed.', 'error', 3000);
-		// 	}
-		// 	password = '';
-		// 	confirmPassword = '';
-		// } catch (error) {
-		// 	console.error('Registration error:', error);
-		// 	removeToast(toastId);
-		// 	addToast('An unexpected error occurred.', 'error', 3000);
-		// }
 	};
 
 	const loginSubmit = async (event: Event) => {
@@ -361,7 +339,14 @@
 					class="w-full rounded-md border p-3 focus:border-green-500 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
 				/>
 			</div>
-
+			{#if isEmailSend}
+				<button
+					type="button"
+					class="w-full rounded-md bg-blue-600 py-3 font-semibold text-white transition hover:bg-blue-700"
+				>
+					Verify Email
+				</button>
+			{/if}
 			<button
 				type="submit"
 				class="w-full rounded-md bg-green-600 py-3 font-semibold text-white transition hover:bg-green-700"
@@ -376,12 +361,34 @@
 {#if openTerms}
 	<TermsAndCondition closeTerms={() => (openTerms = false)} />
 {/if}
+
 {#if showVerification}
 	<EmailVerification
 		onClose={() => (showVerification = false)}
-		onVerified={() => {
+		{verificationCode}
+		onVerified={async () => {
 			showVerification = false;
-			goto('/', { invalidateAll: true });
+			isEmailSend = false;
+			const toastId = addToast('Trying to register...', 'loading');
+			try {
+				const response = await RequestHandler.fetchData('POST', `user/create`, {
+					prototypeID: prototypeIP,
+					fullName: fullName,
+					email: email,
+					password: password
+				});
+				removeToast(toastId);
+				if (response.success) {
+					toggleForm();
+					addToast('Registration successful! Please log in.', 'success', 2000);
+				} else {
+					addToast(response.message || 'Registration failed. Please try again.', 'error', 3000);
+				}
+			} catch (err) {
+				removeToast(toastId);
+				console.error('Registration error:', err);
+				addToast(`An unexpected error occurred: ${err}`, 'error', 3000);
+			}
 		}}
 	/>
 {/if}

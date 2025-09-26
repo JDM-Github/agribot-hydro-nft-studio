@@ -8,7 +8,7 @@
 	import { currentLink, isConnected, isLivestreaming, isRobotRunning, isScanning } from '$lib/stores/connection';
 	import RequestHandler from '$lib/utils/request.js';
 	import { simpleMode } from '$lib/stores/mode.js';
-	import { capitalize } from '$lib/helpers/utility.js';
+	import { capitalize } from '$utils/string.js';
 	import NotConnected from '$lib/components/NotConnected.svelte';
 	export let data;
 
@@ -210,7 +210,7 @@
 </script>
 
 {#if !$isConnected}
-	<NotConnected />
+	<NotConnected user={data.user}/>
 {:else}
 	<div
 		class="relative flex min-h-[calc(100vh-95px)] flex-col

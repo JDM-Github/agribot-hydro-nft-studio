@@ -63,7 +63,6 @@
 						</label>
 					</h3>
 
-					<!-- Disease List -->
 					<div class="space-y-5">
 						{#each allPlantsTransformed[selectedPlant.key].diseases as diseaseKey}
 								<div

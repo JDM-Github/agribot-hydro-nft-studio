@@ -56,7 +56,7 @@ export class PlantImageGenerator {
                 ${jsonData.sprays.spray.map((s, i) => `
                     <div class="flex items-center space-x-2 text-sm border ${jsonData.sprays.active[i] ? 'border-blue-300' : 'border-gray-700'} rounded px-2 py-1">
                         <span>${s}</span>
-                        <span class="text-gray-300">(${jsonData.sprays.duration[i]} mins)</span>
+                        <span class="text-gray-300">(${jsonData.sprays.duration[i]} secs)</span>
                     </div>
                 `).join('')}
             </div>

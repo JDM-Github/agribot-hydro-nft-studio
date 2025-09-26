@@ -1,8 +1,6 @@
 <script lang="ts">
 	import Footer from '$lib/components/Footer.svelte';
-	import NotConnected from '$lib/components/NotConnected.svelte';
 	import ViewPicture from '$lib/modal/ViewPicture.svelte';
-	import { isConnected } from '$lib/stores/connection.js';
 	import { derived, writable, type Writable } from 'svelte/store';
 
 	export let data;

@@ -3,6 +3,7 @@
 
 	export let onClose: () => void;
 	export let onVerified: () => void;
+	export let verificationCode: string;
 
 	let pin = ["", "", "", "", "", ""];
 	let error = "";
@@ -24,19 +25,11 @@
 			error = "Please enter a 6-digit code.";
 			return;
 		}
-
-		const res = await fetch("/api/user/verify-email", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ code })
-		});
-		const data = await res.json();
-
-		if (res.ok && data.success) {
+		if (verificationCode === code) {
 			addToast("Email verified successfully!", "success", 3000);
 			onVerified();
 		} else {
-			error = data.message || "Invalid code. Please try again.";
+			error = "Invalid code. Please try again.";
 		}
 	};
 </script>

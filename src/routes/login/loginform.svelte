@@ -8,9 +8,7 @@
 
 	const loginSubmit = async (event: Event) => {
 		event.preventDefault();
-
 		const toastId = addToast('Trying to login...', 'loading');
-
 		try {
 			const res = await fetch('/api/user/login', {
 				method: 'POST',
@@ -27,6 +25,7 @@
 			const response = await res.json();
 			if (res.ok && response.success) {
 				localStorage.setItem('userConfig', JSON.stringify(response.config));
+				localStorage.setItem('user', JSON.stringify(response.user));
 				removeToast(toastId);
 				addToast('Login successful!', 'success', 3000);
 				await goto('/', { invalidateAll: true });

@@ -86,7 +86,7 @@ export const POST: RequestHandler = async ({ request }) => {
         await transporter.sendMail(mailOptions);
 
         return new Response(
-            JSON.stringify({ success: true, message: 'Verification code sent' }),
+            JSON.stringify({ success: true, message: 'Verification code sent', code }),
             { status: 200 }
         );
     } catch (err: any) {
