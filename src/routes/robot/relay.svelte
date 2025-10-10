@@ -2,7 +2,7 @@
 	import { writable, type Writable } from 'svelte/store';
 	import RequestHandler from '$lib/utils/request';
 	import { simpleMode } from '$lib/stores/mode';
-	import { addToast } from '$lib/stores/toast';
+	import { addToast, removeToast } from '$lib/stores/toast';
 
 	export let scanning = false;
 	export let isRobotRunning: boolean;
@@ -11,21 +11,33 @@
 	let allClickedTrigger: Writable<number[]> = writable([])
 	async function activateSpray(num: number) {
 		try {
-			$allClickedTrigger.push(num);
+			let alreadyTriggered: boolean = false;
+			allClickedTrigger.update(arr => {
+				alreadyTriggered = arr.includes(num);
+				if (!alreadyTriggered) arr.push(num);
+				return arr;
+			});
+			if (alreadyTriggered) return;
+
+			const toastId = addToast(`Spraying spray ${num}...`, 'loading');
 			const [success, data] = await RequestHandler.authFetch(`trigger/${num}`, 'POST');
+
+			removeToast(toastId);
             if (!success) {
                 addToast(`Failed to trigger Spray ${num}`, 'error', 3000);
                 return; 
             }
-			if (data.status === 'error') {
+			else if (data.status === 'error') {
 				addToast(data.message, 'error', 3000);
 				return;
+			} else {
+				addToast(data.message || `Successfully trigger spray ${num}`, 'success', 3000);
 			}
 		} catch (err) {
 			console.error(`Error triggering Spray ${num}:`, err);
 			addToast(`Failed to trigger Spray ${num}`, 'error', 3000);
 		} finally {
-			$allClickedTrigger.pop()
+			allClickedTrigger.update(arr => arr.filter(n => n !== num));
 		}
 	}
 
@@ -62,7 +74,6 @@
 		</div>
 
 		{#if !$simpleMode}
-			<!-- Toggle Mode -->
 			<div class="flex flex-col items-center">
 				<!-- svelte-ignore a11y_label_has_associated_control -->
 				<label class="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">
@@ -71,7 +82,7 @@
 				<input
 					type="checkbox"
 					bind:checked={$triggerMode}
-					disabled={scanning || isRobotRunning || $allClickedTrigger.length <= 0}
+					disabled={scanning || isRobotRunning || $allClickedTrigger.length < 0}
 					class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:opacity-30 dark:border-gray-600"
 					title="Enable single-press trigger mode instead of hold mode"
 				/>

@@ -1,6 +1,7 @@
 <script lang="ts">
+	import { Connection } from "$root/lib/class/connection";
 	export let isActive: boolean;
-	let waterSensors: number[] = [0, 0, 0, 0];
+	$: readings = Connection.getReadings()
 </script>
 
 <div
@@ -8,7 +9,7 @@
 >
 	<h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300">WATER SENSORS</h4>
 	<div class="mt-2 grid grid-cols-4 gap-3">
-		{#each waterSensors as ws, i}
+		{#each $readings as ws, i}
 			<div
 				class="flex flex-col items-center rounded-lg bg-gray-50 p-2 shadow-inner transition dark:bg-gray-800"
 			>

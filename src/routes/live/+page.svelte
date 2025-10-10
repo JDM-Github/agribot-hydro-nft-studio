@@ -38,7 +38,6 @@ $: stopCapture = $scstate!;
 $: liveFrameURL = Connection.getLiveFrameURL();
 $: plantHistories = Connection.getLatestPlantHistories();
 let user = data.user || null;
-// let plantHistory: PlantHistories = [];
 let currentDay = new Date().toDateString();
 let currentTime = writable(new Date().toLocaleTimeString());
 
@@ -189,7 +188,6 @@ async function captureImageAndDisplay() {
 		addToast('Failed to capture image!', 'error', 3000);
 	}
 }
-
 async function controlLivestream(action: string) {
 	if (!isConnected) {
 		addToast('You are currently not connected to AGRIBOT.', 'error', 3000);
@@ -276,6 +274,7 @@ const updateInfo = async () => {
 };
 const interval = setInterval(updateInfo, 1000);
 onDestroy(() => clearInterval(interval));
+
 </script>
 
 {#if !isConnected}
@@ -318,7 +317,6 @@ onDestroy(() => clearInterval(interval));
 						simpleMode={true}
 					/>
 
-					<!-- Status Strip -->
 					<div
 						class="flex w-full flex-col items-center justify-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-xs font-medium shadow-sm sm:w-auto sm:flex-row sm:gap-8 sm:text-sm dark:bg-gray-800"
 					>
@@ -513,7 +511,6 @@ onDestroy(() => clearInterval(interval));
 		closeModal={() => modalOpen.set(false)}
 		downloadImage={() => {}}
 		selectedImage={$selectedImage}
-		images={null}
 		noDownloadDelete={true}
 	/>
 {/if}

@@ -262,8 +262,6 @@
 									</button>
 								</div>
 							</div>
-						{:else}
-							<p class="text-xs text-gray-500 dark:text-gray-400">IP: {device.ip}</p>
 						{/if}
 					</li>
 				{/each}

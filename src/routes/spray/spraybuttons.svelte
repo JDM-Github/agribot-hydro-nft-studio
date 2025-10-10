@@ -1,22 +1,13 @@
 <script lang="ts">
-
-// ----------------------------
-// Imports
-// ----------------------------
-
-// Components
 import SetSchedule from '$components/SetSchedule.svelte';
 import Details from '$routes/spray/details.svelte';
 import Configuration from '$routes/spray/configuration.svelte';
 import Scanbuttons from '$routes/spray/scanbuttons.svelte';
 import RadarModal from '$modal/RadarModal.svelte';
 
-// Stores
 import { addToast } from '$stores/toast';
-import { isLivestreaming } from '$stores/connection';
 import { get } from 'svelte/store';
 
-// Types
 import type { Config } from '$class/config';
 import type {
 	FunctionType,
@@ -26,12 +17,7 @@ import type {
 	WritableString
 } from '$lib/type';
 
-// Utils
 import { transformModels } from '$utils/transform';
-
-// ----------------------------
-// Props
-// ----------------------------
 export let controlScanner;
 export let openSprayModal;
 export let openCamera;
@@ -47,7 +33,6 @@ export let performing: boolean;
 export let robotLive: boolean;
 export let stopCapture: boolean;
 
-// Model version and confidence bindings
 const objectDetection: WritableString = config.objectDetectionVersion;
 const stageClassification: WritableString = config.stageClassificationVersion;
 const diseaseSegmentation: WritableString = config.diseaseSegmentationVersion;
@@ -66,7 +51,7 @@ export let uploadConfig: FunctionType;
 // ----------------------------
 // Local state
 // ----------------------------
-let modelPerformance = {
+$: modelPerformance = {
 	objectDetectionionYolo: transformModels($yoloObjectDetection),
 	stageClassificationYolo: transformModels($yoloStageClassification),
 	diseaseSegmentationMaskRCNN: transformModels($maskRCNNSegmentation)

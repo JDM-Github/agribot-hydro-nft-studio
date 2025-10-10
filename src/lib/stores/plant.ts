@@ -1,24 +1,12 @@
-import type { ConfigType, DetectedPlant } from "$lib/type";
-
-// export type Plant = {
-// 	name: string;
-// 	type: string;
-// 	image: string;
-// 	description: string;
-// 	diseases: {
-// 		name: string;
-// 		description: string;
-// 		image: string;
-// 		sprays: string[];
-// 		severity: string;
-// 	}[];
-// };
-// export type Disease = {
-// 	name: string;
-// 	description: string;
-// 	image: string;
-// 	sprays: string[];
-// }
+const DISEASE_SPRAYS = {
+    "anthracnose": "Score 250 EC",
+    "dark spot": "Antracol 70 WP",
+    "destroyed": "Seasol Plant Tonic",
+    "insect-damage": "Decis 2.5 EC",
+    "tip burn": "CalciGrow Foliar",
+    "powdery mildew": "Topaz 100 EC",
+    "alternaria": "Dithane M-45"
+};
 
 export const recommendedSprays = [
     {
@@ -31,40 +19,52 @@ export const recommendedSprays = [
         ]
     },
     {
-        name: 'Fungicide',
-        info: 'Prevents and treats fungal infections on lettuce.',
+        name: DISEASE_SPRAYS["powdery mildew"],
+        info: 'Prevents and treats powdery mildew on lettuce.',
         plants: [
             { name: 'Green Lettuce', disease: 'Powdery Mildew' },
             { name: 'Lactuca Sativa', disease: 'Powdery Mildew' },
-            { name: 'Romaine Lettuce', disease: 'Powdery Mildew' },
+            { name: 'Romaine Lettuce', disease: 'Powdery Mildew' }
+        ]
+    },
+    {
+        name: DISEASE_SPRAYS["alternaria"],
+        info: 'Prevents and treats Alternaria infections on lettuce.',
+        plants: [
             { name: 'Green Lettuce', disease: 'Alternaria' },
             { name: 'Lactuca Sativa', disease: 'Alternaria' },
-            { name: 'Romaine Lettuce', disease: 'Alternaria' },
+            { name: 'Romaine Lettuce', disease: 'Alternaria' }
+        ]
+    },
+    {
+        name: DISEASE_SPRAYS["anthracnose"],
+        info: 'Prevents and treats anthracnose on lettuce.',
+        plants: [
             { name: 'Green Lettuce', disease: 'Anthracnose' },
             { name: 'Lactuca Sativa', disease: 'Anthracnose' },
-            { name: 'Romaine Lettuce', disease: 'Anthracnose' },
-            { name: 'Green Lettuce', disease: 'Leaf Spot' },
-            { name: 'Lactuca Sativa', disease: 'Leaf Spot' },
-            { name: 'Romaine Lettuce', disease: 'Leaf Spot' },
+            { name: 'Romaine Lettuce', disease: 'Anthracnose' }
+        ]
+    },
+    {
+        name: DISEASE_SPRAYS["dark spot"],
+        info: 'Prevents and treats dark spot disease on lettuce.',
+        plants: [
             { name: 'Green Lettuce', disease: 'Dark Spot' },
             { name: 'Lactuca Sativa', disease: 'Dark Spot' },
             { name: 'Romaine Lettuce', disease: 'Dark Spot' }
         ]
     },
     {
-        name: 'Neem Oil',
-        info: 'Natural pesticide that protects against pests and fungi.',
+        name: DISEASE_SPRAYS["insect-damage"],
+        info: 'Protects against insect damage on lettuce.',
         plants: [
             { name: 'Green Lettuce', disease: 'Insect-Damage' },
             { name: 'Lactuca Sativa', disease: 'Insect-Damage' },
-            { name: 'Romaine Lettuce', disease: 'Insect-Damage' },
-            { name: 'Green Lettuce', disease: 'Leaf Miner' },
-            { name: 'Lactuca Sativa', disease: 'Leaf Miner' },
-            { name: 'Romaine Lettuce', disease: 'Leaf Miner' }
+            { name: 'Romaine Lettuce', disease: 'Insect-Damage' }
         ]
     },
     {
-        name: 'Calcium Booster',
+        name: DISEASE_SPRAYS["tip burn"],
         info: 'Enhances calcium levels to prevent tip burn in lettuce.',
         plants: [
             { name: 'Green Lettuce', disease: 'Tip Burn' },
@@ -73,4 +73,3 @@ export const recommendedSprays = [
         ]
     }
 ];
-

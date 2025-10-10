@@ -1,6 +1,7 @@
 <script lang="ts">
+	import { Connection } from "$root/lib/class/connection";
 	export let isActive: boolean = true;
-	let ultrasonicDistance: number = 0;
+	$: ultrasonic = Connection.getUltrasonic();
 </script>
 
 <div
@@ -9,13 +10,13 @@
 	<h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300">ULTRASONIC DISTANCE</h4>
 	{#if isActive}
 		<p class="text-lg font-bold text-gray-800 dark:text-gray-100">
-			{ultrasonicDistance} cm
+			{$ultrasonic} cm
 		</p>
 	{:else}
 		<p class="text-lg font-bold text-gray-800 dark:text-gray-100">NOT CONNECTED</p>
 	{/if}
 	<div
 		class="mt-2 h-3 rounded-full bg-green-500 transition-all duration-300"
-		style="width:{Math.min(ultrasonicDistance, 100)}%"
+		style="width:{Math.min($ultrasonic, 100)}%"
 	></div>
 </div>

@@ -15,7 +15,6 @@
 		}
 
 		const target = axis === 'horizontal' ? 'lr' : 'td';
-
 		try {
 			const [success, response] = await RequestHandler.authFetch(
 				`servo/${target}/${angle}`,
@@ -111,7 +110,7 @@
 		<button
 			disabled={scanning || isRobotRunning}
 			class="flex-1 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 focus:ring-2 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-30"
-			on:click={() => adjustServo('horizontal', 0)}
+			on:click={() => adjustServo('horizontal', 45)}
 		>
 			LOOK LEFT
 		</button>
@@ -119,7 +118,7 @@
 		<button
 			disabled={scanning || isRobotRunning}
 			class="flex-1 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 focus:ring-2 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-30"
-			on:click={() => adjustServo('horizontal', 180)}
+			on:click={() => adjustServo('horizontal', 135)}
 		>
 			LOOK RIGHT
 		</button>

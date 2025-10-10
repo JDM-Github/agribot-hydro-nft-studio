@@ -1,63 +1,11 @@
 <script lang="ts">
-/**
- * @file +page.svelte
- * @description Main spray management page. Handles camera view, spraying setup,
- *              plant detection list, configuration management, navigation guards,
- *              and modal handling for plant selection and spraying actions.
- * 
- * @props
- *   - data: Initial payload containing model data (YOLO, Mask R-CNN, etc.)
- * 
- * @imports
- *   - beforeNavigate: SvelteKit navigation hook
- *   - derived, writable, Readable: Svelte store utilities
- *   - onMount, onDestroy: Svelte lifecycle functions
- *   - Footer, PlantModal, ManuallyAddPlant, SetupSprayModal: Modal/UI components
- *   - Camera, Scannedheader, SprayButton, Detectedplantlist, Stoprobot: Route components
- *   - simpleMode, isRobotRunning, isLivestreaming, isScanning: Store states
- *   - addToast: Toast notifications
- *   - confirmBeforeLeave: Utility for guarded navigation
- *   - configService: Config-related services (initiate, save, revert, download, upload)
- *   - plantService: Plant-related services (disable, filter, remove)
- *   - robotService: Robot control functions
- *   - Types: DetectedPlant, DetectedPlantArray, Spray, Writable types
- * 
- * @localState
- *   - searchPlant: Search query for detected plants
- *   - isAlreadyInitialize: Ensures config initialization only once
- *   - yoloObjectDetection, yoloStageClassification, maskRCNNSegmentation: Model stores
- *   - showManualPlant, showCamera, showModal, showSprayModal: Modal visibility toggles
- *   - selectedPlant, selectedPlantIndex: Currently selected plant info
- *   - previousSprays: Backup of sprays before editing
- *   - filteredDetectedPlantsStore: Derived store filtering plants by search query
- * 
- * @functions
- *   - onSelectPlant: Handles selecting a detected plant, opening PlantModal
- *   - openSprayModal: Opens spray setup modal, saving old configuration
- *   - changeCamera: Toggles camera view
- * 
- * @navigation
- *   - Adds beforeunload handler for unsaved changes
- *   - Uses beforeNavigate to confirm before leaving if config, camera, or modals are active
- * 
- * @author      AGRIBOT Team
- * @created     2025-09-22
- * @lastUpdated 2025-09-22
- */
 
-// ----------------------------
-// Imports
-// ----------------------------
-
-// SvelteKit navigation
 import { beforeNavigate } from '$app/navigation';
 
-// Svelte core
 import { derived, type Readable, type Writable } from 'svelte/store';
 import { onMount, onDestroy } from 'svelte';
 import { get, writable } from 'svelte/store';
 
-// Types
 import type {
 	DetectedPlant,
 	DetectedPlantArray,
@@ -120,9 +68,7 @@ $: performing = $pstate!;
 $: robotLive = $rlstate!;
 $: stopCapture = $scstate!;
 
-// ----------------------------
-// Stores & State
-// ----------------------------
+
 const searchPlant: WritableString = writable<string>('');
 const isAlreadyInitialize: WritableBoolean = writable<boolean>(false);
 
@@ -156,9 +102,6 @@ const filteredDetectedPlantsStore: Readable<DetectedPlantArray> = derived(
 	([$detectedPlants, $searchPlant]) => filterDetectedPlants($detectedPlants, $allPlantsTransformed, $searchPlant)
 );
 
-// ----------------------------
-// Lifecycle
-// ----------------------------
 onMount(() => {
 	const handler = (event: BeforeUnloadEvent) => {
 		if (config.isDirty() || scannerState || showSprayModal || showManualPlant) {
@@ -169,9 +112,6 @@ onMount(() => {
 	onDestroy(() => window.removeEventListener('beforeunload', handler));
 });
 
-// ----------------------------
-// Navigation Guards
-// ----------------------------
 beforeNavigate((navigation) => {
 	if (confirmBeforeLeave(config.isDirty(), 'You have unsaved changes. Leave anyway?', navigation)) return;
 	if (confirmBeforeLeave(scannerState, 'Camera is open. Close it before leaving?', navigation)) return;
@@ -179,16 +119,26 @@ beforeNavigate((navigation) => {
 	if (confirmBeforeLeave(showManualPlant, 'Manual plant addition is open. Close it before leaving?', navigation)) return;
 });
 
-// ----------------------------
-// Methods
-// ----------------------------
-/**
- * Handle selecting a plant from the list.
- * Opens the PlantModal unless livestream is active.
- */
+
 function onSelectPlant(plant: DetectedPlant, index: number) {
-	if (liveState) {
+    if (robotScanState) {
+		addToast('Action unavailable while Robot livestreaming is active.', 'error', 3000);
+		return;
+	}
+    if (scannerState) {
+		addToast('Action unavailable while scanner is active.', 'error', 3000);
+		return;
+	}
+    if (liveState) {
 		addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+		return;
+	}
+	if (performing) {
+		addToast('Action unavailable while performing scan is active.', 'error', 3000);
+		return;
+	}
+    if (stopCapture) {
+		addToast('Action unavailable while capturing image.', 'error', 3000);
 		return;
 	}
     if (robotState) {
@@ -200,9 +150,6 @@ function onSelectPlant(plant: DetectedPlant, index: number) {
 	showModal = true;
 }
 
-/**
- * Open spray setup modal and store previous spray configuration.
- */
 function openSprayModal() {
     previousSprays = {
         spray: [...get(config.sprays).spray],
@@ -212,9 +159,6 @@ function openSprayModal() {
     showSprayModal = true;
 }
 
-/**
- * Toggle camera display.
- */
 function changeCamera(camera: boolean) {
     showCamera = camera;
 }
@@ -300,7 +244,7 @@ function changeCamera(camera: boolean) {
                     {yoloStageClassification}
                     {maskRCNNSegmentation}
                     saveConfig={async () => {
-                        saveConfig($userData, $deviceID);
+                        saveConfig($userData, $deviceID, isConnected);
                     }}
                     {downloadConfig}
                     uploadConfig={() => uploadConfig(

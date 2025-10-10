@@ -1,37 +1,37 @@
 <script lang="ts">
-	import { simpleMode } from '$lib/stores/mode';
-	import { recommendedSprays } from '$lib/stores/plant';
-	import { addToast } from '$lib/stores/toast';
-	import type { Spray } from '$lib/type';
-	import type { Writable } from 'svelte/store';
+import { simpleMode } from '$lib/stores/mode';
+import { recommendedSprays } from '$lib/stores/plant';
+import { addToast } from '$lib/stores/toast';
+import type { Spray } from '$lib/type';
+import type { Writable } from 'svelte/store';
 
-	export let showSprayModal = false;
-	export let sprays: Writable<{
-		spray: [string, string, string, string];
-		active: [boolean, boolean, boolean, boolean];
-		duration: [number, number, number, number];
-	}>;
-	export let previousSprays: Spray;
-	export let closeModal: () => void = () => {};
+export let showSprayModal = false;
+export let sprays: Writable<{
+	spray: [string, string, string, string];
+	active: [boolean, boolean, boolean, boolean];
+	duration: [number, number, number, number];
+}>;
+export let previousSprays: Spray;
+export let closeModal: () => void = () => {};
 
-	let selectedSpray: { info: string; plants: { name: string; disease: string }[] } | null = null;
-	let selectedSprayPosition = { x: 0, y: 0 };
+let selectedSpray: { info: string; plants: { name: string; disease: string }[] } | null = null;
+let selectedSprayPosition = { x: 0, y: 0 };
 
-	function applyRecommended(index: number, sprayName: string) {
-		$sprays.spray[index] = sprayName;
+function applyRecommended(index: number, sprayName: string) {
+	$sprays.spray[index] = sprayName;
+}
+
+function showSprayInfo(event: MouseEvent, sprayName: string) {
+	const spray = recommendedSprays.find((s) => s.name === sprayName);
+	if (spray) {
+		selectedSpray = spray;
+		selectedSprayPosition = { x: event.clientX, y: event.clientY };
 	}
+}
 
-	function showSprayInfo(event: MouseEvent, sprayName: string) {
-		const spray = recommendedSprays.find((s) => s.name === sprayName);
-		if (spray) {
-			selectedSpray = spray;
-			selectedSprayPosition = { x: event.clientX, y: event.clientY };
-		}
-	}
-
-	function hideSprayInfo() {
-		selectedSpray = null;
-	}
+function hideSprayInfo() {
+	selectedSpray = null;
+}
 </script>
 
 {#if showSprayModal}
@@ -58,15 +58,25 @@
 							type="text"
 							bind:value={$sprays.spray[i]}
 							placeholder="Enter spray name..."
+							maxlength="20"
 							class="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none lg:text-base dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+							on:input="{() => {
+								if ($sprays.spray[i].length > 20) {
+									$sprays.spray[i] = $sprays.spray[i].slice(0, 20);
+								}
+							}}"
 						/>
-
 						<input
 							type="number"
 							bind:value={$sprays.duration[i]}
 							min="1"
+							max="30"
 							placeholder="2"
 							class="w-20 rounded-md border border-gray-300 bg-white px-2 py-2 text-center text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none lg:text-base dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+							on:input="{() => {
+								if ($sprays.duration[i] > 30) $sprays.duration[i] = 30;
+								if ($sprays.duration[i] < 1) $sprays.duration[i] = 1;
+							}}"
 						/>
 						<span class="text-sm text-gray-600 dark:text-gray-400">sec</span>
 

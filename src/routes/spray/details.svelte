@@ -55,9 +55,6 @@ import { get } from 'svelte/store';
 // Constants
 import { CONFIDENCE_OPTION } from '$constant/index';
 
-// ----------------------------
-// Props
-// ----------------------------
 export let liveState: number;
 export let robotState: number;
 export let robotScanState: boolean;
@@ -115,7 +112,7 @@ export let maskRCNNSegmentation: WritableModelArray;
 					<select
 						bind:value={$objectDetection}
 						on:change={() => {
-							if (!robotState && !robotScanState && !liveState && !robotLive && !performing && !stopCapture) {
+							if (robotState || robotScanState || liveState || robotLive || performing || stopCapture) {
 								addToast('Action unavailable robot is currently busy.', 'error', 3000);
 								return;
 							}
@@ -141,7 +138,7 @@ export let maskRCNNSegmentation: WritableModelArray;
 					<select
 						bind:value={$stageClassification}
 						on:change={() => {
-							if (!robotState && !robotScanState && !liveState && !robotLive && !performing && !stopCapture) {
+							if (robotState || robotScanState || liveState || robotLive || performing || stopCapture) {
 								addToast('Action unavailable robot is currently busy.', 'error', 3000);
 								return;
 							}
@@ -166,7 +163,7 @@ export let maskRCNNSegmentation: WritableModelArray;
 					<select
 						bind:value={$diseaseSegmentation}
 						on:change={() => {
-							if (!robotState && !robotScanState && !liveState && !robotLive && !performing && !stopCapture) {
+							if (robotState || robotScanState || liveState || robotLive || performing || stopCapture) {
 								addToast('Action unavailable robot is currently busy.', 'error', 3000);
 								return;
 							}

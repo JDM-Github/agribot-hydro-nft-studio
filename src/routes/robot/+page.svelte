@@ -1,4 +1,5 @@
 <script lang="ts">
+	import gsap from "gsap";
 	import Footer from '$lib/components/Footer.svelte';
 	import Driver from './driver.svelte';
 	import Watersensor from './watersensor.svelte';
@@ -14,6 +15,7 @@
 	import { Connection } from '$root/lib/class/connection';
 	import Stoprobot from '../spray/stoprobot.svelte';
 	import { LiveStreamState, RobotLivestream, RobotState } from '$root/lib/enum';
+	import { onMount } from 'svelte';
 
 	export let data;
 	$: allState = Connection.getAllState({
@@ -80,10 +82,17 @@
 	async function controlRobotLivestream(move: string) {
 		let activeToastId = addToast(`AGRIBOT ${move} livestream command...`, 'loading');
 		try {
-			const [success, response] = await RequestHandler.authFetch(`${move}_robot_livestream`, 'POST');
+			const [success, response] = await RequestHandler.authFetch(
+				`${move}_robot_livestream`,
+				'POST'
+			);
 
 			if (!success) {
-				addToast(`AGRIBOT livestream command failed: ${response?.message || 'Unknown error'}`, 'error', 4000);
+				addToast(
+					`AGRIBOT livestream command failed: ${response?.message || 'Unknown error'}`,
+					'error',
+					4000
+				);
 			} else {
 				addToast(`AGRIBOT livestream command "${move}"" run successfully!`, 'success', 3000);
 			}
@@ -116,18 +125,49 @@
 			}
 		}
 	}
+
+	onMount(() => {
+		const allButtons = document.querySelectorAll('.header-button');
+		if (!allButtons.length) return;
+
+		gsap.fromTo(
+			allButtons,
+			{ y: 30, scale: 0 },
+			{
+				y: 0,
+				scale: 1,
+				stagger: 0.1,
+				duration: 0.2,
+				delay: 0.3,
+				ease: 'power2.out'
+			}
+		);
+
+		const speedControls = document.querySelectorAll('#speed-slider, input[type="number"]');
+		if (speedControls.length) {
+			gsap.fromTo(
+				speedControls,
+				{ opacity: 0, y: 20 },
+				{ opacity: 1, y: 0, duration: 0.5, stagger: 0.1, ease: 'power2.out' }
+			);
+		}
+	});
 </script>
 
 {#if !isConnected}
 	<NotConnected user={data.user} />
 {:else if robotState}
 	<Stoprobot whatRunning="robot" />
+	<Footer />
 {:else if liveState}
 	<Stoprobot whatRunning="livestream" />
+	<Footer />
 {:else if performing}
 	<Stoprobot whatRunning="perform scan" />
+	<Footer />
 {:else if scannerState}
 	<Stoprobot whatRunning="scanner" />
+	<Footer />
 {:else}
 	<div
 		class="relative flex min-h-[calc(100vh-95px)] flex-col bg-gray-200 p-4 ease-out lg:px-16 dark:bg-gray-700"
@@ -155,13 +195,12 @@
 								<button
 									id="run-robot"
 									title="Start or resume robot operation"
-									class="rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 focus:ring-2 focus:ring-green-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-green-500"
+									class="header-button rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 focus:ring-2 focus:ring-green-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-green-500"
 									disabled={scannerState ||
 										liveState !== LiveStreamState.STOPPED ||
 										!isConnected ||
 										robotScanState ||
 										performing ||
-										robotLive ||
 										stopCapture ||
 										robotState === RobotState.RUNNING}
 									on:click={() => controlRobot('run')}
@@ -180,13 +219,12 @@
 								<button
 									id="pause-robot"
 									title="Temporarily pause robot operation"
-									class="rounded-lg bg-yellow-500 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-600 focus:ring-2 focus:ring-yellow-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-yellow-500"
+									class="header-button rounded-lg bg-yellow-500 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-600 focus:ring-2 focus:ring-yellow-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-yellow-500"
 									disabled={scannerState ||
 										liveState !== LiveStreamState.STOPPED ||
 										!isConnected ||
 										robotScanState ||
 										performing ||
-										robotLive ||
 										stopCapture ||
 										robotState !== RobotState.RUNNING}
 									on:click={() => controlRobot('pause')}
@@ -205,13 +243,12 @@
 								<button
 									id="stop-robot"
 									title="Completely stop robot operation immediately"
-									class="rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 focus:ring-2 focus:ring-red-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-red-500"
+									class="header-button rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 focus:ring-2 focus:ring-red-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-red-500"
 									disabled={scannerState ||
 										liveState !== LiveStreamState.STOPPED ||
 										!isConnected ||
 										robotScanState ||
 										performing ||
-										robotLive ||
 										stopCapture ||
 										robotState === RobotState.STOPPED}
 									on:click={() => controlRobot('stop')}
@@ -232,7 +269,7 @@
 									on:click={() => (enableWASDinControl = !enableWASDinControl)}
 									id="enable-wad-bind"
 									title="Toggle WASD keyboard control binding"
-									class="rounded-lg px-4 py-2 text-sm font-medium text-white transition focus:ring-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:opacity-30"
+									class="header-button rounded-lg px-4 py-2 text-sm font-medium text-white transition focus:ring-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:opacity-30"
 									class:bg-blue-500={!enableWASDinControl}
 									class:hover:bg-blue-600={!enableWASDinControl}
 									class:focus:ring-blue-400={!enableWASDinControl}
@@ -244,9 +281,8 @@
 										!isConnected ||
 										robotScanState ||
 										performing ||
-										robotLive ||
 										stopCapture ||
-										robotState !== RobotState.RUNNING}
+										robotState !== RobotState.STOPPED}
 								>
 									{enableWASDinControl ? 'DISABLE' : 'ENABLE'}
 								</button>
@@ -270,15 +306,13 @@
 								<button
 									id="execute-scan"
 									title="Enable WAD keyboard control binding"
-									class="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-500"
+									class="header-button rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-500"
 									on:click={doScan}
-									disabled={
-										scannerState ||
+									disabled={scannerState ||
 										liveState !== LiveStreamState.STOPPED ||
 										!isConnected ||
 										robotScanState ||
 										performing ||
-										robotLive ||
 										stopCapture ||
 										robotState !== RobotState.STOPPED}
 								>
@@ -291,15 +325,15 @@
 			</div>
 
 			<div
-				class="mx-auto mb-6 max-h-[300px] w-full max-w-5xl overflow-hidden rounded-2xl border border-gray-300 bg-black shadow-lg dark:border-gray-700"
+				class="mx-auto mb-6 max-h-[400px] w-full max-w-5xl overflow-hidden rounded-2xl border border-gray-300 bg-black shadow-lg dark:border-gray-700"
 			>
 				<div
-					class="relative flex aspect-video max-h-[300px] w-full items-center justify-center bg-gray-800"
+					class="relative flex aspect-video max-h-[400px] w-full items-center justify-center bg-gray-800"
 				>
 					{#if $robotUrlFrame && robotLive}
 						<img src={$robotUrlFrame} alt="Robot Livestream" />
 					{:else}
-						<span class="text-lg text-gray-400">🎥 Robot Livestream</span>
+						<span class="text-lg text-gray-400">Robot Livestream</span>
 					{/if}
 
 					<div class="absolute top-2 right-2 flex gap-2">
@@ -365,5 +399,5 @@
 			<Relay isRobotRunning={isRobotBusy} />
 		</div>
 	</div>
+	<Footer />
 {/if}
-<Footer />

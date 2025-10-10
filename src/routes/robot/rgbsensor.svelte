@@ -1,8 +1,8 @@
 <script lang="ts">
-    export let isActive: boolean;
-    let rgb = { r: 0, g: 0, b: 0 };
-    let detectedColor = "UNKNOWN";
+	import { Connection } from "$root/lib/class/connection";
 
+    export let isActive: boolean;
+    $: rgbSensor = Connection.getTCS34725();
 </script>
 
 <div
@@ -12,7 +12,7 @@
     {#if isActive}
     <div
         class="mx-auto h-14 w-14 rounded-full border shadow-inner"
-        style="background-color: rgb({rgb.r},{rgb.g},{rgb.b})"
+        style="background-color: rgb({$rgbSensor.normalized.r},{$rgbSensor.normalized.g},{$rgbSensor.normalized.b})"
     ></div>
     {:else}
     <div
@@ -20,9 +20,9 @@
     ></div>
     {/if}
     <p class="mt-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400">
-        R:{rgb.r} &nbsp; G:{rgb.g} &nbsp; B:{rgb.b}
+        R:{$rgbSensor.normalized.r} &nbsp; G:{$rgbSensor.normalized.g} &nbsp; B:{$rgbSensor.normalized.b}
     </p>
     <p class="mt-1 text-center text-xs font-semibold text-gray-700 dark:text-gray-300">
-        Detected: {detectedColor}
+        Detected: {$rgbSensor.color_name}
     </p>
 </div>

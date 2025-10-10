@@ -20,6 +20,17 @@ type AllState = {
     performingscan?: Writable<boolean>;
 };
 
+type TCRT5000 = {
+    left: boolean;
+    right: boolean;
+};
+type WaterSensorReadings = boolean[];
+type TCS34725 = {
+    raw: { r: number, g: number, b: number, c: number },
+    normalized: { r: number, g: number, b: number },
+    color_name: string
+}
+
 class Connection {
     private static connection: Writable<boolean> = writable(ConnectionState.DISCONNECTED);
     private static robotrunning: Writable<number> = writable(RobotState.STOPPED);
@@ -39,10 +50,24 @@ class Connection {
     private static plantHistories: Writable<PlantHistories> = writable([]);
     private static allLogs: Writable<string[]> = writable([]);
 
+    private static tcrt5000 = writable<TCRT5000>({ left: false, right: false });
+    private static waterReadings = writable<WaterSensorReadings>([]);
+    private static tcs34725 = writable<TCS34725>({
+        raw: { r: 0, g: 0, b: 0, c: 0 },
+        normalized: { r: 0, g: 0, b: 0 },
+        color_name: "NOT SET"
+    });
+    private static ultrasonic = writable<number>(0);
+
     public static init() {
         SocketService.init();
         const socket = SocketService.getSocket();
         if (!socket) return;
+
+        socket.on("tcrt5000", (data: any) => Connection.tcrt5000.set(data));
+        socket.on("watersensor", (data: any) => Connection.waterReadings.set(data.readings));
+        socket.on("tcs34725", (data: any) => Connection.tcs34725.set(data));
+        socket.on("ultrasonic", (data: any) => Connection.ultrasonic.set(data));
 
         socket.on("connect", () => {
             console.log("✅ Connected to robot, id:", socket.id);
@@ -128,7 +153,6 @@ class Connection {
             }
         });
 
-        // socket.on("plant-histories", (data: PlantHistories) => Connection.returnPlantHistories.set(data))
         socket.on("plant-histories", (data: any) => {
             Connection.plantHistories.update((current) => {
                 const dataWithId = data.map((plant: any) => ({
@@ -174,6 +198,11 @@ class Connection {
     }
 
     // getters
+    public static getTCRT5000(): Writable<TCRT5000> { return Connection.tcrt5000; }
+    public static getReadings(): Writable<WaterSensorReadings> { return Connection.waterReadings; }
+    public static getUltrasonic(): Writable<number> { return Connection.ultrasonic; }
+    public static getTCS34725(): Writable<TCS34725> { return Connection.tcs34725; }
+
     public static isConnected(): Writable<boolean> { return Connection.connection; }
     public static isRobotRunning(): Writable<number> { return Connection.robotrunning; }
     public static livestreamState(): Writable<number> { return Connection.livestreamstate; }

@@ -1,100 +1,100 @@
 <script lang="ts">
-	import { get, type Writable } from 'svelte/store';
+import { type Writable } from 'svelte/store';
 
-	export let schedule: Writable<{
-		frequency: string;
-		runs: { time: string; upto: string }[];
-		days: string[];
-	}>;
-	export let showScheduleModal = false;
-	export let onClose;
-	export let onSave;
+export let schedule: Writable<{
+	frequency: string;
+	runs: { time: string; upto: string }[];
+	days: string[];
+}>;
+export let showScheduleModal = false;
+export let onClose;
+export let onSave;
 
-	$: selectedDays = [...($schedule.days || [])];
-	let errors: string[] = [];
+$: selectedDays = [...($schedule.days || [])];
+let errors: string[] = [];
 
-	const toMinutes = (t: string) => {
-		if (!t) return NaN;
-		const [h, m] = t.split(':').map(Number);
-		return h * 60 + m;
-	};
+const toMinutes = (t: string) => {
+	if (!t) return NaN;
+	const [h, m] = t.split(':').map(Number);
+	return h * 60 + m;
+};
 
-	const validateSchedule = () => {
-		errors = [];
-		const runs = [...($schedule.runs || [])];
+const validateSchedule = () => {
+	errors = [];
+	const runs = [...($schedule.runs || [])];
 
-		if (!runs.length) errors.push('Add at least one run.');
+	if (!runs.length) errors.push('Add at least one run.');
 
-		runs.forEach((r, i) => {
-			const s = toMinutes(r.time);
-			const e = toMinutes(r.upto);
+	runs.forEach((r, i) => {
+		const s = toMinutes(r.time);
+		const e = toMinutes(r.upto);
 
-			if (isNaN(s) || isNaN(e)) {
-				errors.push(`Run ${i + 1}: invalid time.`);
-				return;
-			}
-
-			if (s < toMinutes('03:00') || s > toMinutes('22:00')) {
-				errors.push(`Run ${i + 1}: Start time must be between 03:00 and 22:00.`);
-			}
-			if (e < toMinutes('03:00') || e > toMinutes('22:00')) {
-				errors.push(`Run ${i + 1}: Latest Start time must be between 03:00 and 22:00.`);
-			}
-
-			if (e <= s) {
-				errors.push(`Run ${i + 1}: Latest Start must be AFTER Start.`);
-			}
-		});
-
-		const sorted = runs
-			.map((r, i) => ({ i, start: toMinutes(r.time), end: toMinutes(r.upto) }))
-			.sort((a, b) => a.start - b.start);
-
-		for (let i = 1; i < sorted.length; i++) {
-			const prev = sorted[i - 1];
-			const curr = sorted[i];
-
-			if (curr.start === prev.start) {
-				errors.push(
-					`Runs ${prev.i + 1} and ${curr.i + 1} have the same start time (${runs[prev.i].time}).`
-				);
-			}
-			if (curr.start < prev.end) {
-				errors.push(
-					`Runs ${prev.i + 1} (${runs[prev.i].time}–${runs[prev.i].upto}) and ${curr.i + 1} (${runs[curr.i].time}–${runs[curr.i].upto}) overlap.`
-				);
-			}
+		if (isNaN(s) || isNaN(e)) {
+			errors.push(`Run ${i + 1}: invalid time.`);
+			return;
 		}
-		if (errors.length) return;
-		onSave({
-			frequency: $schedule.frequency,
-			runs: $schedule.runs,
-			days: selectedDays
-		});
-	};
 
-	const toggleDay = (day: string) => {
-		if (selectedDays.includes(day)) {
-			selectedDays = selectedDays.filter((d) => d !== day);
-		} else {
-			selectedDays = [...selectedDays, day];
+		if (s < toMinutes('03:00') || s > toMinutes('22:00')) {
+			errors.push(`Run ${i + 1}: Start time must be between 03:00 and 22:00.`);
 		}
-		$schedule.days = selectedDays;
-	};
-
-	const validateUpto = (index: number) => {
-		const run = $schedule.runs[index];
-		if (run.upto <= run.time) {
-			const [hour, minute] = run.time.split(':').map(Number);
-			const newTime = new Date();
-			newTime.setHours(hour + 1, minute);
-			$schedule.runs[index].upto = newTime.toTimeString().slice(0, 5);
+		if (e < toMinutes('03:00') || e > toMinutes('22:00')) {
+			errors.push(`Run ${i + 1}: Latest Start time must be between 03:00 and 22:00.`);
 		}
-	};
 
-	const removeRun = (index: number) => {
-		$schedule.runs = $schedule.runs.filter((_, i) => i !== index);
-	};
+		if (e <= s) {
+			errors.push(`Run ${i + 1}: Latest Start must be AFTER Start.`);
+		}
+	});
+
+	const sorted = runs
+		.map((r, i) => ({ i, start: toMinutes(r.time), end: toMinutes(r.upto) }))
+		.sort((a, b) => a.start - b.start);
+
+	for (let i = 1; i < sorted.length; i++) {
+		const prev = sorted[i - 1];
+		const curr = sorted[i];
+
+		if (curr.start < prev.end) {
+			errors.push(
+				`Runs ${prev.i + 1} (${runs[prev.i].time}–${runs[prev.i].upto}) and ${curr.i + 1} (${runs[curr.i].time}–${runs[curr.i].upto}) overlap or are too close.`
+			);
+		} else if (curr.start - prev.end < 5) {
+			errors.push(
+				`Runs ${prev.i + 1} (${runs[prev.i].time}–${runs[prev.i].upto}) and ${curr.i + 1} (${runs[curr.i].time}–${runs[curr.i].upto}) must have at least 5 minutes gap.`
+			);
+		}
+	}
+
+	if (errors.length) return;
+	onSave({
+		frequency: $schedule.frequency,
+		runs: $schedule.runs,
+		days: selectedDays
+	});
+};
+
+const toggleDay = (day: string) => {
+	if (selectedDays.includes(day)) {
+		selectedDays = selectedDays.filter((d) => d !== day);
+	} else {
+		selectedDays = [...selectedDays, day];
+	}
+	$schedule.days = selectedDays;
+};
+
+const validateUpto = (index: number) => {
+	const run = $schedule.runs[index];
+	if (run.upto <= run.time) {
+		const [hour, minute] = run.time.split(':').map(Number);
+		const newTime = new Date();
+		newTime.setHours(hour + 1, minute);
+		$schedule.runs[index].upto = newTime.toTimeString().slice(0, 5);
+	}
+};
+
+const removeRun = (index: number) => {
+	$schedule.runs = $schedule.runs.filter((_, i) => i !== index);
+};
 </script>
 
 {#if showScheduleModal}

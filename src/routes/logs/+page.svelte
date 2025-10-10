@@ -129,14 +129,13 @@ function filterLogs() {
 			return matchesLevel && matchesSearch && matchesTime;
 		})
 	);
-	updateStats();
 	saveSettings();
 	setTimeout(() => {
 		scrollToBottom();
 	}, 100);
 }
 
-function updateStats() {
+$: if($filteredLogs) {
 	stats = {
 		INFO: 0,
 		SUCCESS: 0,
@@ -196,7 +195,6 @@ onMount(async () => {
 	nlogs.subscribe((logs) => {
 		if (logs) {
 			filterLogs();
-			updateStats();
 			scrollToBottom();
 		}
 	})

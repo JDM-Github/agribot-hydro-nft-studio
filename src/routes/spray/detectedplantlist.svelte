@@ -1,39 +1,7 @@
 <script lang="ts">
-/**
- * @file detectedplantlist.svelte
- * @description Displays a list of detected plants and handles selection. Integrates with
- *              plant and connection stores, and provides feedback via toasts.
- * 
- * @props
- *   - plants: DetectedPlantArray containing all detected plants to display.
- *   - onSelectPlant: Callback function triggered when a plant is selected,
- *                    receives (plant: DetectedPlant, index: number).
- * 
- * @imports
- *   - DetectedPlant, DetectedPlantArray: Type definitions for plant detection results.
- *   - allPlants: Store containing all plant data.
- *   - isLivestreaming: Store indicating if livestream is active.
- *   - addToast: Store utility for displaying toast notifications.
- *   - get: Svelte store helper function.
- * 
- * @author      AGRIBOT Team
- * @created     2025-09-22
- * @lastUpdated 2025-09-22
- */
-
-// ----------------------------
-// Imports
-// ----------------------------
-
-// Types
 import type { DetectedPlant, DetectedPlantArray } from '$lib/type';
 
-// Stores
 import { addToast } from '$stores/toast';
-
-// ----------------------------
-// Props
-// ----------------------------
 export let plants: DetectedPlantArray;
 export let onSelectPlant: (plant: DetectedPlant, index: number) => void;
 
@@ -67,7 +35,7 @@ export let stopCapture: boolean;
 								<span>Disabled</span>
 								<button class="rounded bg-green-300 px-1 py-0.5 font-semibold text-black hover:bg-green-400"
 									on:click|stopPropagation={() => {
-										if (!robotState && !robotScanState && !liveState && !robotLive && !performing && !stopCapture) {
+										if (robotState || robotScanState || liveState || robotLive || performing || stopCapture) {
 											addToast('Action unavailable robot is currently busy.', 'error', 3000);
 										} else {
 											plant.disabled = false;

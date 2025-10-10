@@ -33,13 +33,12 @@
 
 	let modalOpen = writable(false);
 	let selectedImage = writable<null | { id: number; src: string }>(null);
-	async function fetchFolder(email: string) {
+	async function fetchFolder(email: string, force_save=false) {
 		if (!slug) return;
-		if (!isTodaySlug(slug)) {
+		if (!force_save && !isTodaySlug(slug)) {
 			const cached = await getFromDB('images-' + slug);
 			if (cached) {
 				currentData.set(cached.value);
-				console.log('Loaded from cache ✅');
 				return;
 			}
 		}
@@ -50,10 +49,8 @@
 		});
 		const data = await res.json();
 		currentData.set(data);
-
-		if (!isTodaySlug(slug)) {
+		if (force_save || !isTodaySlug(slug)) {
 			await saveToDB('images-' + slug, data);
-			console.log('Saved to cache ✅');
 		}
 	}
 	onMount(async () => {
@@ -308,5 +305,5 @@
 	{closeModal}
 	{downloadImage}
 	selectedImage={$selectedImage}
-	{images}
+	fetchFolder={fetchFolder}
 />

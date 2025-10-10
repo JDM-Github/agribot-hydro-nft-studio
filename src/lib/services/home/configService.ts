@@ -135,18 +135,15 @@ export function uploadConfig(
  * Save the current configuration to cloud and localStorage.
  * @param data - User-related data, including email for cloud API
  */
-export async function saveConfig(userData: any, deviceID: string) {
+export async function saveConfig(userData: any, deviceID: string, isConnected: boolean) {
     if (get(isLivestreaming) !== 'Stopped') {
         addToast('Action unavailable while livestreaming.', 'error', 3000);
         return;
     }
-
-    const confirmed = await confirmToast(
-        'Save this configuration? This will overwrite your current settings.'
-    );
+    const confirmed = await confirmToast('Save this configuration? This will overwrite your current settings.');
     if (!confirmed) return;
 
-    const toastId = addToast('Updating configuration...', 'loading');
+    let toastId = addToast('Updating configuration...', 'loading');
     const currentConfig = config.getCurrentConfig();
     try {
         const response = await RequestHandler.fetchData('post', 'user/update-config', {
@@ -159,11 +156,16 @@ export async function saveConfig(userData: any, deviceID: string) {
             config.saveConfig();
             userData.user.config = currentConfig;
             await saveToDB('userData', userData, false);
-            const [success, _] = await RequestHandler.authFetch('update-config', 'POST', {
-                config: currentConfig
-            });
-            if (!success) {
-                addToast('Configuration saved to cloud, but robot not updated.', 'error', 4000);
+            if (isConnected) {
+                toastId = addToast('Updating configuration in AGRIBOT...', 'loading');
+                const [success, _] = await RequestHandler.authFetch('update-config', 'POST', {
+                    config: currentConfig
+                });
+                removeToast(toastId);
+                if (!success)
+                    addToast('Configuration saved to cloud, but robot not updated.', 'error', 4000);
+                else
+                    addToast('Configuration updated in AGRIBOT.', "success", 4000);
             }
             addToast('Configuration saved successfully.', 'success', 3000);
         } else {

@@ -35,13 +35,10 @@ class WifiManager {
 
         if (!ssid) return;
         this.loading.set(true);
-
+        const toastID = addToast(`Setting WiFi priority of ${ssid}`, "loading");
         try {
-            const [success] = await RequestHandler.authFetch("wifi/set-priority", "POST", {
-                ssid,
-                priority: +this.priority,
-            });
-
+            const [success, _] = await RequestHandler.authFetch(`wifi/set-priority/${ssid}/${this.priority}`, "POST");
+            removeToast(toastID);
             if (success) {
                 addToast(`Priority set to ${this.priority} for ${ssid}`, "success", 4000);
             } else {

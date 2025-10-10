@@ -36,7 +36,7 @@
                                 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-200"
 				/>
 				<button
-					on:click={wifi.setPriority}
+					on:click={() => wifi.setPriority()}
 					class="rounded-lg bg-yellow-500 px-4 py-2 text-sm font-medium text-white shadow-md transition hover:bg-yellow-600 disabled:opacity-50"
 				>
 					Set Priority
@@ -105,7 +105,7 @@
 			</div>
 		{/if}
 		<button
-			on:click={wifi.connectNetwork}
+			on:click={() => wifi.connectNetwork()}
 			class="w-full rounded-lg bg-blue-500 px-4 py-2 font-medium text-white shadow-md
                             transition hover:bg-blue-600 disabled:opacity-50"
 			disabled={loading}

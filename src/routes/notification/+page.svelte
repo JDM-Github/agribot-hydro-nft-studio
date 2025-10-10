@@ -1,4 +1,6 @@
 <script lang="ts">
+	import gsap from "gsap";
+	import { onMount, tick } from "svelte";
 	import Footer from '$lib/components/Footer.svelte';
 	import { deviceID, userData } from '$root/lib/stores/connection';
 	import { writable, derived, type Writable } from 'svelte/store';
@@ -7,17 +9,21 @@
 	import { saveToDB } from '$root/lib/utils/indexdb';
 	import { goto } from '$app/navigation';
 	import { RefreshCw } from 'lucide-svelte';
+	import RequestHandler from '$root/lib/utils/request';
 
 	let notifications: Writable<Notification[]> = writable([]);
+	let currentPage = writable(1);
+	let lastPage = writable(1);
+
 	userData.subscribe((user) => {
 		if (!user) return;
 		notifications.set(user.notifications || []);
+		currentPage.set($lastPage);
+		lastPage.set(1);
 	});
-
 	let searchQuery = writable('');
 	let sortOrder = writable<'asc' | 'desc'>('desc');
-	let currentPage = writable(1);
-	const itemsPerPage = 12;
+	const itemsPerPage = 6;
 
 	const filteredNotifications = derived(
 		[notifications, searchQuery],
@@ -76,13 +82,25 @@
 
 	async function markAsRead(notif: any) {
 		if (notif.isRead) return;
+
 		try {
-			await fetch(`/api/notification/mark-read/${notif.id}`, { method: 'PUT' });
-			notifications.update((recs: any) =>
-				recs.map((n: any) => (n.id === notif.id ? { ...n, isRead: true } : n))
-			);
-		} catch (e) {
-			console.error('Failed to mark as read', e);
+			const response = await RequestHandler.fetchData('post', 'notification/mark-read', {
+				id: $userData.user.id,
+				notifId: notif.id,
+				deviceID: deviceID
+			});
+			if (response.success) {
+				lastPage.set($currentPage);
+				$userData.notifications = $userData.notifications.map((n: any) =>
+					n.id === notif.id ? { ...n, isRead: true } : n
+				);
+				await saveToDB('userData', $userData, false);
+			} else {
+				addToast(response.message || 'Failed to mark notification as read.', 'error', 3000);
+			}
+		} catch (err) {
+			addToast('An unexpected error occurred.', 'error', 3000);
+			console.error('saveConfig error:', err);
 		}
 	}
 
@@ -145,86 +163,165 @@
 
 		notifSyncing = false;
 	}
+
+
+	onMount(() => {
+		animateNotifications();
+
+		const allHeader = document.querySelectorAll('.header');
+		if (!allHeader.length) return;
+		gsap.fromTo(
+			allHeader,
+			{ opacity: 0, y: 80 },
+			{
+				opacity: 1,
+				y: 0,
+				stagger: 0,
+				duration: 0.5,
+				ease: "power2.out"
+			}
+		);
+	});
+
+	$: if ($paginatedNotifications.length) {
+		animateNotifications(true);
+	}
+
+	function animateNotifications(fast: boolean = false) {
+		const allNotification = document.querySelectorAll('.notif-item');
+		if (!allNotification.length) return;
+
+		gsap.fromTo(
+			allNotification,
+			{ opacity: 0, y: 80 },
+			{
+				opacity: 1,
+				y: 0,
+				stagger: 0.1,
+				duration: fast ? 0.3 : 0.8,
+				ease: "power2.out"
+			}
+		);
+	}
+	$: if (modalVisible) {
+		animateModalOpen();
+	}
+	async function animateModalOpen() {
+		await tick();
+		const modal = document.querySelector(".modal-open");
+		const overlay = document.querySelector(".modal-overlay");
+
+		if (!modal || !overlay) return;
+		gsap.set([overlay, modal], { clearProps: "all" });
+		gsap.fromTo(
+			overlay,
+			{ opacity: 0, backdropFilter: "blur(0px)" },
+			{
+				opacity: 1,
+				backdropFilter: "blur(4px)",
+				duration: 0.35,
+				ease: "power2.out",
+			}
+		);
+
+		gsap.fromTo(
+			modal,
+			{ opacity: 0, y: 80, scale: 0.1 },
+			{
+				opacity: 1,
+				y: 0,
+				scale: 1,
+				duration: 0.2,
+				delay: 0.05,
+				ease: "back.out(1.7)",
+			}
+		);
+	}
+
 </script>
 
 <main
-	class="relative flex min-h-[calc(100vh-95px)] flex-col bg-gradient-to-b from-gray-200 to-gray-300 p-4 ease-out lg:px-16 dark:from-gray-700 dark:to-gray-800"
+	class="relative flex min-h-[calc(100vh-95px)] flex-col bg-gradient-to-b from-gray-200 to-gray-300 p-4 ease-out lg:px-16 dark:from-gray-700 dark:to-gray-800 "
 >
-	<div class="container mx-auto rounded-2xl bg-gray-200 p-4 dark:bg-gray-900">
+	<div class="container mx-auto max-w-7xl rounded-2xl bg-gray-100 p-4 dark:bg-gray-900">
 		<div
-			class="flex flex-col gap-2 rounded-xl border border-gray-200 bg-[#fafffc] p-3 sm:flex-row sm:items-center sm:justify-between dark:border-gray-700 dark:bg-gray-800"
+			class="flex flex-col gap-3 rounded-lg border border-gray-200 bg-[#fafffc] p-3 dark:border-gray-700 dark:bg-gray-800 header"
 		>
 			<div class="flex items-center gap-2">
-				<span class="text-xl sm:text-2xl">🔔</span>
-				<h2 class="text-base font-bold text-gray-400 sm:text-lg dark:text-gray-300">
-					NOTIFICATIONS
-				</h2>
+				<span class="text-xl">🔔</span>
+				<h2 class="text-base font-bold text-gray-500 dark:text-gray-300">NOTIFICATIONS</h2>
 			</div>
 
-			<div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 				<input
 					type="text"
 					bind:value={$searchQuery}
 					placeholder="Search notifications..."
-					class="w-full min-w-0 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none sm:w-48 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+					class="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
 				/>
 				<select
 					bind:value={$sortOrder}
-					class="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none sm:w-40 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+					class="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
 				>
-					<option value="desc">Sort: Newest First</option>
-					<option value="asc">Sort: Oldest First</option>
+					<option value="desc">Newest First</option>
+					<option value="asc">Oldest First</option>
 				</select>
 
 				<button
 					on:click={forceNotifSync}
-					class="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-md transition hover:bg-blue-700 disabled:opacity-50"
+					class="flex items-center justify-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow transition hover:bg-blue-700 disabled:opacity-50"
 					disabled={notifSyncing}
 				>
 					{#if notifSyncing}
 						<RefreshCw class="h-4 w-4 animate-spin" />
-						<span>Syncing...</span>
+						<span>Syncing</span>
 					{:else}
 						<RefreshCw class="h-4 w-4" />
-						<span>Force Sync</span>
+						<span>Sync</span>
 					{/if}
 				</button>
 			</div>
 		</div>
 
 		{#if $paginatedNotifications.length === 0}
-			<p class="mt-3 py-8 text-center text-sm text-gray-600 dark:text-gray-400">
+			<p class="mt-4 py-6 text-center text-base text-gray-600 dark:text-gray-400">
 				No notifications found.
 			</p>
 		{:else}
-			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-				{#each $paginatedNotifications as notif, index}
+			<div class="mt-4 flex flex-col divide-y divide-gray-200 dark:divide-gray-700 ">
+				{#each $paginatedNotifications as notif}
 					<button
-						class="flex cursor-pointer flex-col justify-between gap-2 rounded-xl border-l-4 p-4 shadow-sm hover:shadow-md
-						{notif.isRead ? 'border-gray-200 dark:border-gray-700' : 'border-blue-500 dark:border-blue-400'}
-					bg-gray-50 dark:bg-gray-800"
+						class="w-full text-left px-4 py-3 transition hover:bg-gray-200 dark:hover:bg-gray-700 notif-item
+						{notif.isRead 
+							? 'bg-gray-50 dark:bg-gray-800' 
+							: 'bg-blue-50 border-l-4 border-blue-500 dark:bg-blue-900/30'}"
 						on:click={() => showModal(notif)}
 					>
-						<div class="flex items-start gap-2">
-							<div
-								class="mt-1 h-3 w-3 rounded-full"
-								style="background-color: {getTypeColor(notif.type)}"
-							></div>
-							<div class="flex-1">
-								<div class="font-semibold {notif.isRead ? 'text-gray-500 dark:text-gray-300' : 'text-blue-600 dark:text-blue-400'}">
-									{notif.title}
-								</div>
-								<div class="truncate text-sm text-gray-500 dark:text-gray-400">{notif.message}</div>
-							</div>
+						<div class="flex items-center justify-between">
+							<h3
+								class="truncate text-[15px] font-semibold
+								{notif.isRead ? 'text-gray-800 dark:text-gray-200' : 'text-blue-700 dark:text-blue-300'}"
+							>
+								{notif.title}
+							</h3>
+							<span class="text-[12px] text-gray-400">{formatTime(notif.createdAt)}</span>
 						</div>
-						<div class="mt-2 text-xs text-gray-400">{formatTime(notif.createdAt)}</div>
+						<p
+							class="truncate text-[13px] leading-snug
+							{notif.isRead ? 'text-gray-600 dark:text-gray-400' : 'text-gray-700 dark:text-gray-300'}"
+						>
+							{notif.message}
+						</p>
 					</button>
 				{/each}
 			</div>
 		{/if}
 
+		<!-- Pagination -->
 		{#if $filteredNotifications.length > itemsPerPage}
-			<div class="mt-4 flex items-center justify-center gap-2">
+			<div
+				class="sticky bottom-0 mt-4 flex items-center justify-center gap-3 border-t border-gray-300 bg-gray-100 py-2 dark:border-gray-700 dark:bg-gray-900"
+			>
 				<button
 					class="rounded-md bg-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-400 disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
 					on:click={() => goToPage($currentPage - 1)}
@@ -232,9 +329,9 @@
 				>
 					← Prev
 				</button>
-				<span class="text-sm text-gray-700 dark:text-gray-300"
-					>Page {$currentPage} of {$totalPages}</span
-				>
+				<span class="text-sm text-gray-700 dark:text-gray-300">
+					Page {$currentPage} of {$totalPages}
+				</span>
 				<button
 					class="rounded-md bg-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-400 disabled:opacity-50 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
 					on:click={() => goToPage($currentPage + 1)}
@@ -250,24 +347,22 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
-			class="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+			class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 modal-overlay"
 			on:click={closeModal}
 		>
 			<div
-				class="w-96 max-w-full rounded-xl bg-white p-6 dark:bg-gray-800"
+				class="w-80 max-w-full rounded-lg bg-white p-5 dark:bg-gray-800 modal-open"
 				on:click|stopPropagation
 			>
-				<div class="mb-3 flex items-center gap-2">
-					<div
-						class="h-3 w-3 rounded-full"
-						style="background-color: {getTypeColor(modalNotification.type)}"
-					></div>
-					<h3 class="font-semibold text-gray-900 dark:text-gray-200">{modalNotification.title}</h3>
+				<div class="mb-2 flex items-center justify-between">
+					<h3 class="text-[15px] font-semibold text-gray-900 dark:text-gray-200">
+						{modalNotification.title}
+					</h3>
+					<span class="text-xs text-gray-400">{formatTime(modalNotification.createdAt)}</span>
 				</div>
-				<p class="mb-2 text-gray-700 dark:text-gray-300">{modalNotification.message}</p>
-				<div class="text-xs text-gray-400">{formatTime(modalNotification.createdAt)}</div>
+				<p class="mb-3 text-[13px] text-gray-700 dark:text-gray-300">{modalNotification.message}</p>
 				<button
-					class="mt-4 w-full rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600"
+					class="w-full rounded-md bg-blue-500 px-4 py-1.5 text-sm text-white hover:bg-blue-600"
 					on:click={closeModal}
 				>
 					Close
@@ -278,3 +373,4 @@
 </main>
 
 <Footer />
+
