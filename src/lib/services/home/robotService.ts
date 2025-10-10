@@ -18,16 +18,36 @@ import RequestHandler from '$utils/request';
  * 
  * @param state - `true` to start scanning, `false` to stop scanning
  */
-export async function controlRobot(state: boolean) {
-    // Prevent action if not connected to the robot
-    if (!get(isConnected)) {
+export async function controlScanner(state: boolean,
+    isConnected: boolean,
+    robotState: number,
+    liveState: number,
+    scanState: boolean,
+    robotScanState: boolean
+) {
+    if (!isConnected) {
         addToast('You are currently not connected to AGRIBOT.', 'error', 3000);
         return;
     }
 
-    // Prevent action if livestreaming is active
-    if (get(isLivestreaming) !== 'Stopped') {
-        addToast('Action unavailable while livestreaming.', 'error', 3000);
+    if (robotState) {
+        addToast('AGRIBOT Robot are currently running.', 'error', 3000);
+        return;
+    }
+
+    if (liveState) {
+        addToast('Livestream are currently running.', 'error', 3000);
+        return;
+    }
+
+    const stateText = state ? 'already running' : 'already stopped';
+    if (scanState == state) {
+        addToast(`Scanner are ${stateText}.`, 'error', 3000);
+        return;
+    }
+
+    if (robotScanState) {
+        addToast('AGRIBOT Robot scanner are currently scanning.', 'error', 3000);
         return;
     }
 
@@ -37,12 +57,9 @@ export async function controlRobot(state: boolean) {
     try {
         const endpoint = state ? 'start_scan' : 'stop_scan';
         const [success, data] = await RequestHandler.authFetch(endpoint, 'POST');
-
         removeToast(toastId);
 
         if (success) {
-            // Update reactive scanning state
-            isScanning.set(state);
             addToast(`Scanning ${state ? 'started' : 'stopped'} successfully.`, 'success', 3000);
         } else {
             const errorMessage = data?.error || 'Unknown error';

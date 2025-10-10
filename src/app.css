@@ -22,4 +22,35 @@
 	background: #08ff3e !important;
 }
 
+.log-line {
+    font-family: "Consolas", monospace;
+}
+
+.text-rose-500 { color: #f43f5e !important; }
+.dark .text-rose-400 { color: #fb7185 !important; }
+
+.text-orange-500 { color: #f97316 !important; }
+.dark .text-orange-400 { color: #fb923c !important; }
+
+.text-amber-500 { color: #f59e0b !important; }
+.dark .text-amber-400 { color: #fbbf24 !important; }
+
+.text-lime-500 { color: #84cc16 !important; }
+.dark .text-lime-400 { color: #a3e635 !important; }
+
+.text-emerald-500 { color: #10b981 !important; }
+.dark .text-emerald-400 { color: #34d399 !important; }
+
+.text-sky-500 { color: #0ea5e9 !important; }
+.dark .text-sky-400 { color: #38bdf8 !important; }
+
+.text-indigo-500 { color: #6366f1 !important; }
+.dark .text-indigo-400 { color: #818cf8 !important; }
+
+.text-fuchsia-500 { color: #d946ef !important; }
+.dark .text-fuchsia-400 { color: #e879f9 !important; }
+
+.text-cyan-600 { color: #0891b2 !important; }
+.dark .text-cyan-400 { color: #22d3ee !important; }
+
 @custom-variant dark (&:where(.dark, .dark *));

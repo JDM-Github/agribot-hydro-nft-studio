@@ -40,16 +40,16 @@ export function disablePlant(selectedPlantIndex: number) {
  * Remove a detected plant by its key.
  * @param key - Unique key of the plant to remove
  */
-export async function removePlant(key: string) {
+export async function removePlant(key: string, sid: string) {
     if (get(isLivestreaming) !== 'Stopped') {
         addToast('Action unavailable while livestreaming.', 'error', 3000);
         return;
     }
-
     const toastId = addToast(`Removing "${key}"...`, 'loading');
-
     try {
-        await RequestHandler.authFetch(`remove_result?key=${encodeURIComponent(key)}`, 'GET');
+        RequestHandler.authFetch(`remove_result`, 'POST', {
+            key, sid
+        });
         config.detectedPlants.update((plants) => plants.filter((p) => p.key !== key));
         addToast(`Removed "${key}" successfully.`, 'success', 3000);
     } catch (err: any) {

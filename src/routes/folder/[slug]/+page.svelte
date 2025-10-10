@@ -1,11 +1,68 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import Footer from '$lib/components/Footer.svelte';
 	import ViewPicture from '$lib/modal/ViewPicture.svelte';
+	import { userData } from '$root/lib/stores/connection.js';
+	import { onMount } from 'svelte';
 	import { derived, writable, type Writable } from 'svelte/store';
+	import { getFromDB, saveToDB } from '$root/lib/utils/indexdb';
 
-	export let data;
+	$: slug = page.url.pathname.split('/').pop();
+	let currentData = writable({
+		images: [],
+		folder: {
+			id: slug,
+			name: `Folder ${slug}`,
+			createdAt: 'NA',
+			lastModified: 'NA',
+			size: `0MB`,
+			fileCount: 0,
+			access: 'Private'
+		},
+		thumbnail: null
+	});
+
+	function isTodaySlug(slug: string) {
+		const today = new Date();
+		const mmddyyyy =
+			String(today.getMonth() + 1).padStart(2, '0') +
+			String(today.getDate()).padStart(2, '0') +
+			today.getFullYear();
+		return slug === mmddyyyy;
+	}
+
 	let modalOpen = writable(false);
 	let selectedImage = writable<null | { id: number; src: string }>(null);
+	async function fetchFolder(email: string) {
+		if (!slug) return;
+		if (!isTodaySlug(slug)) {
+			const cached = await getFromDB('images-' + slug);
+			if (cached) {
+				currentData.set(cached.value);
+				console.log('Loaded from cache ✅');
+				return;
+			}
+		}
+		const res = await fetch('/api/folder', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ slug, email })
+		});
+		const data = await res.json();
+		currentData.set(data);
+
+		if (!isTodaySlug(slug)) {
+			await saveToDB('images-' + slug, data);
+			console.log('Saved to cache ✅');
+		}
+	}
+	onMount(async () => {
+		await fetchFolder($userData.user.email);
+	});
+
+	let folder = derived(currentData, ($data) => $data.folder);
+	let thumbnail = derived(currentData, ($data) => $data.thumbnail);
+	let images = derived(currentData, ($data) => $data.images);
 
 	function openModal(image: { id: number; src: string }) {
 		selectedImage.set({ ...image });
@@ -27,35 +84,22 @@
 		document.body.removeChild(link);
 	}
 
-	let folder: Writable<{
-		id: string;
-		name: string;
-		createdAt: string;
-		size: string;
-		fileCount: number;
-		lastModified: string;
-		access: string;
-	}> = writable(data.folder as any);
-	let thumbnail: null | string = data.thumbnail;
-
 	let filterMode: Writable<'ALL' | 'SCANBOX' | 'ROI'> = writable('ROI');
-
-	let images = writable(data.images);
 	let currentPage = writable(1);
 	const itemsPerPage = 10;
 
 	const filteredImages = derived([images, filterMode], ([$images, $filterMode]) => {
 		currentPage.set(1);
 		if ($filterMode === 'SCANBOX') {
-			return $images.filter((img) => img.plantName === 'SCANBOX');
+			return $images.filter((img: any) => img.plantName === 'SCANBOX');
 		}
 		if ($filterMode === 'ROI') {
-			return $images.filter((img) => img.plantName !== 'SCANBOX');
+			return $images.filter((img: any) => img.plantName !== 'SCANBOX');
 		}
 		return $images;
 	});
 
-	const paginatedImages = derived(
+	const paginatedImages: any = derived(
 		[filteredImages, currentPage],
 		([$filteredImages, $currentPage]) => {
 			const start = ($currentPage - 1) * itemsPerPage;
@@ -87,8 +131,8 @@
 			<div
 				class="relative flex h-64 items-center justify-center bg-gray-100 shadow-inner md:h-80 dark:bg-gray-800"
 			>
-				{#if thumbnail}
-					<img src={thumbnail} alt="Folder Thumbnail" class="h-full w-full object-cover" />
+				{#if $thumbnail}
+					<img src={$thumbnail} alt="Folder Thumbnail" class="h-full w-full object-cover" />
 				{:else}
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -132,7 +176,7 @@
 					</li>
 					<li class="flex justify-between">
 						<span class="font-medium text-gray-500 dark:text-gray-300">Owner:</span>
-						<span>{(data.user as any).email}</span>
+						<span>{$userData?.user.email}</span>
 					</li>
 					<li class="flex justify-between">
 						<span class="font-medium text-gray-500 dark:text-gray-300">Last Modified:</span>
@@ -146,11 +190,6 @@
 			</div>
 
 			<div class="flex flex-col gap-2 p-4">
-				<!-- <button
-					class="flex items-center justify-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-600"
-				>
-					Download
-				</button> -->
 				<button
 					class="flex items-center justify-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-600"
 					on:click={() => {

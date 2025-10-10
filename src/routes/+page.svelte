@@ -53,7 +53,7 @@
 import { beforeNavigate } from '$app/navigation';
 
 // Svelte core
-import { derived, type Readable } from 'svelte/store';
+import { derived, type Readable, type Writable } from 'svelte/store';
 import { onMount, onDestroy } from 'svelte';
 import { get, writable } from 'svelte/store';
 
@@ -69,7 +69,6 @@ import type {
 	WritableString
 } from '$lib/type';
 
-// Components
 import Footer from '$components/Footer.svelte';
 import PlantModal from '$modal/PlantModal.svelte';
 import ManuallyAddPlant from '$modal/ManuallyAddPlant.svelte';
@@ -80,12 +79,10 @@ import SprayButton from '$routes/spray/spraybuttons.svelte';
 import Detectedplantlist from '$routes/spray/detectedplantlist.svelte';
 import Stoprobot from '$routes/spray/stoprobot.svelte';
 
-// Stores
 import { simpleMode } from '$stores/mode';
-import { isRobotRunning, isLivestreaming, isScanning } from '$stores/connection';
+import { userData, deviceID } from '$stores/connection';
 import { addToast } from '$stores/toast';
 
-// Utils & Services
 import { confirmBeforeLeave } from '$utils/navigation';
 import {
 	config,
@@ -100,13 +97,28 @@ import {
 	filterDetectedPlants,
 	removePlant
 } from '$services/home/plantService.js';
-import { controlRobot } from '$services/home/robotService.js';
+import { controlScanner } from '$services/home/robotService.js';
 import { transformPlantList } from '$root/lib/utils/transform.js';
+import { Connection } from '$root/lib/class/connection';
 
-// ----------------------------
-// Props
-// ----------------------------
-export let data;
+$: allState = Connection.getAllState({conn: true, robot: true, live: true, scan: true, rscan: true, performing: true, robotLive: true, stopCapture: true});
+$: conn = allState.connection;
+$: rstate = allState.robotrunning;
+$: sstate = allState.scanningstate;
+$: lstate  = allState.livestreamstate;
+$: rcstate  = allState.robotscanningstate;
+$: pstate = allState.performingscan;
+$: rlstate = allState.robotlivestream;
+$: scstate = allState.stopcapturingimage;
+
+$: isConnected = $conn!;
+$: robotState = $rstate!;
+$: liveState = $lstate!;
+$: scannerState = $sstate!;
+$: robotScanState = $rcstate!;
+$: performing = $pstate!;
+$: robotLive = $rlstate!;
+$: stopCapture = $scstate!;
 
 // ----------------------------
 // Stores & State
@@ -114,11 +126,21 @@ export let data;
 const searchPlant: WritableString = writable<string>('');
 const isAlreadyInitialize: WritableBoolean = writable<boolean>(false);
 
-const yoloObjectDetection: WritableModelArray = writable(data.models.yoloobjectdetection);
-const yoloStageClassification: WritableModelArray = writable(data.models.yolostageclassification);
-const maskRCNNSegmentation: WritableModelArray = writable(data.models.maskrcnnsegmentation);
-const allPlants: PlantList = data.plants;
-const allPlantsTransformed: PlantListTransformed = transformPlantList(data.plants);
+const yoloObjectDetection: WritableModelArray = writable([]);
+const yoloStageClassification: WritableModelArray = writable([]);
+const maskRCNNSegmentation: WritableModelArray = writable([]);
+const allPlants: Writable<PlantList> = writable([]);
+const allPlantsTransformed: Writable<PlantListTransformed> = writable({});
+
+userData.subscribe((user) => {
+    if (!user) return;
+    yoloObjectDetection.set(user.models?.yoloobjectdetection || []);
+    yoloStageClassification.set(user.models?.yolostageclassification || []);
+    maskRCNNSegmentation.set(user.models?.maskrcnnsegmentation || []);
+    allPlants.set(user.plants || []);
+    allPlantsTransformed.set(transformPlantList(user.plants || []));
+	initiateConfig(user.user || {}, isAlreadyInitialize, yoloObjectDetection, yoloStageClassification, maskRCNNSegmentation);
+});
 
 let showManualPlant: boolean = false;
 let showCamera: boolean = false;
@@ -129,19 +151,17 @@ let selectedPlantIndex: number = -1;
 let selectedPlant: DetectedPlant | null = null;
 let previousSprays: Spray | null = null;
 
-// Derived store for filtering detected plants
 const filteredDetectedPlantsStore: Readable<DetectedPlantArray> = derived(
 	[config.detectedPlants, searchPlant],
-	([$detectedPlants, $searchPlant]) => filterDetectedPlants($detectedPlants, allPlantsTransformed, $searchPlant)
+	([$detectedPlants, $searchPlant]) => filterDetectedPlants($detectedPlants, $allPlantsTransformed, $searchPlant)
 );
 
 // ----------------------------
 // Lifecycle
 // ----------------------------
 onMount(() => {
-	initiateConfig(isAlreadyInitialize, yoloObjectDetection, yoloStageClassification, maskRCNNSegmentation);
 	const handler = (event: BeforeUnloadEvent) => {
-		if (config.isDirty() || $isScanning || showSprayModal || showManualPlant) {
+		if (config.isDirty() || scannerState || showSprayModal || showManualPlant) {
 		event.preventDefault();
 		}
 	};
@@ -154,7 +174,7 @@ onMount(() => {
 // ----------------------------
 beforeNavigate((navigation) => {
 	if (confirmBeforeLeave(config.isDirty(), 'You have unsaved changes. Leave anyway?', navigation)) return;
-	if (confirmBeforeLeave($isScanning, 'Camera is open. Close it before leaving?', navigation)) return;
+	if (confirmBeforeLeave(scannerState, 'Camera is open. Close it before leaving?', navigation)) return;
 	if (confirmBeforeLeave(showSprayModal, 'Spray setup is open. Close it before leaving?', navigation)) return;
 	if (confirmBeforeLeave(showManualPlant, 'Manual plant addition is open. Close it before leaving?', navigation)) return;
 });
@@ -167,10 +187,14 @@ beforeNavigate((navigation) => {
  * Opens the PlantModal unless livestream is active.
  */
 function onSelectPlant(plant: DetectedPlant, index: number) {
-	if ($isLivestreaming !== 'Stopped') {
+	if (liveState) {
 		addToast('Action unavailable while livestreaming is active.', 'error', 3000);
 		return;
 	}
+    if (robotState) {
+        addToast('Action unavailable while robot is active.', 'error', 3000);
+		return;
+    }
 	selectedPlantIndex = index;
 	selectedPlant = plant;
 	showModal = true;
@@ -197,15 +221,23 @@ function changeCamera(camera: boolean) {
 </script>
 
 
-
 <!-- --------------------------------------------------------------------------------------- -->
 <!-- --------------------------------------------------------------------------------------- -->
 <!-- --------------------------------------------------------------------------------------- -->
 <!-- --------------------------------------------------------------------------------------- -->
 <!-- --------------------------------------------------------------------------------------- -->
-
-{#if $isRobotRunning != 'Stopped'}
-    <Stoprobot />
+{#if robotState}
+    <Stoprobot whatRunning="robot"/>
+{:else if liveState}
+    <Stoprobot whatRunning="livestream"/>
+{:else if robotScanState}
+    <Stoprobot whatRunning="robot scanner" />
+{:else if performing}
+	<Stoprobot whatRunning="perform scan" />
+{:else if robotLive}
+	<Stoprobot whatRunning="robot live" />
+{:else if stopCapture}
+	<Stoprobot whatRunning="capture" />
 {:else}
     <div class="relative flex min-h-[calc(100vh-95px)] flex-col bg-gray-200 p-4 ease-out lg:px-16 dark:bg-gray-700">
         <div
@@ -215,10 +247,18 @@ function changeCamera(camera: boolean) {
         >
             {#if !$simpleMode}
                 <Camera
-                    allPlants={allPlants}
+                    allPlants={$allPlants}
                     detectedPlants={config.detectedPlants}
                     {showCamera}
                     closeCamera={() => changeCamera(false)}
+                    isConnected={isConnected}
+                    liveState={liveState}
+                    scannerState={scannerState}
+                    robotState={robotState}
+                    robotScanState={robotScanState}
+                    performing={performing}
+                    robotLive={robotLive}
+                    stopCapture={stopCapture}
                 />
             {/if}
             <div class="w-full rounded-xl bg-white p-4 shadow-lg md:flex-1 dark:bg-gray-900">
@@ -232,21 +272,39 @@ function changeCamera(camera: boolean) {
                     <Detectedplantlist
                         plants={$filteredDetectedPlantsStore}
                         onSelectPlant={onSelectPlant}
+
+                        liveState={liveState}
+                        robotState={robotState}
+                        robotScanState={robotScanState}
+                        performing={performing}
+                        robotLive={robotLive}
+                        stopCapture={stopCapture}
                     />
                 </div>
 
                 <SprayButton
-                    {controlRobot}
+                    {controlScanner}
+                    isConnected={isConnected}
+                    liveState={liveState}
+                    scannerState={scannerState}
+                    robotState={robotState}
+                    robotScanState={robotScanState}
+                    performing={performing}
+                    robotLive={robotLive}
+                    stopCapture={stopCapture}
+
                     openSprayModal={openSprayModal}
                     openCamera={() => changeCamera(true)}
                     {config}
                     {yoloObjectDetection}
                     {yoloStageClassification}
                     {maskRCNNSegmentation}
-                    saveConfig={() => saveConfig(data)}
+                    saveConfig={async () => {
+                        saveConfig($userData, $deviceID);
+                    }}
                     {downloadConfig}
                     uploadConfig={() => uploadConfig(
-                        allPlantsTransformed,
+                        $allPlantsTransformed,
                         yoloObjectDetection,
                         yoloStageClassification,
                         maskRCNNSegmentation,
@@ -259,7 +317,7 @@ function changeCamera(camera: boolean) {
 
     <PlantModal
         {removePlant}
-        allPlantsTransformed={allPlantsTransformed}
+        allPlantsTransformed={$allPlantsTransformed}
         disabledPlant={() => disablePlant(selectedPlantIndex)}
         {selectedPlant}
         slots={config.sprays}
@@ -277,8 +335,8 @@ function changeCamera(camera: boolean) {
     {/if}
 
     <ManuallyAddPlant
-        allPlants={allPlants}
-        allPlantsTransformed={allPlantsTransformed}
+        allPlants={$allPlants}
+        allPlantsTransformed={$allPlantsTransformed}
         detectedPlants={config.detectedPlants}
         showModal={showManualPlant}
         closeModal={() => (showManualPlant = false)}

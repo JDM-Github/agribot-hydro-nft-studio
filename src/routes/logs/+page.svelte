@@ -1,224 +1,213 @@
 <script lang="ts">
-	import { onMount, onDestroy, tick } from 'svelte';
-	import Footer from '$lib/components/Footer.svelte';
-	import RequestHandler from '$lib/utils/request';
-	import { simpleMode } from '$lib/stores/mode';
-	import NotConnected from '$lib/components/NotConnected.svelte';
-	import { isConnected } from '$lib/stores/connection';
-	export let data;
-	let logs: string[] = [];
-	let filteredLogs: string[] = [];
-	let intervalId: any;
-	let logContainer: HTMLDivElement;
+import { onMount, onDestroy } from 'svelte';
+import Footer from '$lib/components/Footer.svelte';
+import { simpleMode } from '$lib/stores/mode';
+import NotConnected from '$lib/components/NotConnected.svelte';
+import { Connection, } from '$root/lib/class/connection.js';
+import { writable, type Writable } from 'svelte/store';
+	import { SocketService } from '$root/lib/socket';
+export let data;
 
-	let selectedDate: string = new Date().toISOString().split('T')[0];
-	let selectedLevel: string = 'ALL';
-	let searchQuery: string = '';
-	let liveUpdates: boolean = true;
-	let startTime: string = '00:00';
-	let endTime: string = '23:59';
-	let isAlreadyLoaded = false;
+$: isConnected = Connection.isConnected();
+$: nlogs = Connection.getAllLogs();
+let filteredLogs: Writable<string[]> = writable([]);
+let intervalId: any;
+let logContainer: HTMLDivElement;
 
-	onMount(() => {
-		// selectedDate =
-		// 	localStorage.getItem('logs_selectedDate') || new Date().toISOString().split('T')[0];
-		selectedLevel = localStorage.getItem('logs_selectedLevel') || 'ALL';
-		searchQuery = localStorage.getItem('logs_searchQuery') || '';
-		liveUpdates = localStorage.getItem('logs_liveUpdates') !== 'false';
-		startTime = localStorage.getItem('logs_startTime') || '00:00';
-		endTime = localStorage.getItem('logs_endTime') || '23:59';
-		isAlreadyLoaded = true;
-		filterLogs();
-	});
-	$: if ($simpleMode) {
-		selectedLevel = 'ALL';
-		scrollToBottom();
-	}
+let selectedDate: string = new Date().toISOString().split('T')[0];
+let selectedLevel: string = 'ALL';
+let searchQuery: string = '';
+let liveUpdates: boolean = true;
+let startTime: string = '00:00';
+let endTime: string = '23:59';
+let isAlreadyLoaded = false;
 
-	let collapsedGroups: Record<string, boolean> = {};
+onMount(() => {
+	selectedLevel = localStorage.getItem('logs_selectedLevel') || 'ALL';
+	searchQuery = localStorage.getItem('logs_searchQuery') || '';
+	liveUpdates = localStorage.getItem('logs_liveUpdates') !== 'false';
+	startTime = localStorage.getItem('logs_startTime') || '00:00';
+	endTime = localStorage.getItem('logs_endTime') || '23:59';
+	isAlreadyLoaded = true;
+	filterLogs();
+});
+$: if ($simpleMode) {
+	selectedLevel = 'ALL';
+	scrollToBottom();
+}
 
-	let stats = { INFO: 0, WARNING: 0, DEBUG: 0, ERROR: 0, TOTAL: 0 };
-	let showErrorAlert = false;
-	let lastErrorCount = 0;
+function onDateChange(newDate: string) {
+	selectedDate = newDate;
+	nlogs.set([]);
+	if (SocketService.isConnected())
+		SocketService.emit("set_log_date", { date: selectedDate });
+}
 
-	function isUserNearBottom(): boolean {
-		if (!logContainer) return false;
-		const threshold = 50;
-		return (
-			logContainer.scrollHeight - logContainer.scrollTop - logContainer.clientHeight <= threshold
-		);
-	}
-
-	function scrollToBottom() {
-		if (logContainer) {
-			logContainer.scrollTo({
-				top: logContainer.scrollHeight,
-				behavior: 'smooth'
-			});
-		}
-	}
-
-	async function fetchLogs() {
-		try {
-			const [success, data] = await RequestHandler.authFetch(
-				`get-logs?date=${selectedDate}`,
-				'GET'
-			);
-			if (success) {
-				const oldLength = logs.length;
-				const newLogs = data.logs;
-
-				if (newLogs.length !== oldLength) {
-					logs = newLogs;
-					filterLogs();
-					updateStats();
-					checkNewErrors();
-					await tick();
-
-					if (isUserNearBottom()) {
-						scrollToBottom();
-					}
-				}
-			}
-		} catch (error) {
-			console.error('Failed to fetch logs:', error);
-		}
-	}
-
-	function saveSettings() {
-		if (isAlreadyLoaded && typeof window !== 'undefined' && window.localStorage) {
-			localStorage.setItem('logs_selectedDate', selectedDate);
-			localStorage.setItem('logs_selectedLevel', selectedLevel);
-			localStorage.setItem('logs_searchQuery', searchQuery);
-			localStorage.setItem('logs_startTime', startTime);
-			localStorage.setItem('logs_endTime', endTime);
-			localStorage.setItem('logs_liveUpdates', String(liveUpdates));
-		}
-	}
-
-	function getLogClass(line: string): string {
-		if (line.includes('[ERROR]')) return 'border-l-4 border-red-500 bg-red-50 dark:bg-red-900/30';
-		if (line.includes('[WARNING]'))
-			return 'border-l-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/30';
-		if (line.includes('[DEBUG]'))
-			return 'border-l-4 border-gray-500 bg-gray-50 dark:bg-gray-900/30';
-		if (line.includes('[INFO]')) return 'border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/30';
-		return 'bg-white dark:bg-gray-800';
-	}
-
-	function groupLogs() {
-		const groups: Record<string, string[]> = {};
-		filteredLogs.forEach((line) => {
-			const match = line.match(/(\d{4}-\d{2}-\d{2}\s\d{2})/);
-			const key = match ? match[1] : 'Other';
-			if (!groups[key]) groups[key] = [];
-			groups[key].push(line);
+let collapsedGroups: Record<string, boolean> = {};
+const logLevels = [
+	'ALL',
+	'INFO',
+	'SUCCESS',
+	'WARNING',
+	'ERROR',
+	'DEBUG',
+	'ROUTE',
+	'INITIALIZE',
+	'EVENT'
+];
+let stats = {
+	INFO: 0,
+	SUCCESS: 0,
+	WARNING: 0,
+	ERROR: 0,
+	DEBUG: 0,
+	ROUTE: 0,
+	INITIALIZE: 0,
+	EVENT: 0,
+	TOTAL: 0
+};
+function scrollToBottom() {
+	if (logContainer) {
+		logContainer.scrollTo({
+			top: logContainer.scrollHeight,
+			behavior: 'smooth'
 		});
-		return groups;
 	}
+}
 
-	function toggleGroup(key: string) {
-		collapsedGroups[key] = !collapsedGroups[key];
+function saveSettings() {
+	if (isAlreadyLoaded && typeof window !== 'undefined' && window.localStorage) {
+		localStorage.setItem('logs_selectedLevel', selectedLevel);
+		localStorage.setItem('logs_searchQuery', searchQuery);
+		localStorage.setItem('logs_startTime', startTime);
+		localStorage.setItem('logs_endTime', endTime);
+		localStorage.setItem('logs_liveUpdates', String(liveUpdates));
 	}
+}
 
-	function filterLogs() {
-		filteredLogs = logs.filter((line) => {
-			const matchesLevel = selectedLevel === 'ALL' || line.includes(`[${selectedLevel}]`);
+function getLogClass(line: string): string {
+	if (line.includes('ERROR')) return 'border-l-4 border-red-500 bg-red-50 dark:bg-red-900/30';
+	if (line.includes('WARNING')) return 'border-l-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/30';
+	if (line.includes('SUCCESS')) return 'border-l-4 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30';
+	if (line.includes('INFO')) return 'border-l-4 border-green-500 bg-green-50 dark:bg-green-900/30';
+	if (line.includes('DEBUG')) return 'border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/30';
+	if (line.includes('ROUTE')) return 'border-l-4 border-cyan-500 bg-cyan-50 dark:bg-cyan-900/30';
+	if (line.includes('INITIALIZE')) return 'border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-900/30';
+	if (line.includes('EVENT')) return 'border-l-4 border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30';
+	return 'bg-white dark:bg-gray-800';
+}
+
+function groupLogs() {
+	const groups: Record<string, string[]> = {};
+	$filteredLogs.forEach((line) => {
+		const match = line.match(/(\d{4}-\d{2}-\d{2}\s\d{2})/);
+		const key = match ? match[1] : 'Other';
+		if (!groups[key]) groups[key] = [];
+		groups[key].push(line);
+	});
+	return groups;
+}
+
+function toggleGroup(key: string) {
+	collapsedGroups[key] = !collapsedGroups[key];
+}
+
+function filterLogs() {
+	filteredLogs.set(
+		$nlogs.filter((line) => {
+			const matchesLevel = selectedLevel === 'ALL' || line.includes(`${selectedLevel}`);
 			const matchesSearch =
 				searchQuery.trim() === '' || line.toLowerCase().includes(searchQuery.toLowerCase());
 
 			const matchesTime = (() => {
 				const match = line.match(/\b(\d{2}:\d{2}):\d{2}\b/);
 				if (!match) return true;
-
 				const logTime = match[1];
 				return logTime >= startTime && logTime <= endTime;
 			})();
 
 			return matchesLevel && matchesSearch && matchesTime;
-		});
-		updateStats();
-		saveSettings();
+		})
+	);
+	updateStats();
+	saveSettings();
+	setTimeout(() => {
+		scrollToBottom();
+	}, 100);
+}
+
+function updateStats() {
+	stats = {
+		INFO: 0,
+		SUCCESS: 0,
+		WARNING: 0,
+		ERROR: 0,
+		DEBUG: 0,
+		ROUTE: 0,
+		INITIALIZE: 0,
+		EVENT: 0,
+		TOTAL: 0
+	};
+
+	$filteredLogs.forEach((line) => {
+		if (line.includes('INFO')) stats.INFO++;
+		if (line.includes('SUCCESS')) stats.SUCCESS++;
+		if (line.includes('WARNING')) stats.WARNING++;
+		if (line.includes('ERROR')) stats.ERROR++;
+		if (line.includes('DEBUG')) stats.DEBUG++;
+		if (line.includes('ROUTE')) stats.ROUTE++;
+		if (line.includes('INITIALIZE')) stats.INITIALIZE++;
+		if (line.includes('EVENT')) stats.EVENT++;
+		stats.TOTAL++;
+	});
+}
+
+function downloadLogs() {
+	const plainTextLogs = $filteredLogs.map((line) => line.replace(/<[^>]*>/g, ''));
+	const content = plainTextLogs.join('\n');
+	const blob = new Blob([content], { type: 'text/plain' });
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	a.href = url;
+	a.download = `logs_${selectedDate}.txt`;
+	a.click();
+	URL.revokeObjectURL(url);
+}
+
+$: searchQuery, selectedLevel, startTime, endTime, filterLogs();
+function handleKeydown(e: KeyboardEvent) {
+	if (e.ctrlKey && e.key === 'f') {
+		e.preventDefault();
+		const searchInput = document.querySelector<HTMLInputElement>(
+			'input[placeholder="Search logs..."]'
+		);
+		searchInput?.focus();
 	}
-
-	function updateStats() {
-		stats = { INFO: 0, WARNING: 0, DEBUG: 0, ERROR: 0, TOTAL: 0 };
-		filteredLogs.forEach((line) => {
-			if (line.includes('[INFO]')) stats.INFO++;
-			if (line.includes('[WARNING]')) stats.WARNING++;
-			if (line.includes('[DEBUG]')) stats.DEBUG++;
-			if (line.includes('[ERROR]')) stats.ERROR++;
-			stats.TOTAL++;
-		});
+	if (e.ctrlKey && e.key === 'ArrowDown') {
+		e.preventDefault();
+		scrollToBottom();
 	}
+}
 
-	function checkNewErrors() {
-		const currentErrorCount = filteredLogs.filter((l) => l.includes('[ERROR]')).length;
-		if (currentErrorCount > lastErrorCount) {
-			showErrorAlert = true;
-			setTimeout(() => (showErrorAlert = false), 4000);
-		}
-		lastErrorCount = currentErrorCount;
+onMount(async () => {
+	if (typeof document !== 'undefined') {
+		document.addEventListener('keydown', handleKeydown);
 	}
-
-	function downloadLogs() {
-		const plainTextLogs = filteredLogs.map((line) => line.replace(/<[^>]*>/g, ''));
-		const content = plainTextLogs.join('\n');
-		const blob = new Blob([content], { type: 'text/plain' });
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement('a');
-		a.href = url;
-		a.download = `logs_${selectedDate}.txt`;
-		a.click();
-		URL.revokeObjectURL(url);
-	}
-
-	$: fetchLogs();
-	$: logs, searchQuery, selectedLevel, startTime, endTime, filterLogs();
-
-	function handleKeydown(e: KeyboardEvent) {
-		if (e.ctrlKey && e.key === 'f') {
-			e.preventDefault();
-			const searchInput = document.querySelector<HTMLInputElement>(
-				'input[placeholder="Search logs..."]'
-			);
-			searchInput?.focus();
-		}
-		if (e.ctrlKey && e.key === 'ArrowDown') {
-			e.preventDefault();
+	nlogs.subscribe((logs) => {
+		if (logs) {
+			filterLogs();
+			updateStats();
 			scrollToBottom();
 		}
-		if (e.ctrlKey && e.key === 'p') {
-			e.preventDefault();
-			toggleLiveUpdates();
-		}
+	})
+});
+
+onDestroy(() => {
+	clearInterval(intervalId);
+	if (typeof document !== 'undefined') {
+		document.removeEventListener('keydown', handleKeydown);
 	}
-
-	function toggleLiveUpdates() {
-		liveUpdates = !liveUpdates;
-		if (liveUpdates) {
-			intervalId = setInterval(fetchLogs, 1000);
-		} else {
-			clearInterval(intervalId);
-		}
-	}
-
-	onMount(async () => {
-		if (typeof document !== 'undefined') {
-			document.addEventListener('keydown', handleKeydown);
-		}
-		fetchLogs();
-		if (liveUpdates) {
-			intervalId = setInterval(fetchLogs, 1000);
-		}
-	});
-
-	onDestroy(() => {
-		clearInterval(intervalId);
-		if (typeof document !== 'undefined') {
-			document.removeEventListener('keydown', handleKeydown);
-		}
-	});
+});
 </script>
 
 {#if !$isConnected}
@@ -228,14 +217,6 @@
 		class="relative flex min-h-[calc(100vh-95px)] flex-col bg-gray-200 p-4 ease-out lg:px-16 dark:bg-gray-700"
 	>
 		<div class="mx-auto w-11/12 rounded-xl bg-white p-4 shadow-lg md:flex-1 dark:bg-gray-900">
-			<!-- 🔴 Error Alert Banner -->
-			{#if showErrorAlert && !$simpleMode}
-				<div
-					class="absolute z-100 mb-3 animate-pulse rounded-lg bg-red-500 p-3 font-semibold text-white shadow-md"
-				>
-					🚨 New ERROR logs detected!
-				</div>
-			{/if}
 
 			<!-- Header -->
 			<div
@@ -252,22 +233,6 @@
 
 					<!-- Right: Action Buttons -->
 					<div class="flex gap-4">
-						<!-- Live Updates -->
-						{#if !$simpleMode}
-							<div class="flex flex-col items-center">
-								<!-- svelte-ignore a11y_label_has_associated_control -->
-								<label class="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-									Live Updates
-								</label>
-								<button
-									on:click={toggleLiveUpdates}
-									title="Toggle live updates"
-									class="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 focus:outline-none"
-								>
-									{liveUpdates ? 'Pause' : 'Live'}
-								</button>
-							</div>
-						{/if}
 
 						<!-- Download Logs -->
 						<div class="flex flex-col items-center">
@@ -310,6 +275,7 @@
 							</label>
 							<input
 								type="date"
+								on:change={(e: any) => onDateChange(e.target.value)}
 								bind:value={selectedDate}
 								title="Select a specific date"
 								class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
@@ -355,11 +321,9 @@
 								title="Filter by log severity level"
 								class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-green-400 focus:ring-2 focus:ring-green-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
 							>
-								<option value="ALL">All</option>
-								<option value="INFO">INFO</option>
-								<option value="WARNING">WARNING</option>
-								<option value="DEBUG">DEBUG</option>
-								<option value="ERROR">ERROR</option>
+								{#each logLevels as level}
+									<option value={level}>{level}</option>
+								{/each}
 							</select>
 						</div>
 
@@ -388,10 +352,14 @@
 				>
 					<strong>Log Stats:</strong>
 					<span class="ml-2">Total: {stats.TOTAL}</span> |
-					<span class="ml-2 text-blue-500">INFO: {stats.INFO}</span> |
+					<span class="ml-2 text-green-500">INFO: {stats.INFO}</span> |
+					<span class="ml-2 text-emerald-500">SUCCESS: {stats.SUCCESS}</span> |
 					<span class="ml-2 text-yellow-500">WARNING: {stats.WARNING}</span> |
-					<span class="ml-2 text-gray-500">DEBUG: {stats.DEBUG}</span> |
-					<span class="ml-2 text-red-500">ERROR: {stats.ERROR}</span>
+					<span class="ml-2 text-red-500">ERROR: {stats.ERROR}</span> |
+					<span class="ml-2 text-blue-500">DEBUG: {stats.DEBUG}</span> |
+					<span class="ml-2 text-cyan-500">ROUTE: {stats.ROUTE}</span> |
+					<span class="ml-2 text-amber-500">INITIALIZE: {stats.INITIALIZE}</span> |
+					<span class="ml-2 text-indigo-500">EVENT: {stats.EVENT}</span>
 				</div>
 			{/if}
 
@@ -401,9 +369,9 @@
 				class="mx-2 space-y-2 overflow-y-auto rounded-xl border border-gray-200 bg-gray-100 p-2 lg:max-h-[400px] dark:border-gray-700 dark:bg-gray-800"
 			>
 				<ul class="min-h-[350px] space-y-3">
-					{#if filteredLogs.length > 0}
+					{#if $filteredLogs.length > 0}
 						{#if $simpleMode}
-							{#each filteredLogs as line, index}
+							{#each $filteredLogs as line, index}
 								<li
 									class={`rounded-md p-2 text-sm text-gray-800 shadow-sm transition-all duration-300 ease-in-out dark:text-gray-200 ${getLogClass(line)}`}
 								>
@@ -430,9 +398,11 @@
 										<ul class="space-y-1 px-2 pb-2">
 											{#each lines as line, index}
 												<li
-													class={`rounded-md p-2 text-sm text-gray-800 shadow-sm transition-all duration-300 ease-in-out dark:text-gray-200 ${getLogClass(line)}`}
+													class={`log-line whitespace-pre-wrap rounded-md p-2 text-sm text-gray-800 shadow-sm transition-all duration-300 ease-in-out dark:text-gray-200 ${getLogClass(line)}`}
 												>
-													<span class="w-12 text-xs text-gray-400 select-none">#{index + 1}</span>
+													<span class="w-12 text-xs text-gray-400 select-none log-line">
+														#{String(index + 1).padStart(3, "0")}
+													</span>
 													{@html line}
 												</li>
 											{/each}

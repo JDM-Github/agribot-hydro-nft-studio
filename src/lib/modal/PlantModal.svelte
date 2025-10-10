@@ -3,6 +3,7 @@
 	import { ChevronDown, ChevronUp } from 'lucide-svelte';
 	import { simpleMode } from '$lib/stores/mode';
 	import type { PlantListTransformed, Spray } from '$lib/type';
+	import { SocketService } from '../socket';
 
 	let expandedDisease = writable(null);
 	function toggleDiseaseDetails(index: any) {
@@ -12,7 +13,7 @@
 	export let selectedPlant: any;
 	export let showModal = false;
 	export let disabledPlant = () => {};
-	export let removePlant = (key: string) => {};
+	export let removePlant = (key: string, sid: string) => {};
 	export let closeModal = () => {};
 	export let slots: Writable<Spray>;
 
@@ -34,14 +35,12 @@
 			class="relative w-full max-w-3xl overflow-hidden rounded-xl border border-gray-300 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900"
 		>
 			{#if $simpleMode}
-				<!-- SIMPLE MODE VIEW -->
 				<div class="space-y-3 p-4 overflow-y-auto max-h-[500px]">
 					<h3
 						class="flex items-center justify-between border-b border-gray-300 pb-2 text-2xl font-extrabold tracking-wide text-gray-800 dark:border-gray-700 dark:text-gray-200"
 					>
 						<span>{selectedPlant.key}</span>
 
-						<!-- Modern Toggle Switch -->
 						<label class="flex cursor-pointer items-center">
 							<span class="mr-2 text-sm font-medium text-gray-700 dark:text-gray-300"
 								>Spray Early</span
@@ -138,7 +137,8 @@
 						<button
 							on:click={() => {
 								closeModal();
-								removePlant(selectedPlant.key);
+								
+								removePlant(selectedPlant.key, SocketService.id() ?? "");
 							}}
 							class="rounded-lg bg-red-900 px-5 py-2 text-white transition hover:bg-red-950"
 						>
@@ -287,7 +287,7 @@
 						<button
 							on:click={() => {
 								closeModal();
-								removePlant(selectedPlant.key);
+								removePlant(selectedPlant.key, SocketService.id() ?? "");
 							}}
 							class="rounded-lg bg-red-900 px-5 py-2 text-white transition hover:bg-red-950"
 						>

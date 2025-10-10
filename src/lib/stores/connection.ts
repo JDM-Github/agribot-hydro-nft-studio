@@ -1,8 +1,14 @@
 import { writable as $store, get } from 'svelte/store';
 
 const robotName = $store<string | null>(null);
-const currentLink = $store<string | null>(null);
-const isConnected = $store(false);
+const currentLink = $store<string | null>("https://agribot-pi4.tail13df43.ts.net:8000");
+
+const deviceID = $store<string>("");
+const userData = $store<any>();
+const needSync = $store<boolean>(false);
+const syncNeededItems = $store<any[]>([]);
+
+const isConnected = $store(true);
 const isLivestreaming = $store("Stopped");
 const isScanning = $store(false);
 const isRobotRunning = $store("Stopped");
@@ -62,6 +68,10 @@ export {
 	isScanning,
 	isLivestreaming,
 	robotName,
+	deviceID,
+	userData,
+	needSync,
+	syncNeededItems,
 	connect,
 	disconnect
 };

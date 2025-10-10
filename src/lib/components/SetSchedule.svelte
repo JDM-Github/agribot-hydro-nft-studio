@@ -1,12 +1,11 @@
 <script lang="ts">
-	import type { Writable } from 'svelte/store';
+	import { get, type Writable } from 'svelte/store';
 
 	export let schedule: Writable<{
 		frequency: string;
 		runs: { time: string; upto: string }[];
 		days: string[];
 	}>;
-
 	export let showScheduleModal = false;
 	export let onClose;
 	export let onSave;
@@ -35,7 +34,6 @@
 				return;
 			}
 
-			// Check 3AM–10PM limits
 			if (s < toMinutes('03:00') || s > toMinutes('22:00')) {
 				errors.push(`Run ${i + 1}: Start time must be between 03:00 and 22:00.`);
 			}
@@ -43,13 +41,11 @@
 				errors.push(`Run ${i + 1}: Latest Start time must be between 03:00 and 22:00.`);
 			}
 
-			// End must be after start
 			if (e <= s) {
 				errors.push(`Run ${i + 1}: Latest Start must be AFTER Start.`);
 			}
 		});
 
-		// Overlaps / duplicate starts
 		const sorted = runs
 			.map((r, i) => ({ i, start: toMinutes(r.time), end: toMinutes(r.upto) }))
 			.sort((a, b) => a.start - b.start);
@@ -58,13 +54,11 @@
 			const prev = sorted[i - 1];
 			const curr = sorted[i];
 
-			// same start time
 			if (curr.start === prev.start) {
 				errors.push(
 					`Runs ${prev.i + 1} and ${curr.i + 1} have the same start time (${runs[prev.i].time}).`
 				);
 			}
-			// overlap (curr starts before prev ends)
 			if (curr.start < prev.end) {
 				errors.push(
 					`Runs ${prev.i + 1} (${runs[prev.i].time}–${runs[prev.i].upto}) and ${curr.i + 1} (${runs[curr.i].time}–${runs[curr.i].upto}) overlap.`
@@ -72,9 +66,12 @@
 			}
 		}
 		if (errors.length) return;
-		onSave();
+		onSave({
+			frequency: $schedule.frequency,
+			runs: $schedule.runs,
+			days: selectedDays
+		});
 	};
-
 
 	const toggleDay = (day: string) => {
 		if (selectedDays.includes(day)) {
@@ -107,7 +104,9 @@
 		>
 			<button
 				class="absolute top-4 right-4 text-gray-600 hover:text-red-600 dark:text-gray-300"
-				on:click={() => onClose()}>✕</button
+				on:click={() => {
+					onClose();
+				}}>✕</button
 			>
 
 			<h2 class="mb-4 text-xl font-bold text-gray-800 dark:text-white">Set Schedule</h2>
@@ -131,6 +130,7 @@
 				</div>
 
 				<div>
+					<!-- svelte-ignore a11y_label_has_associated_control -->
 					<label class="font-semibold text-gray-800 dark:text-white">How Often</label>
 					<select
 						bind:value={$schedule.frequency}

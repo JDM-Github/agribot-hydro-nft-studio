@@ -15,8 +15,9 @@ import { addToast, confirmToast, removeToast } from '$stores/toast';
 import { validateAndNormalizeConfig } from '$utils/validation';
 import type { PlantListTransformed, WritableBoolean, WritableModelArray } from '$lib/type';
 import { get } from 'svelte/store';
-import { isLivestreaming } from '$lib/stores/connection';
+import { isLivestreaming, userData } from '$lib/stores/connection';
 import { ImageWithJSON } from '$class/imageJson';
+import { saveToDB } from '$root/lib/utils/indexdb';
 
 /** Shared configuration instance */
 export const config: Config = new Config();
@@ -26,6 +27,7 @@ export const config: Config = new Config();
  * @param isAlreadyInitialize - Writable boolean flag to prevent multiple initializations
  */
 export function initiateConfig(
+    userConfig: any,
     isAlreadyInitialize: WritableBoolean,
     yoloObjectDetection: WritableModelArray,
     yoloStageClassification: WritableModelArray,
@@ -33,28 +35,25 @@ export function initiateConfig(
 ) {
     if (!get(isAlreadyInitialize)) {
         try {
-            isAlreadyInitialize.set(true);
-            const stored = localStorage.getItem('userConfig');
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                parsed.objectDetection = parsed.objectDetection && parsed.objectDetection !== ""
-                    ? parsed.objectDetection
+            const conf = userConfig.config || null;
+            if (conf) {
+                conf.objectDetection = conf.objectDetection && conf.objectDetection !== ""
+                    ? conf.objectDetection
                     : get(yoloObjectDetection)[0]?.version || "";
 
-                parsed.stageClassification = parsed.stageClassification && parsed.stageClassification !== ""
-                    ? parsed.stageClassification
+                conf.stageClassification = conf.stageClassification && conf.stageClassification !== ""
+                    ? conf.stageClassification
                     : get(yoloStageClassification)[0]?.version || "";
 
-                parsed.diseaseSegmentation = parsed.diseaseSegmentation && parsed.diseaseSegmentation !== ""
-                    ? parsed.diseaseSegmentation
+                conf.diseaseSegmentation = conf.diseaseSegmentation && conf.diseaseSegmentation !== ""
+                    ? conf.diseaseSegmentation
                     : get(maskRCNNSegmentation)[0]?.version || "";
 
-                config.applyConfig(parsed);
+                config.applyConfig(conf);
                 config.saveConfig();
-                addToast('Loaded configuration from localStorage.', 'info', 3000);
             }
         } catch (err) {
-            addToast('Error loading configuration from localStorage.', 'error', 3000);
+            addToast('Error loading configuration.', 'error', 1000);
             console.error('initiateConfig error:', err);
         }
     }
@@ -136,7 +135,7 @@ export function uploadConfig(
  * Save the current configuration to cloud and localStorage.
  * @param data - User-related data, including email for cloud API
  */
-export async function saveConfig(data: any) {
+export async function saveConfig(userData: any, deviceID: string) {
     if (get(isLivestreaming) !== 'Stopped') {
         addToast('Action unavailable while livestreaming.', 'error', 3000);
         return;
@@ -149,25 +148,23 @@ export async function saveConfig(data: any) {
 
     const toastId = addToast('Updating configuration...', 'loading');
     const currentConfig = config.getCurrentConfig();
-
     try {
         const response = await RequestHandler.fetchData('post', 'user/update-config', {
-            email: (data.user as any).email,
-            config: currentConfig
+            id: userData.user.id,
+            config: currentConfig,
+            deviceID: deviceID
         });
-
         removeToast(toastId);
-
         if (response.success) {
             config.saveConfig();
+            userData.user.config = currentConfig;
+            await saveToDB('userData', userData, false);
             const [success, _] = await RequestHandler.authFetch('update-config', 'POST', {
                 config: currentConfig
             });
             if (!success) {
                 addToast('Configuration saved to cloud, but robot not updated.', 'error', 4000);
             }
-
-            localStorage.setItem('userConfig', JSON.stringify(currentConfig));
             addToast('Configuration saved successfully.', 'success', 3000);
         } else {
             addToast(response.message || 'Updating configuration failed.', 'error', 3000);

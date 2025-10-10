@@ -30,7 +30,6 @@
 // ----------------------------
 
 // Stores
-import { isLivestreaming } from '$stores/connection';
 import { addToast } from '$stores/toast';
 import { simpleMode } from '$stores/mode';
 import { handleToggle, openId } from '$stores/openId';
@@ -41,6 +40,13 @@ import type { FunctionType } from '$lib/type';
 // ----------------------------
 // Props
 // ----------------------------
+export let liveState: number;
+export let robotState: number;
+export let robotScanState: boolean;
+export let performing: boolean;
+export let robotLive: boolean;
+export let stopCapture: boolean;
+
 export let saveConfig: FunctionType;
 export let downloadConfig: FunctionType;
 export let uploadConfig: FunctionType;
@@ -109,8 +115,8 @@ export let openManualPlant: FunctionType;
 				<button
 					class="w-full rounded bg-indigo-500 px-3 py-2 text-xs font-medium text-white hover:bg-indigo-600"
 					on:click={() => {
-						if ($isLivestreaming !== 'Stopped') {
-							addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+						if (robotState || robotScanState || liveState || robotLive || performing || stopCapture) {
+							addToast('Action unavailable robot is currently busy.', 'error', 3000);
 							return;
 						}
 						openSprayModal();
@@ -127,8 +133,8 @@ export let openManualPlant: FunctionType;
 				<button
 					class="w-full cursor-pointer rounded-md bg-blue-500 px-4 py-2 text-xs font-medium text-white shadow-md transition hover:bg-blue-600 sm:w-auto dark:bg-blue-600 dark:hover:bg-blue-700"
 					on:click={() => {
-						if ($isLivestreaming !== 'Stopped') {
-							addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+						if (robotState || robotScanState || liveState || robotLive || performing || stopCapture) {
+							addToast('Action unavailable robot is currently busy.', 'error', 3000);
 							return;
 						}
 						openManualPlant();
@@ -148,8 +154,8 @@ export let openManualPlant: FunctionType;
 		<button
 			class="rounded bg-indigo-500 px-4 py-3 text-sm font-medium text-white hover:bg-indigo-600"
 			on:click={() => {
-				if ($isLivestreaming !== 'Stopped') {
-					addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+				if (robotState || robotScanState || liveState || robotLive || performing || stopCapture) {
+					addToast('Action unavailable robot is currently busy.', 'error', 3000);
 					return;
 				}
 				openSprayModal();
@@ -166,8 +172,8 @@ export let openManualPlant: FunctionType;
 		<button
 			class="rounded bg-blue-500 px-4 py-3 text-sm font-medium text-white hover:bg-blue-600"
 			on:click={() => {
-				if ($isLivestreaming !== 'Stopped') {
-					addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+				if (robotState || robotScanState || liveState || robotLive || performing || stopCapture) {
+					addToast('Action unavailable robot is currently busy.', 'error', 3000);
 					return;
 				}
 				openManualPlant();

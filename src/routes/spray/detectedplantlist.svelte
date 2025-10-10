@@ -26,18 +26,23 @@
 // ----------------------------
 
 // Types
-import type { DetectedPlant, DetectedPlantArray, PlantList } from '$lib/type';
+import type { DetectedPlant, DetectedPlantArray } from '$lib/type';
 
 // Stores
-import { isLivestreaming } from '$stores/connection';
 import { addToast } from '$stores/toast';
-import { get } from 'svelte/store';
 
 // ----------------------------
 // Props
 // ----------------------------
 export let plants: DetectedPlantArray;
 export let onSelectPlant: (plant: DetectedPlant, index: number) => void;
+
+export let liveState: number;
+export let robotState: number;
+export let robotScanState: boolean;
+export let performing: boolean;
+export let robotLive: boolean;
+export let stopCapture: boolean;
 </script>
 
 
@@ -62,8 +67,8 @@ export let onSelectPlant: (plant: DetectedPlant, index: number) => void;
 								<span>Disabled</span>
 								<button class="rounded bg-green-300 px-1 py-0.5 font-semibold text-black hover:bg-green-400"
 									on:click|stopPropagation={() => {
-										if (get(isLivestreaming) !== 'Stopped') {
-											addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+										if (!robotState && !robotScanState && !liveState && !robotLive && !performing && !stopCapture) {
+											addToast('Action unavailable robot is currently busy.', 'error', 3000);
 										} else {
 											plant.disabled = false;
 										}

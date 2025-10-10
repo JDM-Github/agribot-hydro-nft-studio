@@ -1,40 +1,4 @@
 <script lang="ts">
-/**
- * @file spraybuttons.svelte
- * @description Handles robot spraying configuration, model management, and related modals
- *              (radar, scheduling, configuration, and details). Provides bindings for YOLO
- *              and Mask R-CNN models, confidence thresholds, and configuration persistence.
- * 
- * @props
- *   - controlRobot: Function to control robot movement/actions.
- *   - openSprayModal: Function to open the spray modal.
- *   - openCamera: Function to open the live camera modal.
- *   - openManualPlant: FunctionType for opening manual plant view.
- *   - config: Config object containing model versions and confidence thresholds.
- *   - yoloObjectDetection: WritableModelArray for object detection models.
- *   - yoloStageClassification: WritableModelArray for stage classification models.
- *   - maskRCNNSegmentation: WritableModelArray for disease segmentation models.
- *   - saveConfig: Function to save configuration.
- *   - downloadConfig: Function to download configuration.
- *   - uploadConfig: Function to upload configuration.
- * 
- * @imports
- *   - SetSchedule, Details, Configuration, Scanbuttons, RadarModal: UI components
- *   - addToast, isLivestreaming, simpleMode: Stores for connection, mode, and toast handling
- *   - handleToggle, openId: Stores for modal/open state management
- *   - transformModels: Utility function to transform model results for performance view
- *   - Config, FunctionType, Schedule, WritableModelArray, WritableNumber, WritableString: Type definitions
- * 
- * @localState
- *   - modelPerformance: Holds transformed performance data for models
- *   - showRadarModal: Toggles radar modal visibility
- *   - showScheduleModal: Toggles scheduling modal visibility
- *   - oldSchedule: Stores previously saved schedule config for reference
- *
- * @author      AGRIBOT Team
- * @created     2025-09-22
- * @lastUpdated 2025-09-22
- */
 
 // ----------------------------
 // Imports
@@ -56,7 +20,6 @@ import { get } from 'svelte/store';
 import type { Config } from '$class/config';
 import type {
 	FunctionType,
-	PlantList,
 	Schedule,
 	WritableModelArray,
 	WritableNumber,
@@ -69,12 +32,20 @@ import { transformModels } from '$utils/transform';
 // ----------------------------
 // Props
 // ----------------------------
-export let controlRobot;
+export let controlScanner;
 export let openSprayModal;
 export let openCamera;
 export let openManualPlant: FunctionType;
 
 export let config: Config;
+export let isConnected: boolean;
+export let liveState: number;
+export let scannerState: boolean;
+export let robotState: number;
+export let robotScanState: boolean;
+export let performing: boolean;
+export let robotLive: boolean;
+export let stopCapture: boolean;
 
 // Model version and confidence bindings
 const objectDetection: WritableString = config.objectDetectionVersion;
@@ -120,6 +91,14 @@ let oldSchedule: Schedule;
 	<Details
 		{config}
 		showRadalActivate={() => (showRadarModal = true)}
+
+		liveState={liveState}
+		robotState={robotState}
+		robotScanState={robotScanState}
+		performing={performing}
+		robotLive={robotLive}
+		stopCapture={stopCapture}
+
 		{objectDetection}
 		{stageClassification}
 		{diseaseSegmentation}
@@ -131,24 +110,35 @@ let oldSchedule: Schedule;
 		{maskRCNNSegmentation}
 	/>
 	<Configuration
+		liveState={liveState}
+		robotState={robotState}
+		robotScanState={robotScanState}
+		performing={performing}
+		robotLive={robotLive}
+		stopCapture={stopCapture}
 		{saveConfig}
 		{downloadConfig}
 		{uploadConfig}
 		{openSprayModal}
 		setSchedule={() => {
-			if ($isLivestreaming !== 'Stopped') {
+			if (liveState) {
 				addToast('Action unavailable while livestreaming is active.', 'error', 3000);
 				return;
 			}
 			showScheduleModal = true;
-			oldSchedule = { ...get(config.schedule) };
+			oldSchedule = structuredClone(get(config.schedule));
 		}}
 		openManualPlant={openManualPlant}
 	/>
 	<Scanbuttons
+		isConnected={isConnected}
+        liveState={liveState}
+        scannerState={scannerState}
+        robotState={robotState}
+        robotScanState={robotScanState}
 		openCamera={openCamera}
-		startRobot={() => controlRobot(true)}
-		stopRobot={() => controlRobot(false)}
+		startRobot={() => controlScanner(true, isConnected, robotState, liveState, scannerState, robotScanState)}
+		stopRobot={() => controlScanner(false, isConnected, robotState, liveState, scannerState, robotScanState)}
 	/>
 </div>
 
@@ -169,7 +159,8 @@ let oldSchedule: Schedule;
 		config.schedule.set(oldSchedule);
 		showScheduleModal = false;
 	}}
-	onSave={() => {
+	onSave={(schedule: Schedule) => {
+		config.schedule.set(schedule);
 		showScheduleModal = false;
 		addToast('Schedule saved successfully!', 'success', 3000);
 		setTimeout(() => {

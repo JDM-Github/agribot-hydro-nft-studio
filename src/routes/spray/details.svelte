@@ -47,7 +47,6 @@ import type {
 import type { Config } from '$class/config';
 
 // Stores
-import { isLivestreaming } from '$stores/connection';
 import { addToast } from '$stores/toast';
 import { simpleMode } from '$stores/mode';
 import { handleToggle, openId } from '$stores/openId';
@@ -59,6 +58,13 @@ import { CONFIDENCE_OPTION } from '$constant/index';
 // ----------------------------
 // Props
 // ----------------------------
+export let liveState: number;
+export let robotState: number;
+export let robotScanState: boolean;
+export let performing: boolean;
+export let robotLive: boolean;
+export let stopCapture: boolean;
+
 export let config: Config;
 export let showRadalActivate: FunctionType;
 
@@ -109,8 +115,8 @@ export let maskRCNNSegmentation: WritableModelArray;
 					<select
 						bind:value={$objectDetection}
 						on:change={() => {
-							if ($isLivestreaming !== 'Stopped') {
-								addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+							if (!robotState && !robotScanState && !liveState && !robotLive && !performing && !stopCapture) {
+								addToast('Action unavailable robot is currently busy.', 'error', 3000);
 								return;
 							}
 							addToast('Object detection model changed!', 'success', 3000);
@@ -135,8 +141,8 @@ export let maskRCNNSegmentation: WritableModelArray;
 					<select
 						bind:value={$stageClassification}
 						on:change={() => {
-							if ($isLivestreaming !== 'Stopped') {
-								addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+							if (!robotState && !robotScanState && !liveState && !robotLive && !performing && !stopCapture) {
+								addToast('Action unavailable robot is currently busy.', 'error', 3000);
 								return;
 							}
 							addToast('Stage classification model changed!', 'success', 3000);
@@ -160,8 +166,8 @@ export let maskRCNNSegmentation: WritableModelArray;
 					<select
 						bind:value={$diseaseSegmentation}
 						on:change={() => {
-							if ($isLivestreaming !== 'Stopped') {
-								addToast('Action unavailable while livestreaming is active.', 'error', 3000);
+							if (!robotState && !robotScanState && !liveState && !robotLive && !performing && !stopCapture) {
+								addToast('Action unavailable robot is currently busy.', 'error', 3000);
 								return;
 							}
 							addToast('Disease segmentation model changed!', 'success', 3000);

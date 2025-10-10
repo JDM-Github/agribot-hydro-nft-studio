@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { WifiManager } from "$root/lib/class/wifi";
-	import { get } from "svelte/store";
 
     export let wifi: WifiManager;
+	export let loading: boolean;
 </script>
 
 <div
@@ -14,11 +14,11 @@
 	</div>
 	<div class="flex gap-2">
 		<button
-			on:click={wifi.scanNetworks}
+			on:click={() => wifi.scanNetworks()}
 			class="rounded-lg bg-green-500 px-4 py-1.5 text-sm font-medium text-white shadow-md transition hover:bg-green-600 disabled:opacity-50"
-			disabled={get(wifi.loading)}
+			disabled={loading}
 		>
-			{get(wifi.loading) ? 'Scanning...' : 'Scan Networks'}
+			{loading ? 'Scanning...' : 'Scan Networks'}
 		</button>
 	</div>
 </div>

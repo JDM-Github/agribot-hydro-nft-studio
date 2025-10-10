@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { isRobotRunning } from '$lib/stores/connection';
 	import { addToast } from '$lib/stores/toast';
 	import RequestHandler from '$lib/utils/request';
 
-	export let scanning;
+	export let scanning = false;
+	export let isRobotRunning: boolean;
 	let servoHorizontal = 90;
 	let servoVertical = 165;
 
@@ -39,7 +39,7 @@
 			Servo Horizontal
 		</label>
 		<input
-			disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
+			disabled={scanning || isRobotRunning}
 			type="range"
 			min="0"
 			max="180"
@@ -48,7 +48,7 @@
 			on:change={(e: any) => adjustServo('horizontal', e.target.value)}
 		/>
 		<input
-			disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
+			disabled={scanning || isRobotRunning}
 			type="number"
 			min="0"
 			max="180"
@@ -68,7 +68,7 @@
 			Servo Vertical
 		</label>
 		<input
-			disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
+			disabled={scanning || isRobotRunning}
 			type="range"
 			min="100"
 			max="180"
@@ -77,7 +77,7 @@
 			on:change={(e: any) => adjustServo('vertical', e.target.value)}
 		/>
 		<input
-			disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
+			disabled={scanning || isRobotRunning}
 			type="number"
 			min="100"
 			max="180"
@@ -93,7 +93,7 @@
 
 	<div class="mt-4 flex flex-wrap gap-2">
 		<button
-			disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
+			disabled={scanning || isRobotRunning}
 			class="flex-1 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 focus:ring-2 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-30"
 			on:click={() => adjustServo('vertical', 180)}
 		>
@@ -101,7 +101,7 @@
 		</button>
 
 		<button
-			disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
+			disabled={scanning || isRobotRunning}
 			class="flex-1 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 focus:ring-2 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-30"
 			on:click={() => adjustServo('vertical', 100)}
 		>
@@ -109,7 +109,7 @@
 		</button>
 
 		<button
-			disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
+			disabled={scanning || isRobotRunning}
 			class="flex-1 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 focus:ring-2 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-30"
 			on:click={() => adjustServo('horizontal', 0)}
 		>
@@ -117,7 +117,7 @@
 		</button>
 
 		<button
-			disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
+			disabled={scanning || isRobotRunning}
 			class="flex-1 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 focus:ring-2 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-30"
 			on:click={() => adjustServo('horizontal', 180)}
 		>
@@ -125,7 +125,7 @@
 		</button>
 
 		<button
-			disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
+			disabled={scanning || isRobotRunning}
 			class="flex-1 rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 focus:ring-2 focus:ring-green-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-30"
 			on:click={() => {
 				adjustServo('horizontal', 90);

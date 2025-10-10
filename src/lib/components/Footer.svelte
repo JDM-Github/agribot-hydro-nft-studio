@@ -12,6 +12,9 @@
 				<a href="/" class="hover:text-green-400">Setup</a>
 				<a href="/live" class="hover:text-green-400">Live</a>
 				<a href="/records" class="hover:text-green-400">Records</a>
+				<a href="/records" class="hover:text-green-400">Notifications</a>
+				<a href="/records" class="hover:text-green-400">Robot</a>
+				<a href="/records" class="hover:text-green-400">Manage Wifi</a>
 			{/if}
 			<button on:click={() => (termsOpen = true)} class="hover:text-green-400">
 				Terms & Conditions

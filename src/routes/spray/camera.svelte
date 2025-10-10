@@ -39,28 +39,28 @@
 // ----------------------------
 
 // Svelte
-import { onMount, onDestroy } from 'svelte';
 import type { Writable } from 'svelte/store';
 
-// Utils
-import RequestHandler from '$utils/request';
-import { isRobotNotScanning, isRobotScannerBusy } from '$utils/robotStatus';
-
-// Constants
-import { CAMERA_INFO } from '$constant/cameraInfo';
-
 // Types
-import type { CameraInfo } from '$types/cameraInfo';
 import type { DetectedPlantArray, FunctionType, PlantList } from '$lib/type';
-import type { LabelResultArray } from '$types/labelResult';
 
 // Components
 import Cameradesktop from '$routes/spray/cameradesktop.svelte';
 import Cameramobile from '$routes/spray/cameramobile.svelte';
+import { Connection } from '$root/lib/class/connection';
 
 // ----------------------------
 // Props
 // ----------------------------
+export let isConnected: boolean;
+export let liveState: number;
+export let scannerState: boolean;
+export let robotState: number;
+export let robotScanState: boolean;
+export let performing: boolean;
+export let robotLive: boolean;
+export let stopCapture: boolean;
+
 export let allPlants: PlantList;
 export let detectedPlants: Writable<DetectedPlantArray>;
 export let showCamera: boolean = false;
@@ -69,23 +69,12 @@ export let closeCamera: FunctionType;
 // ----------------------------
 // Local state
 // ----------------------------
-let intervalId: NodeJS.Timeout;
-let intervalId2: NodeJS.Timeout;
-let cameraInfo: CameraInfo = CAMERA_INFO;
-
-// ----------------------------
-// Functions
-// ----------------------------
-const fetchResults = async () => {
-    if (isRobotScannerBusy() || isRobotNotScanning()) return;
-
-    const [success, data] = await RequestHandler.authFetch('latest_results', 'GET');
-    if (!success) return;
-
-    const latestResults: LabelResultArray = data;
+$: cameraInfo = Connection.getCameraInfo();
+$: latestResults = Connection.getLatestCameraResults();
+$: if ($latestResults.length) {
     let newPlant = [...$detectedPlants];
 
-    for (const result of latestResults) {
+    for (const result of $latestResults) {
         const exists = newPlant.some((plant) => plant.key === result.label);
         const plant = allPlants.find((p) => p.name === result.label);
 
@@ -106,60 +95,37 @@ const fetchResults = async () => {
         }
     }
     detectedPlants.set(newPlant);
-};
-
-
-const fetchCameraInfo = async () => {
-    if (isRobotScannerBusy() || isRobotNotScanning()) {
-        cameraInfo = CAMERA_INFO;
-        return;
-    }
-
-    try {
-        const [cameraSuccess, cameraData] = await RequestHandler.authFetch('camera_info', 'GET');
-        let updatedInfo = { ...CAMERA_INFO, ip: cameraInfo.ip };
-
-        if (cameraSuccess && cameraData) updatedInfo = { ...updatedInfo, ...cameraData };
-
-        // Fetch public IP if not set
-        if (!updatedInfo.ip || updatedInfo.ip === 'NOT SET') {
-            try {
-                const ipResponse = await fetch('https://api.ipify.org?format=json');
-                updatedInfo.ip = ipResponse.ok ? (await ipResponse.json()).ip : 'Unavailable';
-            } catch (err) {
-                console.warn('Failed to fetch public IP:', err);
-                updatedInfo.ip = 'Unavailable';
-            }
-        }
-
-        cameraInfo = updatedInfo;
-    } catch (err) {
-        console.error('Error fetching camera info:', err);
-        cameraInfo = CAMERA_INFO;
-    }
-};
-
-// ----------------------------
-// Lifecycle
-// ----------------------------
-onMount(() => {
-    intervalId = setInterval(fetchResults, 1000);
-    intervalId2 = setInterval(fetchCameraInfo, 100);
-});
-
-onDestroy(() => {
-    clearInterval(intervalId);
-    clearInterval(intervalId2);
-});
+}
 </script>
 
 
-
 <!-- --------------------------------------------------------------------------------------- -->
 <!-- --------------------------------------------------------------------------------------- -->
 <!-- --------------------------------------------------------------------------------------- -->
 <!-- --------------------------------------------------------------------------------------- -->
 <!-- --------------------------------------------------------------------------------------- -->
 
-<Cameradesktop cameraInfo={cameraInfo}/>
-<Cameramobile cameraInfo={cameraInfo} showCamera={showCamera} closeCamera={closeCamera}/>
+<Cameradesktop
+    cameraInfo={$cameraInfo}
+    isConnected={isConnected}
+    liveState={liveState}
+    scannerState={scannerState}
+    robotState={robotState}
+    robotScanState={robotScanState}
+    performing={performing}
+    robotLive={robotLive}
+    stopCapture={stopCapture}
+/>
+<Cameramobile
+    cameraInfo={$cameraInfo}
+    showCamera={showCamera}
+    closeCamera={closeCamera}
+    isConnected={isConnected}
+    liveState={liveState}
+    scannerState={scannerState}
+    robotState={robotState}
+    robotScanState={robotScanState}
+    performing={performing}
+    robotLive={robotLive}
+    stopCapture={stopCapture}
+/>

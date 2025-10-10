@@ -5,12 +5,12 @@ import path from 'path';
 
 export default defineConfig({
 	plugins: [sveltekit(), tailwindcss()],
-	server: {
-		hmr: false,
-		watch: {
-			usePolling: false 
-		}
-	},
+	// server: {
+	// 	hmr: false,
+	// 	watch: {
+	// 		usePolling: false 
+	// 	}
+	// },
 	resolve: {
 		alias: {
 			$root: path.resolve('./src/'),

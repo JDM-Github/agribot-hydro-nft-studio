@@ -1,26 +1,6 @@
 <script lang="ts">
-	import RequestHandler from "$lib/utils/request";
-	import { onMount } from "svelte";
-
+	export let isActive: boolean;
 	let waterSensors: number[] = [0, 0, 0, 0];
-	let refreshInterval: any;
-
-	async function fetchWaterSensors() {
-		try {
-			const [success, response] = await RequestHandler.authFetch("water-sensors", "GET");
-			if (success && response?.readings) {
-				waterSensors = response.readings;
-			}
-		} catch (err) {
-			console.error("Failed to fetch water sensors:", err);
-		}
-	}
-
-	onMount(() => {
-		fetchWaterSensors();
-		refreshInterval = setInterval(fetchWaterSensors, 2000);
-		return () => clearInterval(refreshInterval);
-	});
 </script>
 
 <div
@@ -33,8 +13,8 @@
 				class="flex flex-col items-center rounded-lg bg-gray-50 p-2 shadow-inner transition dark:bg-gray-800"
 			>
 				<span class="text-xs font-medium">WS{i + 1}</span>
-				<span class="{ws ? 'text-blue-500' : 'text-gray-400'} text-xl">💧</span>
-				<p class="text-xs">{ws ? 'Wet' : 'Dry'}</p>
+				<span class="{!isActive ? 'text-gray-700' : (ws ? 'text-blue-500' : 'text-gray-400')} text-xl">◆</span>
+				<p class="text-xs">{!isActive ? 'Not Connected' : (ws ? 'Wet' : 'Dry')}</p>
 			</div>
 		{/each}
 	</div>

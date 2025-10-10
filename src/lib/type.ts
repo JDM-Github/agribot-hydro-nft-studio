@@ -117,3 +117,25 @@ export type PlantList = Plant[];
 export type PlantListTransformed = {
 	[key: string]: Plant
 };
+
+export type Notification = {
+	id: string,
+	title: string,
+	message: string,
+	type: string,
+	isRead: boolean,
+	createdAt: string
+}
+
+export type PlantHistory = {
+	id: number;
+	src: any;
+	timestamp: any;
+	plantName: any;
+	plantHealth: any;
+	imageSize: any;
+	locationOnCapture: any;
+	generatedDescription: any;
+};
+
+export type PlantHistories = PlantHistory[];

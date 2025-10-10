@@ -1,10 +1,17 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import Footer from '$lib/components/Footer.svelte';
-	import { writable, derived } from 'svelte/store';
+	import { deviceID, userData } from '$root/lib/stores/connection';
+	import { addToast, removeToast } from '$root/lib/stores/toast';
+	import { saveToDB } from '$root/lib/utils/indexdb';
+	import { RefreshCw } from 'lucide-svelte';
+	import { writable, derived, type Writable } from 'svelte/store';
 
-	export let data;
-	let records = writable(data.records);
+	let records: Writable<any> = writable([]);
+	userData.subscribe((user) => {
+		if (!user) return;
+		records.set(user.folders || []);
+	});
 
 	let searchQuery = writable('');
 	let sortOrder = writable<'asc' | 'desc'>('desc');
@@ -76,6 +83,37 @@
 		if (res.ok) {
 			records.update(($records) => $records.filter((r: any) => r.slug !== folder));
 		}
+	}
+
+	let recSyncing = false;
+	async function forceRecordSync() {
+		recSyncing = true;
+		const toastId = addToast('Force syncing records folder...', 'loading');
+		try {
+			const res = await fetch('/api/custom-sync', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					userData: $userData,
+					deviceID: $deviceID,
+					willUpdateTailscale: true
+				})
+			});
+			const response = await res.json();
+			removeToast(toastId);
+			if (res.ok && response.success) {
+				await saveToDB('userData', response.data);
+				addToast('Force sync of records folder is successful!', 'success', 3000);
+				await goto('/record', { invalidateAll: true });
+			} else {
+				addToast('Force sync of records folder failed..', 'error', 3000);
+			}
+		} catch (error) {
+			removeToast(toastId);
+			addToast(`An unexpected error occurred. ${error}`, 'error', 3000);
+		}
+
+		recSyncing = false;
 	}
 </script>
 
@@ -163,6 +201,20 @@
 					<option value="desc">Sort: Newest First</option>
 					<option value="asc">Sort: Oldest First</option>
 				</select>
+
+				<button
+					on:click={forceRecordSync}
+					class="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-md transition hover:bg-blue-700 disabled:opacity-50"
+					disabled={recSyncing}
+				>
+					{#if recSyncing}
+						<RefreshCw class="h-4 w-4 animate-spin" />
+						<span>Syncing...</span>
+					{:else}
+						<RefreshCw class="h-4 w-4" />
+						<span>Force Sync</span>
+					{/if}
+				</button>
 			</div>
 		</div>
 

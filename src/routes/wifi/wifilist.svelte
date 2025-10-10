@@ -1,18 +1,20 @@
 <script lang="ts">
-	import type { WifiManager } from "$root/lib/class/wifi";
-	import { get } from "svelte/store";
+	import type { WifiManager, WifiNetwork } from "$root/lib/class/wifi";
 
     export let wifi: WifiManager;
+	export let wifiList: WifiNetwork[];
+	export let connectedSSID: string;
+	export let selectedSSID: string;
 </script>
 
-{#if get(wifi.wifiList).length === 0}
+{#if wifiList.length === 0}
 	<p class="mt-6 py-10 text-center text-sm text-gray-600 dark:text-gray-400">
 		No WiFi networks found.
 		<span class="block text-gray-500 dark:text-gray-500">Click "Scan Networks" to refresh.</span>
 	</p>
 {:else}
 	<div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-		{#each get(wifi.wifiList) as network}
+		{#each wifiList as network}
 			<button
 				class="relative flex cursor-pointer flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-md transition hover:scale-[1.02] hover:shadow-lg dark:border-gray-700 dark:bg-gray-900"
 				on:click={() => {
@@ -26,7 +28,7 @@
 					<span class="truncate text-base font-bold text-gray-800 dark:text-gray-100">
 						{network.ssid || 'Hidden Network'}
 					</span>
-					{#if get(wifi.connectedSSID) !== network.ssid && get(wifi.selectedSSID) !== network.ssid}
+					{#if connectedSSID !== network.ssid && selectedSSID !== network.ssid}
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							fill="currentColor"
@@ -50,13 +52,13 @@
 						• Priority: {network.priority}
 					{/if}
 				</div>
-				{#if get(wifi.connectedSSID) === network.ssid}
+				{#if connectedSSID === network.ssid}
 					<div
 						class="absolute top-3 right-3 rounded-full bg-blue-500 px-2 py-0.5 text-xs font-semibold text-white shadow"
 					>
 						Connected
 					</div>
-				{:else if get(wifi.selectedSSID) === network.ssid}
+				{:else if selectedSSID === network.ssid}
 					<div
 						class="bot-3 absolute right-3 rounded-full bg-green-500 px-2 py-0.5 text-xs font-semibold text-white shadow"
 					>

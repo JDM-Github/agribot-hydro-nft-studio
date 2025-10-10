@@ -31,20 +31,28 @@ import { CAMERA_INFO } from '$constant/cameraInfo';
 // Types
 import type { CameraInfo } from '$types/cameraInfo';
 
-// Utils
-import { isCurrentLinkEmpty, isRobotScannerAvailable, isRobotScanning } from '$utils/robotStatus';
-
 // Components
 import Camerainfo from '$routes/spray/camerainfo.svelte';
 
 // Stores
 import { currentLink } from '$stores/connection';
-	import type { FunctionType } from '$root/lib/type';
+import type { FunctionType } from '$root/lib/type';
+import { Connection } from '$root/lib/class/connection';
 
 // ----------------------------
 // Props
 // ----------------------------
 export let cameraInfo: CameraInfo = CAMERA_INFO;
+export let isConnected: boolean;
+export let liveState: number;
+export let scannerState: boolean;
+export let robotState: number;
+export let robotScanState: boolean;
+export let performing: boolean;
+export let robotLive: boolean;
+export let stopCapture: boolean;
+$: scanFrameUrl = Connection.getScanFrameURL();
+
 export let showCamera: boolean = false;
 export let closeCamera: FunctionType;
 </script>
@@ -77,9 +85,17 @@ export let closeCamera: FunctionType;
 	<div
 		class="relative flex h-64 items-center justify-center rounded-xl bg-gray-100 shadow-inner dark:bg-gray-800"
 	>
-		{#if isRobotScannerAvailable() && isRobotScanning() && !isCurrentLinkEmpty()}
+		{#if   isConnected
+			&& scannerState
+			&& !robotState
+			&& !robotScanState
+			&& !liveState
+			&& !robotLive
+			&& !performing
+			&& !stopCapture
+		}
 			<img
-				src={`${currentLink}/scan_feed`}
+				src={$scanFrameUrl}
 				alt="Scanning Feed"
 				class="h-auto w-full max-w-[90%] rounded-md border dark:border-gray-600"
 			/>

@@ -1,17 +1,21 @@
 <script lang="ts">
 	import Footer from '$lib/components/Footer.svelte';
-	import { writable } from 'svelte/store';
+	import { writable, type Writable } from 'svelte/store';
 	import { addToast, removeToast } from '$lib/stores/toast';
 	import RequestHandler from '../utils/request';
-	import { onMount } from 'svelte';
+	import { userData, deviceID } from '../stores/connection';
+	import { saveToDB } from '../utils/indexdb';
+	import { RefreshCw } from 'lucide-svelte';
+	import { goto } from '$app/navigation';
+	import { Connection } from '../class/connection';
 
+	$: isConnected = Connection.isConnected();
 	export let user: any;
 	let deviceName = '';
 	let showModal = false;
 	let showKeyModal = false;
 	let generatedKey: any = null;
 	let tsLoading = writable(false);
-	let tsDevices = writable<any[]>([]);
 
 	let registerModal = false;
 	let selectedDevice: any = null;
@@ -21,14 +25,29 @@
 	let showModalTutorial = false;
 	let tutorialType: null | string = null;
 
+	let currentUser: Writable<any> = writable({});
+	let tsDevices: Writable<any[]> = writable<any[]>([]);
+	userData.subscribe((user) => {
+		if (!user) return;
+		currentUser.set(user.user);
+		tsDevices.set(user.tailscale_devices || []);
+	});
+
 	async function fetchDevices() {
 		const toastId = addToast('Fetching devices...', 'loading');
-		try {
-			const response = await RequestHandler.fetchData('GET', `tailscale/auth-key/${user.id}`);
+		if (!$currentUser || !$currentUser.user?.id) {
 			removeToast(toastId);
-
+			addToast('Current user does not found.', 'success', 2000);
+		}
+		try {
+			const response = await RequestHandler.fetchData('POST', `tailscale/get-all`, {
+				id: $currentUser.id,
+				deviceID: $deviceID
+			});
+			removeToast(toastId);
 			if (response.success) {
-				tsDevices.set(response.devices);
+				$userData.tailscale_devices = response.devices;
+				await saveToDB('userData', $userData);
 				addToast('Devices updated.', 'success', 2000);
 			} else {
 				addToast(response.message || 'Failed to fetch devices', 'error', 3000);
@@ -62,8 +81,8 @@
 				await fetchDevices();
 				showModal = false;
 				deviceName = '';
-				generatedKey = response.device; // store for modal
-				showKeyModal = true; // open modal to display
+				generatedKey = response.device;
+				showKeyModal = true;
 			} else {
 				addToast(response.message || 'Failed to create auth key', 'error', 3000);
 			}
@@ -86,7 +105,6 @@
 				hostName: hostName,
 				authkey: device.authkey
 			});
-
 			removeToast(toastId);
 			if (response.success) {
 				addToast('Device registered successfully!', 'success', 3000);
@@ -104,15 +122,67 @@
 			addToast('Error registering device', 'error', 3000);
 		}
 	}
-
+	async function manualRegister(ip: string, hostName: string, deviceN: string) {
+		const toastId = addToast(`Manual registration...`, 'loading');
+		try {
+			const response = await RequestHandler.fetchData('POST', 'tailscale/manual-register', {
+				id: user.id,
+				deviceName: deviceN,
+				ip: ip.trim(),
+				hostName: hostName
+			});
+			removeToast(toastId);
+			if (response.success) {
+				addToast('Device registered successfully!', 'success', 3000);
+				await fetchDevices();
+				registerModal = false;
+				selectedDevice = null;
+				inputIp = '';
+				hostName = '';
+			} else {
+				addToast(response.message || 'Failed to register device', 'error', 3000);
+			}
+		} catch (err) {
+			removeToast(toastId);
+			console.error('manualRegister error:', err);
+			addToast('Error registering device', 'error', 3000);
+		}
+	}
 	function copyToClipboard(text: string) {
 		navigator.clipboard.writeText(text);
 		addToast('Copied to clipboard!', 'success', 2000);
 	}
 
-	onMount(() => {
-		fetchDevices();
-	});
+	let tsSyncing = false;
+	async function forceTailscaleSync() {
+		tsSyncing = true;
+		const toastId = addToast('Force syncing tailscale devices...', 'loading');
+		try {
+			const res = await fetch('/api/custom-sync', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					userData: $userData,
+					deviceID: $deviceID,
+					willUpdateTailscale: true
+				})
+			});
+			const response = await res.json();
+			removeToast(toastId);
+			if (res.ok && response.success) {
+				await saveToDB('userData', response.data);
+				addToast('Force sync of tailscale devices is successful!', 'success', 3000);
+				await goto('/talescale', { invalidateAll: true });
+			} else {
+				addToast('Force sync of tailscale devices failed..', 'error', 3000);
+			}
+		} catch (error) {
+			removeToast(toastId);
+			addToast(`An unexpected error occurred. ${error}`, 'error', 3000);
+		}
+
+		tsSyncing = false;
+	}
 </script>
 
 <div
@@ -121,7 +191,11 @@
 	<div
 		class="flex flex-col items-center justify-center text-center text-lg font-semibold text-gray-600 dark:text-gray-400"
 	>
-		<p>The device is not connected to AGRI-BOT.</p>
+		{#if $isConnected}
+			<p>The device is connected to AGRI-BOT.</p>
+		{:else}
+			<p>The device is not connected to AGRI-BOT.</p>
+		{/if}
 	</div>
 
 	<div
@@ -177,17 +251,16 @@
 									>
 										Copy
 									</button>
+									<button
+										on:click={() => {
+											selectedDevice = device;
+											registerModal = true;
+										}}
+										class="ml-2 rounded bg-green-500 px-2 py-1 text-xs font-medium text-white hover:bg-green-600"
+									>
+										REGISTER
+									</button>
 								</div>
-								<p class="text-xs text-gray-500 dark:text-gray-400">IP: {device.ip}</p>
-								<button
-									on:click={() => {
-										selectedDevice = device;
-										registerModal = true;
-									}}
-									class="w-full rounded bg-green-500 px-3 py-1 text-xs font-semibold text-white hover:bg-green-600"
-								>
-									SET REGISTER
-								</button>
 							</div>
 						{:else}
 							<p class="text-xs text-gray-500 dark:text-gray-400">IP: {device.ip}</p>
@@ -198,13 +271,26 @@
 		{/if}
 
 		<div class="mt-5 flex flex-col items-center gap-3">
-			<button
-				on:click={() => (showModal = true)}
-				class="rounded-lg bg-blue-500 px-5 py-2 text-sm font-medium text-white shadow-md transition hover:bg-blue-600 disabled:opacity-50"
-				disabled={$tsLoading || $tsDevices.length >= 5}
-			>
-				{$tsLoading ? 'Requesting...' : 'Request Auth Key'}
-			</button>
+			<div class="flex gap-3">
+				<button
+					on:click={() => (showModal = true)}
+					class="rounded-lg bg-blue-500 px-5 py-2 text-sm font-medium text-white shadow-md transition hover:bg-blue-600 disabled:opacity-50"
+					disabled={$tsLoading || $tsDevices.length >= 5}
+				>
+					{$tsLoading ? 'Requesting...' : 'Request Auth Key'}
+				</button>
+
+				<button
+					on:click={() => {
+						selectedDevice = null;
+						registerModal = true;
+					}}
+					class="rounded-lg bg-purple-500 px-5 py-2 text-sm font-medium text-white shadow-md transition hover:bg-purple-600 disabled:opacity-50"
+					disabled={$tsLoading || $tsDevices.length >= 5}
+				>
+					Register Manually
+				</button>
+			</div>
 
 			<div class="flex gap-3">
 				<button
@@ -224,6 +310,20 @@
 					class="rounded-lg bg-green-600 px-5 py-2 text-sm font-medium text-white shadow-md transition hover:bg-green-700"
 				>
 					Android Tutorial
+				</button>
+
+				<button
+					on:click={forceTailscaleSync}
+					class="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-md transition hover:bg-blue-700 disabled:opacity-50"
+					disabled={tsSyncing}
+				>
+					{#if tsSyncing}
+						<RefreshCw class="h-4 w-4 animate-spin" />
+						<span>Syncing...</span>
+					{:else}
+						<RefreshCw class="h-4 w-4" />
+						<span>Force Sync</span>
+					{/if}
 				</button>
 			</div>
 		</div>
@@ -273,15 +373,32 @@
 		<div class="w-full max-w-md rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
 			<h2 class="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200">Verify Device IP</h2>
 
-			<p class="mb-3 text-sm text-gray-600 dark:text-gray-400">
-				Enter the host device and IPv4 assigned to <b>{selectedDevice?.['device-name']}</b> in your Tailscale
-				app:
-			</p>
-
+			{#if selectedDevice}
+				<p class="mb-3 text-sm text-gray-600 dark:text-gray-400">
+					Enter the host device and IPv4 assigned to <b>{selectedDevice?.['device-name']}</b> in your
+					Tailscale app:
+				</p>
+			{:else}
+				<p class="mb-3 text-sm text-gray-600 dark:text-gray-400">
+					Enter the host device, IPv4 and Device Name in your Tailscale app:
+				</p>
+				<input
+					bind:value={deviceName}
+					type="text"
+					placeholder="Enter device name. (Can be anything.)"
+					class="mb-4 w-full rounded-md border border-gray-300 p-2 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+				/>
+			{/if}
 			<input
 				bind:value={hostName}
 				type="text"
 				placeholder="e.g. vivo-1906"
+				class="mb-4 w-full rounded-md border border-gray-300 p-2 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+			/>
+			<input
+				bind:value={inputIp}
+				type="text"
+				placeholder="e.g. 100.61.169.48"
 				class="mb-4 w-full rounded-md border border-gray-300 p-2 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
 			/>
 			<div class="flex justify-end gap-2">
@@ -289,6 +406,7 @@
 					on:click={() => {
 						registerModal = false;
 						selectedDevice = null;
+						deviceName = '';
 						inputIp = '';
 						hostName = '';
 					}}
@@ -297,7 +415,10 @@
 					Cancel
 				</button>
 				<button
-					on:click={() => setRegister(selectedDevice, inputIp, hostName)}
+					on:click={() =>
+						selectedDevice
+							? setRegister(selectedDevice, inputIp, hostName)
+							: manualRegister(inputIp, hostName, deviceName)}
 					class="rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white shadow-md hover:bg-green-600"
 				>
 					Confirm
@@ -316,7 +437,7 @@
 			<input
 				bind:value={deviceName}
 				type="text"
-				placeholder="Enter device name"
+				placeholder="Enter device name. (Can be anything.)"
 				class="mb-4 w-full rounded-md border border-gray-300 p-2 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
 			/>
 			<div class="flex justify-end gap-2">

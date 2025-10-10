@@ -1,16 +1,17 @@
 <script lang="ts">
-	import { addToast } from "$lib/stores/toast";
+	import { addToast, removeToast } from '$lib/stores/toast';
+	import RequestHandler from '../utils/request';
 
 	export let onClose: () => void;
 	export let onVerified: () => void;
-	export let verificationCode: string;
+	export let email: string;
 
-	let pin = ["", "", "", "", "", ""];
-	let error = "";
+	let pin = ['', '', '', '', '', ''];
+	let error = '';
 
 	const handleInput = (index: number, e: Event) => {
 		const input = e.target as HTMLInputElement;
-		const value = input.value.replace(/\D/, "");
+		const value = input.value.replace(/\D/, '');
 		pin[index] = value;
 
 		if (value && index < pin.length - 1) {
@@ -20,16 +21,28 @@
 	};
 
 	const handleSubmit = async () => {
-		const code = pin.join("");
+		const code = pin.join('');
 		if (code.length !== 6) {
-			error = "Please enter a 6-digit code.";
+			error = 'Please enter a 6-digit code.';
 			return;
 		}
-		if (verificationCode === code) {
-			addToast("Email verified successfully!", "success", 3000);
-			onVerified();
-		} else {
-			error = "Invalid code. Please try again.";
+		const toastId = addToast('Verifying email...', 'loading');
+		try {
+			const response = await RequestHandler.fetchData('POST', `user/verify-email`, {
+				email,
+				code
+			});
+			removeToast(toastId);
+			if (response.success) {
+				addToast('Email verified successfully!', 'success', 3000);
+				onVerified();
+			} else {
+				addToast(response.message || 'Invalid code. Please try again.', 'error', 3000);
+			}
+		} catch (err) {
+			removeToast(toastId);
+			console.error('Registration error:', err);
+			addToast(`An unexpected error occurred: ${err}`, 'error', 3000);
 		}
 	};
 </script>

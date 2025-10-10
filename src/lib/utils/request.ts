@@ -19,6 +19,8 @@ export default class RequestHandler {
 		if (!baseLink) return [false, { error: 'No base link provided' }];
 		if (!link) return [false, { error: 'No endpoint provided' }];
 
+		console.log(`${baseLink}/${link}`);
+
 		const headers: Record<string, string> = {};
 		if (!(body instanceof FormData)) {
 			headers['Content-Type'] = 'application/json';
@@ -51,11 +53,7 @@ export default class RequestHandler {
 		baseLink: string | null = get(currentLink),
 		newFetch: any = null
 	) {
-		const robotN = get(robotName);
-		if (!robotN) {
-			return [false, { error: 'Invalid token provided.' }];
-		}
-		return this.customFetch(link, method, body, baseLink, robotN, newFetch);
+		return this.customFetch(link, method, body, baseLink, "agribot-pi4", newFetch);
 	}
 
 	static async normalFetch(

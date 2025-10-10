@@ -1,14 +1,16 @@
 <script lang="ts">
 	import { addToast, removeToast } from '$lib/stores/toast';
 	import RequestHandler from '$lib/utils/request';
-	import { isRobotRunning } from '$lib/stores/connection';
 	import { onMount, onDestroy } from 'svelte';
-	export let scanning;
+
+	export let scanning = false;
 	export let enableWASDinControl = false;
 	let activeToastId: string | null = null;
 	let isMoving = false;
 	let speed = 60;
 	let tempSpeed = speed;
+
+	export let isRobotRunning: boolean;
 
 	function handleKeyDown(e: KeyboardEvent) {
 		if (!enableWASDinControl || isMoving) return;
@@ -75,7 +77,7 @@
 	}
 
 	async function startMoving(action: string) {
-		if (isMoving && $isRobotRunning !== 'Stopped') return;
+		if (isMoving && isRobotRunning) return;
 		isMoving = true;
 
 		const actionLabel =
@@ -116,7 +118,7 @@
 >
 	<button
 		class="col-span-2 w-full rounded-lg bg-green-600 py-3 font-semibold text-white shadow-md transition hover:bg-green-700 focus:ring-2 focus:ring-green-400 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-600"
-		disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
+		disabled={scanning || isRobotRunning}
 		on:mousedown={() => startMoving('forward')}
 		on:mouseup={stopMoving}
 		on:mouseleave={stopMoving}
@@ -128,7 +130,7 @@
 
 	<button
 		class="w-full rounded-lg bg-blue-500 py-3 text-white shadow transition hover:bg-blue-600 focus:ring-2 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-500"
-		disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
+		disabled={scanning || isRobotRunning}
 		on:mousedown={() => startMoving('left')}
 		on:mouseup={stopMoving}
 		on:mouseleave={stopMoving}
@@ -140,7 +142,7 @@
 
 	<button
 		class="w-full rounded-lg bg-blue-500 py-3 text-white shadow transition hover:bg-blue-600 focus:ring-2 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-500"
-		disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
+		disabled={scanning || isRobotRunning}
 		on:mousedown={() => startMoving('right')}
 		on:mouseup={stopMoving}
 		on:mouseleave={stopMoving}
@@ -151,7 +153,7 @@
 	</button>
 	<button
 		class="col-span-2 w-full rounded-lg bg-red-600 py-3 font-semibold text-white shadow-md transition hover:bg-red-700 focus:ring-2 focus:ring-red-400 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-600"
-		disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
+		disabled={scanning || isRobotRunning}
 		on:mousedown={() => startMoving('backward')}
 		on:mouseup={stopMoving}
 		on:mouseleave={stopMoving}
@@ -168,7 +170,7 @@
 	</label>
 
 	<input
-		disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
+		disabled={scanning || isRobotRunning}
 		id="speed-slider"
 		type="range"
 		min="0"
@@ -182,7 +184,7 @@
 	/>
 
 	<input
-		disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
+		disabled={scanning || isRobotRunning}
 		type="number"
 		min="0"
 		max="100"

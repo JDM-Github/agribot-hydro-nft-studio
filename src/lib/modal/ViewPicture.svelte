@@ -1,15 +1,18 @@
 <script lang="ts">
 	import { addToast, removeToast } from '$lib/stores/toast';
 	import { capitalize } from '$utils/string';
+	import type { PlantHistories } from '../type';
 
 	export let modalOpen;
 	export let closeModal: () => void;
 	export let downloadImage;
 	export let selectedImage;
-	export let images: any;
+	export let images: any | null;
 	export let noDownloadDelete = false;
 
 	async function deleteImage(public_id: string) {
+		if (images === null) return;
+
 		const toastId = addToast('Deleting image...', 'loading');
 		const res = await fetch('/api/delete-image', {
 			method: 'DELETE',
@@ -78,7 +81,7 @@
 					</p>
 					<p class="text-sm text-gray-600 dark:text-gray-400">
 						<strong>Plant Health:</strong>
-						{capitalize(selectedImage.diseaseName)}
+						{capitalize(selectedImage.plantHealth ?? selectedImage.diseaseName)}
 					</p>
 					<p class="text-sm text-gray-600 dark:text-gray-400">
 						<strong>Image Size:</strong>

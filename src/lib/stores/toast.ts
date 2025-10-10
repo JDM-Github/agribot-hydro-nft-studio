@@ -14,15 +14,20 @@ interface Toast {
 	blocking?: boolean;
 }
 
-export const toasts = writable<Toast[]>([]);
+function generateId() {
+	return typeof crypto !== "undefined" && "randomUUID" in crypto
+		? crypto.randomUUID()
+		: `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
+export const toasts = writable<Toast[]>([]);
 export function addToast(
 	message: string,
 	type: Toast['type'],
 	duration?: number,
 	actions?: ToastAction[]
 ) {
-	const id = Date.now().toString();
+	const id = generateId();
 
 	if (type === 'loading') {
 		duration = duration ?? undefined;

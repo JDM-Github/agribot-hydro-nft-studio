@@ -7,6 +7,9 @@
 	import { Eye, EyeOff } from 'lucide-svelte';
 	import Loginform from './loginform.svelte';
 	import RequestHandler from '$root/lib/utils/request';
+	import { deviceID, userData } from '$root/lib/stores/connection';
+	import { writable } from 'svelte/store';
+	import { saveToDB } from '$root/lib/utils/indexdb';
 
 	let openTerms = false;
 	let isRegister = false;
@@ -22,9 +25,8 @@
 	let showVerification = false;
 	let showPassword = false;
 	let showConfirmPassword = false;
-	let verificationCode = '';
 
-	let isEmailSend = false;
+	let isEmailSend = writable(false);
 
 	const registerSubmit = async (e: Event) => {
 		e.preventDefault();
@@ -42,28 +44,28 @@
 			addToast('Passwords do not match.', 'error', 3000);
 			return;
 		}
-		const strongPasswordRegex =
-			/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
-		if (!strongPasswordRegex.test(password)) {
-			addToast(
-				'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character.',
-				'error',
-				5000
-			);
-			return;
-		}
+		// const strongPasswordRegex =
+		// 	/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+		// if (!strongPasswordRegex.test(password)) {
+		// 	addToast(
+		// 		'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character.',
+		// 		'error',
+		// 		5000
+		// 	);
+		// 	return;
+		// }
 		const toastId = addToast('Sending verification code...', 'loading');
 		try {
 			const response = await RequestHandler.fetchData('POST', `user/send-code`, {
 				email,
 				fullName: fullName,
-				prototypeID: prototypeIP
+				prototypeID: prototypeIP,
+				deviceID: $deviceID
 			});
 			removeToast(toastId);
 			if (response.success) {
 				showVerification = true;
-				isEmailSend = false;
-				verificationCode = response.code;
+				$isEmailSend = true;
 				addToast(`Verification code sent to ${email}`, 'success', 2000);
 			} else {
 				addToast(response.message || 'Failed to send verification code.', 'error', 3000);
@@ -77,7 +79,6 @@
 
 	const loginSubmit = async (event: Event) => {
 		event.preventDefault();
-
 		const toastId = addToast('Trying to login...', 'loading');
 		try {
 			const res = await fetch('/api/user/login', {
@@ -88,14 +89,16 @@
 				body: JSON.stringify({
 					type: 'login',
 					email,
-					password
+					password,
+					deviceID: $deviceID,
+					userData: $userData
 				}),
 				credentials: 'same-origin'
 			});
 			const response = await res.json();
 			if (res.ok && response.success) {
-				localStorage.setItem('userConfig', JSON.stringify(response.config));
 				removeToast(toastId);
+				await saveToDB('userData', response.data);
 				addToast('Login successful!', 'success', 3000);
 				await goto('/', { invalidateAll: true });
 			} else {
@@ -127,7 +130,7 @@
 		>
 			<div class="space-y-4 text-center">
 				<h2 class="text-4xl font-bold">
-					{!isRegister ? 'Welcome Back!' : 'Join Our Research Project'}
+					{!isRegister ? `Welcome Back!` : 'Join Our Research Project'}
 				</h2>
 				<p class="text-lg opacity-90">
 					{!isRegister
@@ -260,6 +263,16 @@
 						</label>
 					</div>
 
+					{#if $isEmailSend}
+						<button
+							type="button"
+							class="w-full rounded-md bg-blue-600 py-3 font-semibold text-white transition hover:bg-blue-700"
+							on:click={() => (showVerification = true)}
+						>
+							Verify Email
+						</button>
+					{/if}
+
 					<button
 						type="submit"
 						class="w-full rounded-md bg-green-600 py-3 font-semibold text-white transition hover:bg-green-700"
@@ -339,10 +352,11 @@
 					class="w-full rounded-md border p-3 focus:border-green-500 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
 				/>
 			</div>
-			{#if isEmailSend}
+			{#if $isEmailSend}
 				<button
 					type="button"
 					class="w-full rounded-md bg-blue-600 py-3 font-semibold text-white transition hover:bg-blue-700"
+					on:click={() => (showVerification = true)}
 				>
 					Verify Email
 				</button>
@@ -364,18 +378,19 @@
 
 {#if showVerification}
 	<EmailVerification
+		{email}
 		onClose={() => (showVerification = false)}
-		{verificationCode}
 		onVerified={async () => {
 			showVerification = false;
-			isEmailSend = false;
+			$isEmailSend = false;
 			const toastId = addToast('Trying to register...', 'loading');
 			try {
 				const response = await RequestHandler.fetchData('POST', `user/create`, {
 					prototypeID: prototypeIP,
 					fullName: fullName,
 					email: email,
-					password: password
+					password: password,
+					deviceID: $deviceID
 				});
 				removeToast(toastId);
 				if (response.success) {

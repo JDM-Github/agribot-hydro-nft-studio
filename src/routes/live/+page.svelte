@@ -1,216 +1,293 @@
 <script lang="ts">
-	import Footer from '$lib/components/Footer.svelte';
-	import ViewPicture from '$lib/modal/ViewPicture.svelte';
-	import { writable } from 'svelte/store';
-	import { onDestroy, onMount } from 'svelte';
-	import { addToast, removeToast } from '$lib/stores/toast';
-	import { goto } from '$app/navigation';
-	import { currentLink, isConnected, isLivestreaming, isRobotRunning, isScanning } from '$lib/stores/connection';
-	import RequestHandler from '$lib/utils/request.js';
-	import { simpleMode } from '$lib/stores/mode.js';
-	import { capitalize } from '$utils/string.js';
-	import NotConnected from '$lib/components/NotConnected.svelte';
-	export let data;
+import Footer from '$lib/components/Footer.svelte';
+import ViewPicture from '$lib/modal/ViewPicture.svelte';
+import { writable } from 'svelte/store';
+import { onDestroy } from 'svelte';
+import { addToast, removeToast } from '$lib/stores/toast';
+import RequestHandler from '$lib/utils/request.js';
+import { simpleMode } from '$lib/stores/mode.js';
+import { capitalize } from '$utils/string.js';
+import NotConnected from '$lib/components/NotConnected.svelte';
+import { Connection } from '$root/lib/class/connection.js';
+import Stoprobot from '../spray/stoprobot.svelte';
+import { LiveStreamState, RobotState } from '$root/lib/enum';
+import { currentLink } from '$root/lib/stores/connection';
+import CameraFeed from './CameraFeed.svelte';
+import LivestreamControls from './LivestreamControls.svelte';
+export let data;
 
-	let user = data.user || null;
-	let plantHistory: any = data.images || [];
-	let showingCamera = !data.no_camera;
-	let videoFeedUrl = '';
-	let robotIsLivestreaming = $isLivestreaming;
-	if ($isLivestreaming === 'Running') {
-		videoFeedUrl = `${$currentLink}/video_feed`;
-		showingCamera = true;
+$: allState = Connection.getAllState({conn: true, robot: true, live: true, scan: true, rscan: true, performing: true, robotLive: true, stopCapture: true});
+$: conn = allState.connection;
+$: rstate = allState.robotrunning;
+$: sstate = allState.scanningstate;
+$: lstate  = allState.livestreamstate;
+$: rcstate  = allState.robotscanningstate;
+$: pstate = allState.performingscan;
+$: rlstate = allState.robotlivestream;
+$: scstate = allState.stopcapturingimage;
+
+$: isConnected = $conn!;
+$: robotState = $rstate!;
+$: liveState = $lstate!;
+$: scannerState = $sstate!;
+$: robotScanState = $rcstate!;
+$: performing = $pstate!;
+$: robotLive = $rlstate!;
+$: stopCapture = $scstate!;
+
+$: liveFrameURL = Connection.getLiveFrameURL();
+$: plantHistories = Connection.getLatestPlantHistories();
+let user = data.user || null;
+// let plantHistory: PlantHistories = [];
+let currentDay = new Date().toDateString();
+let currentTime = writable(new Date().toLocaleTimeString());
+
+let modalOpen = writable(false);
+let selectedImage = writable<any>(null);
+export const wasdEnabled = writable(false);
+
+function openModal(image: any) {
+	selectedImage.set(image);
+	modalOpen.set(true);
+}
+let selectedFile: File | null = null;
+function handleFileChange(event: Event) {
+	const target = event.target as HTMLInputElement;
+	if (target.files && target.files[0]) {
+		selectedFile = target.files[0];
+		uploadImage();
+	}
+}
+
+async function uploadImage() {
+	if (!isConnected) {
+		addToast('You are currently not connected to AGRIBOT.', 'error', 3000);
+		return;
 	}
 
-	let currentDay = new Date().toDateString();
-	let currentTime = writable(new Date().toLocaleTimeString());
-
-	let modalOpen = writable(false);
-	let selectedImage = writable<any>(null);
-	let capturedFullFrame = writable<any>('');
-	let capturedFullFrameModal = writable(false);
-	export const wasdEnabled = writable(false);
-
-	function openModal(image: any) {
-		selectedImage.set(image);
-		modalOpen.set(true);
+	if (robotState) {
+		addToast('AGRIBOT Robot are currently running.', 'error', 3000);
+		return;
 	}
 
-	let selectedFile: File | null = null;
-
-	function handleFileChange(event: Event) {
-		const target = event.target as HTMLInputElement;
-		if (target.files && target.files[0]) {
-			selectedFile = target.files[0];
-			uploadImage();
-		}
+	if (scannerState) {
+		addToast('Scanner are currently running.', 'error', 3000);
+		return;
 	}
 
-	async function uploadImage() {
-		if (!selectedFile) {
-			addToast('No file selected!', 'error', 3000);
+	if (robotScanState) {
+		addToast('AGRIBOT Robot scanner are currently scanning.', 'error', 3000);
+		return;
+	}
+
+	if (liveState) {
+		addToast('Cannot upload when livestreaming.', 'error', 3000);
+	}
+
+	if (performing) {
+		addToast('Cannot upload when performing a scan.', 'error', 3000);
+	}
+
+	if (stopCapture) {
+		addToast('Cannot upload when capturing image.', 'error', 3000);
+	}
+
+	if (robotLive) {
+		addToast('Cannot upload when robot is live.', 'error', 3000);
+	}
+
+	if (!selectedFile) {
+		addToast('No file selected!', 'error', 3000);
+		return;
+	}
+
+	const toastId = addToast('Uploading image...', 'loading');
+	try {
+		const formData = new FormData();
+		formData.append('file', selectedFile);
+
+		const email = user.email || '';
+		if (!email) {
+			removeToast(toastId);
+			addToast('User email not found.', 'error', 3000);
 			return;
 		}
+		const folderName = email.split('@')[0];
+		formData.append('folder', folderName);
+		const [success, data] = await RequestHandler.authFetch(`upload-image`, 'POST', formData);
 
-		const toastId = addToast('Uploading image...', 'loading');
-		try {
-			const formData = new FormData();
-			formData.append('file', selectedFile);
-
-			const email = user.email || '';
-			if (!email) {
-				removeToast(toastId);
-				addToast('User email not found.', 'error', 3000);
-				return;
-			}
-			const folderName = email.split('@')[0];
-			formData.append('folder', folderName);
-			const [success, data] = await RequestHandler.authFetch(`upload-image`, 'POST', formData);
-
-			if (!success) {
-				removeToast(toastId);
-				addToast('Failed to upload image!', 'error', 3000);
-				return;
-			}
-
-			data.detections.forEach((plant: any) => {
-				const newPlant = {
-					id: Date.now(),
-					src: plant.src,
-					timestamp: plant.timestamp,
-					plantName: plant.plantName,
-					diseaseName: plant.plantHealth,
-					imageSize: plant.imageSize,
-					locationOnCapture: plant.locationOnCapture,
-					generatedDescription: plant.generatedDescription
-				};
-				plantHistory = [newPlant, ...plantHistory].slice(0, 6);
-			});
-
+		if (!success) {
 			removeToast(toastId);
-			addToast('Image uploaded successfully!', 'success', 3000);
-		} catch (err) {
-			console.error(err);
-			removeToast(toastId);
-			addToast('Upload failed!', 'error', 3000);
-		}
-	}
-	async function captureImageAndDisplay() {
-		if ($isScanning) {
-			addToast("Camera is currently scanning. Can't capture.", 'error', 3000);
+			addToast('Failed to upload image!', 'error', 3000);
 			return;
 		}
-		const toastId = addToast('Capturing image...', 'loading');
+		removeToast(toastId);
+		addToast(`${data.length} plant(s) detected!`, 'success', 3000);
+	} catch (err) {
+		console.error(err);
+		removeToast(toastId);
+		addToast('Upload failed!', 'error', 3000);
+	}
+}
+async function captureImageAndDisplay() {
+	if (!isConnected) {
+		addToast('You are currently not connected to AGRIBOT.', 'error', 3000);
+		return;
+	}
 
-		try {
-			if ($isRobotRunning == 'Running') {
-				removeToast(toastId);
-				addToast("Robot is currently running. Can't capture.", 'error');
-				return;
-			}
-			const email = user.email || '';
-			if (!email) {
-				removeToast(toastId);
-				addToast('User email not found.', 'error', 3000);
-				return;
-			}
-			const folderName = email.split('@')[0];
-			const [success, data] = await RequestHandler.authFetch(
-				`capture_and_return_blob?folder=${folderName}`
-			);
-			if (!success) {
-				removeToast(toastId);
-				addToast('Failed to capture image!', 'error', 3000);
-			}
+	if (robotState) {
+		addToast('AGRIBOT Robot are currently running.', 'error', 3000);
+		return;
+	}
 
-			if (data.length === 0) {
-				removeToast(toastId);
-				addToast('No plants detected.', 'info', 3000);
-				return;
-			}
-			data.detections.forEach((plant: any) => {
-				const newPlant = {
-					id: Date.now(),
-					src: plant.src,
-					timestamp: plant.timestamp,
-					plantName: plant.plantName,
-					diseaseName: plant.plantHealth,
-					imageSize: plant.imageSize,
-					locationOnCapture: plant.locationOnCapture,
-					generatedDescription: plant.generatedDescription
-				};
-				plantHistory = [newPlant, ...plantHistory].slice(0, 6);
-			});
+	if (scannerState) {
+		addToast('Scanner are currently running.', 'error', 3000);
+		return;
+	}
+
+	if (robotScanState) {
+		addToast('AGRIBOT Robot scanner are currently scanning.', 'error', 3000);
+		return;
+	}
+
+	if (liveState === LiveStreamState.STOPPED) {
+		addToast('Cannot capture image when not livestreaming.', 'error', 3000);
+	}
+
+	if (performing) {
+		addToast('Cannot upload when performing a scan.', 'error', 3000);
+	}
+
+	if (stopCapture) {
+		addToast('Cannot upload when capturing image.', 'error', 3000);
+	}
+
+	if (robotLive) {
+		addToast('Cannot upload when robot is live.', 'error', 3000);
+	}
+
+	const toastId = addToast('Capturing image...', 'loading');
+	try {
+		const email = user.email || '';
+		if (!email) {
 			removeToast(toastId);
-			addToast(`${data.detections.length} plant(s) detected!`, 'success', 3000);
-		} catch (error) {
+			addToast('User email not found.', 'error', 3000);
+			return;
+		}
+		const folderName = email.split('@')[0];
+		const [success, data] = await RequestHandler.authFetch(
+			`capture_and_return_blob?folder=${folderName}`
+		);
+		if (!success) {
 			removeToast(toastId);
-			capturedFullFrame.set(null);
 			addToast('Failed to capture image!', 'error', 3000);
 		}
+		removeToast(toastId);
+		addToast(`${data.length} plant(s) detected!`, 'success', 3000);
+	} catch (error) {
+		removeToast(toastId);
+		addToast('Failed to capture image!', 'error', 3000);
+	}
+}
+
+async function controlLivestream(action: string) {
+	if (!isConnected) {
+		addToast('You are currently not connected to AGRIBOT.', 'error', 3000);
+		return;
 	}
 
-	async function controlLivestream(action: string) {
-		if ($isScanning) {
-			addToast('Camera is currently scanning. Livestream will never work.', 'error', 3000);
-			return;
-		}
-
-		const actionLabel =
-			action === 'Run'
-				? 'Starting robot livestream'
-				: action == 'Stop'
-					? 'Stopping robot livestream'
-					: 'Robot livestream paused';
-		const toastId = addToast(`${actionLabel}...`, 'loading');
-
-		try {
-			const [success, _] = await RequestHandler.authFetch(`${action.toLowerCase()}`, 'POST');
-			removeToast(toastId);
-
-			if (success) {
-				if (action === 'Run') {
-					showingCamera = true;
-					videoFeedUrl = `${$currentLink}/video_feed`;
-					robotIsLivestreaming = 'Running';
-				} else if (action === 'Stop') {
-					showingCamera = false;
-					capturedFullFrame.set(null);
-					robotIsLivestreaming = 'Stopped';
-				} else {
-					robotIsLivestreaming = 'Paused';
-				}
-				addToast(
-					`Robot livestream ${action === 'Run' ? 'started' : action == 'Stop' ? 'stopped' : 'paused'} successfully.`,
-					'success',
-					3000
-				);
-			} else {
-				let errorMessage = 'Unknown error';
-				addToast(`Failed to ${action.toLowerCase()} robot: ${errorMessage}`, 'error', 4000);
-				console.error(`Failed to ${action.toLowerCase()} robot:`, errorMessage);
-			}
-		} catch (err: any) {
-			removeToast(toastId);
-			addToast(`Network error: ${err.message}`, 'error', 4000);
-			console.error('Network error while controlling robot:', err);
-		}
+	if (robotState) {
+		addToast('AGRIBOT Robot are currently running.', 'error', 3000);
+		return;
 	}
 
-	const updateInfo = async () => {
-		try {
-			currentTime.set(new Date().toLocaleTimeString());
-			if (videoFeedUrl === '') return;
-		} catch (err) {
-			console.error('Failed to fetch camera info', err);
+	if (scannerState) {
+		addToast('Scanner are currently running.', 'error', 3000);
+		return;
+	}
+
+	if (robotScanState) {
+		addToast('AGRIBOT Robot scanner are currently scanning.', 'error', 3000);
+		return;
+	}
+
+	if (performing) {
+		addToast('Cannot upload when performing a scan.', 'error', 3000);
+	}
+
+	if (stopCapture) {
+		addToast('Cannot upload when capturing image.', 'error', 3000);
+	}
+
+	if (robotLive) {
+		addToast('Cannot upload when robot is live.', 'error', 3000);
+	}
+
+	const stateText =
+		action === 'Run'
+			? 'already running'
+			: action == 'Stop'
+				? 'already stopped'
+				: 'already paused';
+	if (
+		(liveState === LiveStreamState.RUNNING && action === 'Run') ||
+		(liveState === LiveStreamState.STOPPED && action === 'Stop') ||
+		(liveState === LiveStreamState.PAUSED && action === 'Pause')
+	) {
+		addToast(`Livestream are ${stateText}.`, 'error', 3000);
+		return;
+	}
+
+	const actionLabel =
+		action === 'Run'
+			? 'Starting robot livestream'
+			: action == 'Stop'
+				? 'Stopping robot livestream'
+				: 'Robot livestream paused';
+	const toastId = addToast(`${actionLabel}...`, 'loading');
+	try {
+		const [success, _] = await RequestHandler.authFetch(`${action.toLowerCase()}`, 'POST');
+		removeToast(toastId);
+
+		if (success) {
+			addToast(
+				`Robot livestream ${action === 'Run' ? 'started' : action == 'Stop' ? 'stopped' : 'paused'} successfully.`,
+				'success',
+				3000
+			);
+		} else {
+			let errorMessage = 'Unknown error';
+			addToast(`Failed to ${action.toLowerCase()} robot: ${errorMessage}`, 'error', 4000);
+			console.error(`Failed to ${action.toLowerCase()} robot:`, errorMessage);
 		}
-	};
-	const interval = setInterval(updateInfo, 1000);
-	onDestroy(() => clearInterval(interval));
+	} catch (err: any) {
+		removeToast(toastId);
+		addToast(`Network error: ${err.message}`, 'error', 4000);
+		console.error('Network error while controlling robot:', err);
+	}
+}
+
+const updateInfo = async () => {
+	try {
+		currentTime.set(new Date().toLocaleTimeString());
+	} catch (err) {
+		console.error('Failed to fetch camera info', err);
+	}
+};
+const interval = setInterval(updateInfo, 1000);
+onDestroy(() => clearInterval(interval));
 </script>
 
-{#if !$isConnected}
-	<NotConnected user={data.user}/>
+{#if !isConnected}
+	<NotConnected user={data.user} />
+{:else if robotState}
+	<Stoprobot whatRunning="robot" />
+{:else if scannerState}
+	<Stoprobot whatRunning="scanner" />
+{:else if robotScanState}
+    <Stoprobot whatRunning="robot scanner" />
+{:else if robotLive}
+	<Stoprobot whatRunning="robot live" />
 {:else}
 	<div
 		class="relative flex min-h-[calc(100vh-95px)] flex-col
@@ -228,31 +305,18 @@
 				<div
 					class="flex w-full flex-col items-center gap-4 rounded-xl bg-white p-3 shadow-lg sm:gap-6 sm:p-4 dark:bg-gray-900"
 				>
-					<!-- Camera Feed -->
-					{#if videoFeedUrl && showingCamera}
-						<div
-							class="relative w-full overflow-hidden rounded-xl border border-gray-200 shadow-md dark:border-gray-700"
-						>
-							<img
-								src={videoFeedUrl}
-								alt="📷 Camera Feed"
-								class="max-h-[300px] w-full object-contain sm:max-h-[500px]"
-							/>
-							<span
-								class="absolute top-2 left-2 rounded bg-black/60 px-2 py-0.5 text-xs text-white sm:top-3 sm:left-3"
-							>
-								Live Feed
-							</span>
-						</div>
-					{:else}
-						<div
-							class="flex min-h-[200px] w-full flex-col items-center justify-center rounded-lg border border-gray-300 bg-gray-100 sm:min-h-[400px] dark:border-gray-600 dark:bg-gray-800"
-						>
-							<p class="text-base font-semibold text-gray-700 sm:text-lg dark:text-gray-300">
-								📷 Camera Feed
-							</p>
-						</div>
-					{/if}
+					<CameraFeed
+						connected={isConnected}
+						scanState={scannerState}
+						robotState={robotState}
+						robotScanState={robotScanState}
+						liveState={liveState}
+						performing={performing}
+						stopCapture={stopCapture}
+						robotLive={robotLive}
+						liveFrameURL={$liveFrameURL!}
+						simpleMode={true}
+					/>
 
 					<!-- Status Strip -->
 					<div
@@ -260,74 +324,53 @@
 					>
 						<span class="flex items-center gap-1 text-gray-800 dark:text-gray-400">
 							<span
-								class="inline-block h-2 w-2 rounded-full {robotIsLivestreaming === 'Running'
+								class="inline-block h-2 w-2 rounded-full {liveState === LiveStreamState.RUNNING
 									? 'bg-green-500'
-									: robotIsLivestreaming === 'Paused'
+									: liveState === LiveStreamState.PAUSED
 										? 'bg-yellow-500'
 										: 'bg-red-500'}"
 							></span>
-							Status: {robotIsLivestreaming}
+							Status: {liveState === LiveStreamState.RUNNING
+								? 'Running'
+								: liveState === LiveStreamState.PAUSED
+									? 'Paused'
+									: 'Stopped'}
 						</span>
 						<span class="text-gray-800 dark:text-gray-400">🕒 {$currentTime}</span>
 					</div>
 
-					<!-- Controls -->
 					<div
 						class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-center sm:gap-3"
 					>
-						<button
-							class="rounded-lg bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 sm:text-base dark:bg-green-700 dark:hover:bg-green-800"
-							on:click={() => controlLivestream('Run')}
-							disabled={robotIsLivestreaming === 'Running'}
-						>
-							{robotIsLivestreaming === 'Paused' ? 'Resume' : 'Run Livestream'}
-						</button>
-
-						<button
-							class="rounded-lg bg-gray-600 px-4 py-2 text-sm text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 sm:text-base dark:bg-gray-700 dark:hover:bg-gray-800"
-							on:click={() => controlLivestream('Pause')}
-							disabled={robotIsLivestreaming === 'Stopped' || robotIsLivestreaming === 'Paused'}
-						>
-							Pause
-						</button>
-
-						<button
-							class="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:text-base dark:bg-red-700 dark:hover:bg-red-800"
-							on:click={() => controlLivestream('Stop')}
-							disabled={robotIsLivestreaming === 'Stopped'}
-						>
-							Stop
-						</button>
-
-						<button
-							on:click={() => {
-								const today = new Date();
-								const todayDate = `${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}${today.getFullYear()}`;
-								goto(`/folder/${todayDate}`);
-							}}
-							class="rounded-lg bg-green-500 px-4 py-2 text-sm text-white hover:bg-green-600 sm:text-base dark:bg-green-600 dark:hover:bg-green-700"
-						>
-							View Today Records
-						</button>
+						<LivestreamControls
+							{controlLivestream}
+							connected={isConnected}
+							scanState={scannerState}
+							robotState={robotState}
+							robotScanState={robotScanState}
+							liveState={liveState}
+							performing={performing}
+						stopCapture={stopCapture}
+						robotLive={robotLive}
+						/>
 					</div>
 				</div>
-
-				<!-- FULL MODE VIEW -->
 			{:else}
 				<div
 					class="relative flex min-h-[250px] w-full flex-col items-center justify-center rounded-lg bg-gray-100 p-6 shadow-lg lg:w-1/2 dark:bg-gray-900"
 				>
-					{#if videoFeedUrl && showingCamera}
-						{#if showingCamera}
-							<img
-								src={videoFeedUrl}
-								alt="📷 Camera Feed"
-								class="h-full max-h-[400px] max-w-[400px] rounded-md object-contain dark:border dark:border-gray-600"
-							/>
-						{/if}
-					{:else}
-						<p class="text-lg font-semibold text-gray-700 dark:text-gray-300">📷 Camera Feed</p>
-					{/if}
+					<CameraFeed
+						connected={isConnected}
+						scanState={scannerState}
+						robotState={robotState}
+						robotScanState={robotScanState}
+						liveState={liveState}
+						performing={performing}
+						stopCapture={stopCapture}
+						robotLive={robotLive}
+						liveFrameURL={$liveFrameURL!}
+						simpleMode={false}
+					/>
 				</div>
 
 				<div class="flex flex-col rounded-xl bg-white p-4 shadow-lg lg:w-1/2 dark:bg-gray-900">
@@ -362,9 +405,21 @@
 								<span>{currentDay}</span>
 							</li>
 							<li class="flex justify-between">
-								<span class="font-medium text-gray-500 dark:text-gray-300">Status:</span>
-								<span>{robotIsLivestreaming}</span>
+								<span
+									class="font-medium text-gray-500 dark:text-gray-300 {liveState ===
+									LiveStreamState.RUNNING
+										? 'bg-green-500'
+										: liveState === LiveStreamState.PAUSED
+											? 'bg-yellow-500'
+											: 'bg-red-500'}"
+								></span>
+								Status: {liveState === LiveStreamState.RUNNING
+									? 'Running'
+									: liveState === LiveStreamState.PAUSED
+										? 'Paused'
+										: 'Stopped'}
 							</li>
+
 							<li class="flex justify-between">
 								<span class="font-medium text-gray-500 dark:text-gray-300">Time:</span>
 								<span>{$currentTime}</span>
@@ -385,11 +440,11 @@
 								class="hidden"
 								accept="image/*"
 								on:change={handleFileChange}
-							/> 
+							/>
 							<button
 								class="rounded-lg bg-blue-600 px-5 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-800"
 								on:click={() => (document as any).getElementById('fileInput').click()}
-								disabled={robotIsLivestreaming === 'Running'}
+								disabled={!isConnected || scannerState || robotState !== RobotState.STOPPED || robotScanState || liveState !== LiveStreamState.STOPPED || robotLive || performing || stopCapture}
 							>
 								Upload Image
 							</button>
@@ -397,8 +452,8 @@
 						<div
 							class="scrollbar-hide mt-4 flex min-h-[140px] gap-4 overflow-x-auto px-2 py-2 whitespace-nowrap"
 						>
-							{#if plantHistory.length > 0}
-								{#each plantHistory as plant}
+							{#if $plantHistories.length > 0}
+								{#each $plantHistories as plant}
 									<button
 										class="flex min-h-[140px] min-w-[140px] flex-col items-center rounded-lg bg-white p-3 shadow-md md:min-h-[160px] md:min-w-[160px] dark:bg-gray-900"
 										on:click={() => openModal(plant)}
@@ -413,7 +468,7 @@
 										>
 											{capitalize(plant.plantName)}
 										</p>
-										<p class="text-xs text-red-500">{capitalize(plant.diseaseName)}</p>
+										<p class="text-xs text-red-500">{capitalize(plant.plantHealth)}</p>
 									</button>
 								{/each}
 							{:else}
@@ -431,69 +486,35 @@
 							<button
 								class="rounded-lg bg-blue-600 px-5 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-800"
 								on:click={captureImageAndDisplay}
-								disabled={robotIsLivestreaming === 'Stopped'}
+								disabled={!isConnected || scannerState || robotState !== RobotState.STOPPED || robotScanState || liveState === LiveStreamState.STOPPED || robotLive || performing || stopCapture}
 							>
 								Capture
 							</button>
-							<button
-								class="rounded-lg bg-green-600 px-5 py-2 text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-green-700 dark:hover:bg-green-800"
-								on:click={() => controlLivestream('Run')}
-								disabled={robotIsLivestreaming === 'Running'}
-							>
-								{robotIsLivestreaming === 'Paused' ? 'Resume' : 'Run Livestream'}
-							</button>
-
-							<button
-								class="rounded-lg bg-gray-600 px-5 py-2 text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-700 dark:hover:bg-gray-800"
-								on:click={() => controlLivestream('Pause')}
-								disabled={robotIsLivestreaming === 'Stopped' || robotIsLivestreaming === 'Paused'}
-							>
-								Pause
-							</button>
-
-							<button
-								class="rounded-lg bg-red-600 px-5 py-2 text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-red-700 dark:hover:bg-red-800"
-								on:click={() => controlLivestream('Stop')}
-								disabled={robotIsLivestreaming === 'Stopped'}
-							>
-								Stop
-							</button>
+							<LivestreamControls
+								{controlLivestream}
+								connected={isConnected}
+								scanState={scannerState}
+								robotState={robotState}
+								robotScanState={robotScanState}
+								liveState={liveState}
+								performing={performing}
+								stopCapture={stopCapture}
+								robotLive={robotLive}
+							/>
 						</div>
-						<button
-							on:click={() => {
-								const today = new Date();
-								const todayDate = `${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}${today.getFullYear()}`;
-								goto(`/folder/${todayDate}`);
-							}}
-							class="rounded-lg bg-green-500 px-5 py-2 text-white hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700"
-						>
-							View Today Records
-						</button>
 					</div>
 				</div>
 			{/if}
 		</div>
 	</div>
 
-	<Footer />
 	<ViewPicture
 		modalOpen={$modalOpen}
 		closeModal={() => modalOpen.set(false)}
 		downloadImage={() => {}}
 		selectedImage={$selectedImage}
-		images={plantHistory}
+		images={null}
 		noDownloadDelete={true}
 	/>
-	{#if $capturedFullFrameModal}
-		<button
-			class="bg-opacity-80 fixed inset-0 z-50 flex items-center justify-center bg-black/80"
-			on:click={() => capturedFullFrameModal.set(false)}
-		>
-			<img
-				src={$capturedFullFrame}
-				alt="Captured Frame Full Size"
-				class="max-h-[90%] max-w-[90%] rounded-lg shadow-2xl"
-			/>
-		</button>
-	{/if}
 {/if}
+<Footer />

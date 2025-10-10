@@ -29,6 +29,7 @@ export const load: LayoutLoad = async ({ url, data }) => {
 		{ name: 'RECORDS', path: '/record' },
 		{ name: 'LOGS', path: '/logs' },
 		{ name: 'ROBOT', path: '/robot' },
+		{ name: 'NOTIFICATIONS', path: '/notification' },
 		{ name: 'MANAGE WIFI', path: '/wifi' }
 	];
 

@@ -67,10 +67,6 @@ export let cameraInfo: CameraInfo;
 			{cameraInfo.fps ?? 'N/A'} FPS
 		</li>
 		<li class="flex justify-between">
-			<span class="font-medium text-gray-500 dark:text-gray-300">Public IP:</span>
-			{cameraInfo.ip ?? 'N/A'}
-		</li>
-		<li class="flex justify-between">
 			<span class="font-medium text-gray-500 dark:text-gray-300">Detection Confidence:</span>
 			{cameraInfo.detectionConf ?? 'N/A'}
 		</li>

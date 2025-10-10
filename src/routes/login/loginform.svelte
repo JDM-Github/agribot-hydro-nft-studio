@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { addToast, removeToast } from '$lib/stores/toast';
+	import { deviceID, userData } from '$root/lib/stores/connection';
+	import { saveToDB } from '$root/lib/utils/indexdb';
 	import { Eye, EyeOff } from 'lucide-svelte';
 	let email = '';
 	let password = '';
@@ -18,25 +20,25 @@
 				body: JSON.stringify({
 					type: 'login',
 					email,
-					password
+					password,
+					deviceID: $deviceID,
+					userData: $userData
 				}),
 				credentials: 'same-origin'
 			});
 			const response = await res.json();
+			removeToast(toastId);
 			if (res.ok && response.success) {
-				localStorage.setItem('userConfig', JSON.stringify(response.config));
-				localStorage.setItem('user', JSON.stringify(response.user));
-				removeToast(toastId);
+				await saveToDB('userData', response.data);
 				addToast('Login successful!', 'success', 3000);
 				await goto('/', { invalidateAll: true });
-			} else {
-				removeToast(toastId);
+			} else {				
 				addToast('Invalid email or password.', 'error', 3000);
 			}
 		} catch (error) {
 			removeToast(toastId);
-			console.error('Registration error:', error);
-			addToast('An unexpected error occurred.', 'error', 3000);
+			console.error('Login error:', error);
+			addToast(`An unexpected error occurred. ${error}`, 'error', 3000);
 		}
 	};
 
@@ -70,7 +72,7 @@
 				<input
 					bind:value={password}
 					id="passId"
-					type={showPassword ? "text" : "password"}
+					type={showPassword ? 'text' : 'password'}
 					name="password"
 					placeholder="Your Password"
 					class="w-full rounded-md border p-3 focus:border-green-500 focus:ring-green-500 dark:border-gray-700 dark:bg-gray-700 dark:text-white"
@@ -88,6 +90,7 @@
 				</button>
 			</div>
 		</div>
+
 		<button
 			type="submit"
 			class="w-full rounded-md bg-green-600 py-3 font-semibold text-white transition hover:bg-green-700"

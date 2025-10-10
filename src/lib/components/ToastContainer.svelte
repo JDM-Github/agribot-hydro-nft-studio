@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { removeToast, toasts } from '$lib/stores/toast';
 	import { CheckCircle, XCircle, Info, Loader } from 'lucide-svelte';
+	import { fly, fade } from 'svelte/transition';
+
 	$: hasBlocking = $toasts.some(t => t.blocking);
 </script>
 
@@ -13,7 +15,9 @@
 <div class="fixed right-4 bottom-4 z-50 w-full max-w-md transform space-y-4">
 	{#each $toasts as toast (toast.id)}
 		<div
-			class="toast animate-toast-in flex flex-col rounded-lg border-2 bg-gray-100 text-gray-900 shadow-2xl dark:bg-gray-800 dark:text-white"
+			in:fly={{ y: 20, duration: 200 }}
+			out:fly={{ y: 20, opacity: 0, duration: 300 }}
+			class="toast flex flex-col rounded-lg border-2 bg-gray-100 text-gray-900 shadow-2xl dark:bg-gray-800 dark:text-white"
 			class:border-green-500={toast.type === 'success'}
 			class:border-red-500={toast.type === 'error' || toast.type === 'confirm'}
 			class:border-blue-500={toast.type === 'info'}
@@ -67,6 +71,7 @@
 		</div>
 	{/each}
 </div>
+
 
 <style>
 	@keyframes toast-in {

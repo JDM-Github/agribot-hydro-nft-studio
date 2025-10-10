@@ -1,15 +1,17 @@
 <script lang="ts">
-	import { writable } from 'svelte/store';
+	import { writable, type Writable } from 'svelte/store';
 	import RequestHandler from '$lib/utils/request';
-	import { isRobotRunning } from '$lib/stores/connection';
 	import { simpleMode } from '$lib/stores/mode';
 	import { addToast } from '$lib/stores/toast';
 
-	export let scanning;
+	export let scanning = false;
+	export let isRobotRunning: boolean;
 	let triggerMode = writable(false);
 
+	let allClickedTrigger: Writable<number[]> = writable([])
 	async function activateSpray(num: number) {
 		try {
+			$allClickedTrigger.push(num);
 			const [success, data] = await RequestHandler.authFetch(`trigger/${num}`, 'POST');
             if (!success) {
                 addToast(`Failed to trigger Spray ${num}`, 'error', 3000);
@@ -22,10 +24,13 @@
 		} catch (err) {
 			console.error(`Error triggering Spray ${num}:`, err);
 			addToast(`Failed to trigger Spray ${num}`, 'error', 3000);
+		} finally {
+			$allClickedTrigger.pop()
 		}
 	}
 
 	async function toggleSpray(num: number, turnOn: boolean) {
+		
 		try {
 			const state = turnOn ? 'on' : 'off';
 			const [success, data] = await RequestHandler.authFetch(`relay/${num}/${state}`, 'POST');
@@ -66,7 +71,7 @@
 				<input
 					type="checkbox"
 					bind:checked={$triggerMode}
-					disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
+					disabled={scanning || isRobotRunning || $allClickedTrigger.length <= 0}
 					class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:opacity-30 dark:border-gray-600"
 					title="Enable single-press trigger mode instead of hold mode"
 				/>
@@ -80,7 +85,7 @@
 			<div class="flex w-full flex-col items-center">
 				<!-- svelte-ignore a11y_label_has_associated_control -->
 				<button
-					disabled={scanning || $isRobotRunning === 'Running' || $isRobotRunning === 'Paused'}
+					disabled={scanning || isRobotRunning || $allClickedTrigger.includes(num)}
 					title={`Activate Spray ${num}`}
 					class="w-full rounded-lg bg-blue-500 px-4 py-3 text-sm font-medium text-white hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-500"
 					on:mousedown={() => !$triggerMode && toggleSpray(num, true)}

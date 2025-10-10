@@ -1,6 +1,6 @@
 import { writable, type Writable } from "svelte/store";
 import RequestHandler from "$lib/utils/request";
-import { addToast } from "$lib/stores/toast";
+import { addToast, removeToast } from "$lib/stores/toast";
 import type { WritableBoolean, WritableString } from "../type";
 
 export interface WifiNetwork {
@@ -25,6 +25,8 @@ class WifiManager {
         this.password = writable("");
         this.loading = writable(false);
         this.priority = 0;
+
+        this.connectedSSID.set("Home_WiFi");
     }
 
     async setPriority() {
@@ -54,9 +56,11 @@ class WifiManager {
 
     async scanNetworks() {
         this.loading.set(true);
+        const toastID = addToast("Scanning WiFi networks", "loading");
         try {
             const [success, data] = await RequestHandler.authFetch("wifi/scan", "GET");
 
+            removeToast(toastID);
             if (success && data.networks) {
                 this.wifiList.set(data.networks);
                 this.connectedSSID.set(data.connected_ssid || "");
@@ -65,6 +69,7 @@ class WifiManager {
             }
         } catch (err) {
             console.error(err);
+            removeToast(toastID);
             addToast("Error scanning WiFi.", "error", 3000);
         }
         this.loading.set(false);
