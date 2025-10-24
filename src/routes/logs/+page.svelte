@@ -4,7 +4,7 @@ import Footer from '$lib/components/Footer.svelte';
 import { simpleMode } from '$lib/stores/mode';
 import NotConnected from '$lib/components/NotConnected.svelte';
 import { Connection, } from '$root/lib/class/connection.js';
-import { writable, type Writable } from 'svelte/store';
+import { writable, type Unsubscriber, type Writable } from 'svelte/store';
 	import { SocketService } from '$root/lib/socket';
 export let data;
 
@@ -188,11 +188,12 @@ function handleKeydown(e: KeyboardEvent) {
 	}
 }
 
+let unsubscribe: Unsubscriber;
 onMount(async () => {
 	if (typeof document !== 'undefined') {
 		document.addEventListener('keydown', handleKeydown);
 	}
-	nlogs.subscribe((logs) => {
+	unsubscribe = nlogs.subscribe((logs) => {
 		if (logs) {
 			filterLogs();
 			scrollToBottom();
@@ -201,6 +202,7 @@ onMount(async () => {
 });
 
 onDestroy(() => {
+	unsubscribe();
 	clearInterval(intervalId);
 	if (typeof document !== 'undefined') {
 		document.removeEventListener('keydown', handleKeydown);

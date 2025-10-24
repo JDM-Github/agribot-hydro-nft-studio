@@ -26,7 +26,6 @@ export const POST = async ({ request, cookies }) => {
 			}, { status: 400 });
 		}
 
-		// Set cookie if login successful
 		cookies.set('session', result.token, {
 			httpOnly: true,
 			secure: MODE === "production",
@@ -36,7 +35,6 @@ export const POST = async ({ request, cookies }) => {
 		});
 		defaultUserData.user = result.user;
 
-		// 2. Save login device
 		let saveLogin;
 		try {
 			saveLogin = await RequestHandler.fetchData('post', 'user/save-login-device', {
@@ -48,7 +46,6 @@ export const POST = async ({ request, cookies }) => {
 			saveLogin = { success: false, message: 'Failed to save login device.' };
 		}
 
-		// 3. Fetch updates if device saved
 		if (saveLogin.success) {
 			try {
 				const updateRes = await RequestHandler.fetchData("POST", `user/check-update`, {

@@ -5,13 +5,15 @@
 	import { addToast, removeToast } from '$root/lib/stores/toast';
 	import { saveToDB } from '$root/lib/utils/indexdb';
 	import { RefreshCw } from 'lucide-svelte';
+	import { onDestroy } from 'svelte';
 	import { writable, derived, type Writable } from 'svelte/store';
 
 	let records: Writable<any> = writable([]);
-	userData.subscribe((user) => {
+	const unsubscribe = userData.subscribe((user) => {
 		if (!user) return;
 		records.set(user.folders || []);
 	});
+	onDestroy(unsubscribe);
 
 	let searchQuery = writable('');
 	let sortOrder = writable<'asc' | 'desc'>('desc');
@@ -96,7 +98,7 @@
 				body: JSON.stringify({
 					userData: $userData,
 					deviceID: $deviceID,
-					willUpdateTailscale: true
+					willUpdateFolders: true
 				})
 			});
 			const response = await res.json();

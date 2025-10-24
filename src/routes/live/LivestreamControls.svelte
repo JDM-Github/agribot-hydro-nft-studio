@@ -41,7 +41,7 @@
 		const todayDate = `${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}${today.getFullYear()}`;
 		goto(`/folder/${todayDate}`);
 	}}
-	disabled={!connected || scanState || robotState !== RobotState.STOPPED || robotScanState || !liveState || robotLive || performing || stopCapture}
+	disabled={!connected || scanState || robotState !== RobotState.STOPPED || robotScanState || robotLive || performing || stopCapture}
 	class="rounded-lg bg-green-500 px-5 py-2 text-white hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700"
 >
 	View Today Records

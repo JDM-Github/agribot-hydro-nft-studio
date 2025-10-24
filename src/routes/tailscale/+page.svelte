@@ -1,6 +1,6 @@
 <script>
 import { Connection } from '$root/lib/class/connection.js';
-	import Footer from '$root/lib/components/Footer.svelte';
+import Footer from '$root/lib/components/Footer.svelte';
 import NotConnected from '$root/lib/components/NotConnected.svelte';
 import Stoprobot from '../spray/stoprobot.svelte';
 export let data;

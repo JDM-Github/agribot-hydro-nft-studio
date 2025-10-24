@@ -7,7 +7,7 @@ import {
 } from "../enum";
 import { CAMERA_INFO } from "../constant/cameraInfo";
 import type { LabelResultArray } from "../types/labelResult";
-import type { PlantHistories, PlantHistory } from "../type";
+import type { PlantHistories } from "../type";
 
 type AllState = {
     connection?: Writable<boolean>;
@@ -138,6 +138,7 @@ class Connection {
             const blob = new Blob([data], { type: "image/jpeg" });
             Connection.liveFrameUrl.set(URL.createObjectURL(blob));
         });
+        socket.on("livestream_frame_stop", (_: any) => Connection.liveFrameUrl.set(null));
 
         socket.on("robot_livestream_frame", (data: any) => {
             const blob = new Blob([data], { type: "image/jpeg" });

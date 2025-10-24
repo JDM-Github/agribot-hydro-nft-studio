@@ -154,6 +154,7 @@ export async function saveConfig(userData: any, deviceID: string, isConnected: b
         removeToast(toastId);
         if (response.success) {
             config.saveConfig();
+            userData.notifications = response.notifications;
             userData.user.config = currentConfig;
             await saveToDB('userData', userData, false);
             if (isConnected) {

@@ -2,11 +2,6 @@
     import { page } from '$app/state';
     import { darkMode } from '$lib/stores/theme';
     import {
-        // isConnected,
-        // connect,
-        // disconnect,
-        // currentLink,
-        // robotName,
         needSync,
         syncNeededItems,
         deviceID,
@@ -22,6 +17,7 @@
     import { Connection } from '$class/connection';
     import { SocketService } from '../socket';
 	import { all_pages } from '../all_page';
+	import { onDestroy } from 'svelte';
 
     export let user: any = null;
     let isMenuOpen = false;
@@ -44,6 +40,14 @@
 			SocketService.emit("page_enter", {id: SocketService.id(), page: pageKey});
 		}
 	}
+
+    let numberOfUnread = writable(0);
+    userData.subscribe((user) => {
+		if (!user) return;
+		numberOfUnread.set((user.notifications || []).filter((d: any) => {
+            return !d.isRead
+        }).length);
+	});
 
     function toggleDarkMode() {
         darkMode.set(!$darkMode);
@@ -300,17 +304,26 @@
                         RECORDS
                     </button>
                 </li>
-                <li>
+                <li class="relative">
                     <button
                         on:click={() => changePath('/notification')}
-                        class="cursor-pointer font-medium hover:text-green-500 {page.url.pathname ===
-                        '/notification'
-                            ? 'font-bold text-green-600'
-                            : 'text-gray-800 dark:text-gray-300'}"
+                        class="relative cursor-pointer font-medium hover:text-green-500
+                            {page.url.pathname === '/notification'
+                                ? 'font-bold text-green-600'
+                                : 'text-gray-800 dark:text-gray-300'}"
                     >
-                        NOTIFICATIONS
+                        <span>NOTIFICATIONS</span>
+
+                        {#if $numberOfUnread > 0}
+                            <span
+                                class="absolute -top-2 -right-3 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white"
+                            >
+                                {$numberOfUnread}
+                            </span>
+                        {/if}
                     </button>
                 </li>
+
             {/if}
         {/if}
 

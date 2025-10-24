@@ -1,11 +1,14 @@
-import { currentLink, robotName } from '$lib/stores/connection';
+import { currentLink } from '$lib/stores/connection';
 import { get } from 'svelte/store';
 
 export default class RequestHandler {
-	static development = import.meta.env.VITE_MODE === 'development';
-	static baseURL = RequestHandler.development
-        ? 'http://localhost:8888'
-        : 'https://agribot-hydro-nft-admin.netlify.app';
+
+	static isLiveUrl = false;
+	static get baseURL() {
+		return RequestHandler.isLiveUrl
+			? import.meta.env.VITE_REAL_URL
+			: import.meta.env.VITE_LIVE_URL;
+	}
 	static apiLink = '.netlify/functions/api';
 
 	static async customFetch(
@@ -44,7 +47,6 @@ export default class RequestHandler {
 			return [false, { error: String(error) }];
 		}
 	}
-
 
 	static async authFetch(
 		link: string,
@@ -121,8 +123,5 @@ export default class RequestHandler {
 			};
 		}
 	}
-}
-function $store(arg0: string) {
-	throw new Error('Function not implemented.');
 }
 

@@ -58,7 +58,6 @@
 	$: robotUrlFrame = Connection.getRobotLiveFrameURL();
 
 	let enableWASDinControl = false;
-
 	async function controlRobot(move: string) {
 		let activeToastId = addToast(`AGRIBOT ${move} command...`, 'loading');
 		try {
@@ -156,9 +155,6 @@
 
 {#if !isConnected}
 	<NotConnected user={data.user} />
-{:else if robotState}
-	<Stoprobot whatRunning="robot" />
-	<Footer />
 {:else if liveState}
 	<Stoprobot whatRunning="livestream" />
 	<Footer />

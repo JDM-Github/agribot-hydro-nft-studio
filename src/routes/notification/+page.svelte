@@ -1,26 +1,28 @@
 <script lang="ts">
-	import gsap from "gsap";
-	import { onMount, tick } from "svelte";
+	import { onDestroy, onMount, tick } from 'svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import { deviceID, userData } from '$root/lib/stores/connection';
 	import { writable, derived, type Writable } from 'svelte/store';
-	import type { Notification } from "$lib/type";
+	import type { Notification } from '$lib/type';
 	import { addToast, removeToast } from '$root/lib/stores/toast';
 	import { saveToDB } from '$root/lib/utils/indexdb';
 	import { goto } from '$app/navigation';
 	import { RefreshCw } from 'lucide-svelte';
 	import RequestHandler from '$root/lib/utils/request';
+	import { fade, fly } from 'svelte/transition';
 
 	let notifications: Writable<Notification[]> = writable([]);
 	let currentPage = writable(1);
 	let lastPage = writable(1);
 
-	userData.subscribe((user) => {
+	const unsubscribe = userData.subscribe((user) => {
 		if (!user) return;
 		notifications.set(user.notifications || []);
 		currentPage.set($lastPage);
 		lastPage.set(1);
 	});
+	onDestroy(unsubscribe);
+
 	let searchQuery = writable('');
 	let sortOrder = writable<'asc' | 'desc'>('desc');
 	const itemsPerPage = 6;
@@ -82,7 +84,6 @@
 
 	async function markAsRead(notif: any) {
 		if (notif.isRead) return;
-
 		try {
 			const response = await RequestHandler.fetchData('post', 'notification/mark-read', {
 				id: $userData.user.id,
@@ -118,21 +119,6 @@
 		}
 	}
 
-	function getTypeColor(type: string) {
-		switch (type) {
-			case 'success':
-				return 'green';
-			case 'warning':
-				return 'orange';
-			case 'error':
-				return 'red';
-			case 'system':
-				return 'gray';
-			default:
-				return 'blue';
-		}
-	}
-
 	let notifSyncing = false;
 	async function forceNotifSync() {
 		notifSyncing = true;
@@ -163,89 +149,15 @@
 
 		notifSyncing = false;
 	}
-
-
-	onMount(() => {
-		animateNotifications();
-
-		const allHeader = document.querySelectorAll('.header');
-		if (!allHeader.length) return;
-		gsap.fromTo(
-			allHeader,
-			{ opacity: 0, y: 80 },
-			{
-				opacity: 1,
-				y: 0,
-				stagger: 0,
-				duration: 0.5,
-				ease: "power2.out"
-			}
-		);
-	});
-
-	$: if ($paginatedNotifications.length) {
-		animateNotifications(true);
-	}
-
-	function animateNotifications(fast: boolean = false) {
-		const allNotification = document.querySelectorAll('.notif-item');
-		if (!allNotification.length) return;
-
-		gsap.fromTo(
-			allNotification,
-			{ opacity: 0, y: 80 },
-			{
-				opacity: 1,
-				y: 0,
-				stagger: 0.1,
-				duration: fast ? 0.3 : 0.8,
-				ease: "power2.out"
-			}
-		);
-	}
-	$: if (modalVisible) {
-		animateModalOpen();
-	}
-	async function animateModalOpen() {
-		await tick();
-		const modal = document.querySelector(".modal-open");
-		const overlay = document.querySelector(".modal-overlay");
-
-		if (!modal || !overlay) return;
-		gsap.set([overlay, modal], { clearProps: "all" });
-		gsap.fromTo(
-			overlay,
-			{ opacity: 0, backdropFilter: "blur(0px)" },
-			{
-				opacity: 1,
-				backdropFilter: "blur(4px)",
-				duration: 0.35,
-				ease: "power2.out",
-			}
-		);
-
-		gsap.fromTo(
-			modal,
-			{ opacity: 0, y: 80, scale: 0.1 },
-			{
-				opacity: 1,
-				y: 0,
-				scale: 1,
-				duration: 0.2,
-				delay: 0.05,
-				ease: "back.out(1.7)",
-			}
-		);
-	}
-
 </script>
 
 <main
-	class="relative flex min-h-[calc(100vh-95px)] flex-col bg-gradient-to-b from-gray-200 to-gray-300 p-4 ease-out lg:px-16 dark:from-gray-700 dark:to-gray-800 "
+	class="relative flex min-h-[calc(100vh-95px)] flex-col bg-gradient-to-b from-gray-200 to-gray-300 p-4 ease-out lg:px-16 dark:from-gray-700 dark:to-gray-800"
 >
 	<div class="container mx-auto max-w-7xl rounded-2xl bg-gray-100 p-4 dark:bg-gray-900">
 		<div
-			class="flex flex-col gap-3 rounded-lg border border-gray-200 bg-[#fafffc] p-3 dark:border-gray-700 dark:bg-gray-800 header"
+			class="header flex flex-col gap-3 rounded-lg border border-gray-200 bg-[#fafffc] p-3 dark:border-gray-700 dark:bg-gray-800"
+			in:fly={{ y: -10, duration: 250, opacity: 0 }}
 		>
 			<div class="flex items-center gap-2">
 				<span class="text-xl">🔔</span>
@@ -284,17 +196,23 @@
 		</div>
 
 		{#if $paginatedNotifications.length === 0}
-			<p class="mt-4 py-6 text-center text-base text-gray-600 dark:text-gray-400">
+			<p
+				class="mt-4 py-6 text-center text-base text-gray-600 dark:text-gray-400"
+				out:fly={{ duration: 250, opacity: 0 }}
+			>
 				No notifications found.
 			</p>
 		{:else}
-			<div class="mt-4 flex flex-col divide-y divide-gray-200 dark:divide-gray-700 ">
-				{#each $paginatedNotifications as notif}
+			<div
+				class="mt-4 flex h-[400px] max-h-[400px] flex-col divide-y divide-gray-200 overflow-y-auto dark:divide-gray-700"
+			>
+				{#each $paginatedNotifications as notif, i (notif.id)}
 					<button
-						class="w-full text-left px-4 py-3 transition hover:bg-gray-200 dark:hover:bg-gray-700 notif-item
-						{notif.isRead 
-							? 'bg-gray-50 dark:bg-gray-800' 
-							: 'bg-blue-50 border-l-4 border-blue-500 dark:bg-blue-900/30'}"
+						class="notif-item w-full px-4 py-3 text-left transition hover:bg-gray-200 dark:hover:bg-gray-700
+						{notif.isRead
+							? 'bg-gray-50 dark:bg-gray-800'
+							: 'border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/30'}"
+						in:fly={{ y: 10, duration: 250, delay: i * 100, opacity: 0 }}
 						on:click={() => showModal(notif)}
 					>
 						<div class="flex items-center justify-between">
@@ -347,11 +265,13 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
-			class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 modal-overlay"
+			class="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+			transition:fade={{ duration: 200 }}
 			on:click={closeModal}
 		>
 			<div
-				class="w-80 max-w-full rounded-lg bg-white p-5 dark:bg-gray-800 modal-open"
+				class="modal-open w-80 max-w-full rounded-lg bg-white p-5 dark:bg-gray-800"
+				transition:fly={{ y: 30, duration: 250, opacity: 0 }}
 				on:click|stopPropagation
 			>
 				<div class="mb-2 flex items-center justify-between">
@@ -373,4 +293,3 @@
 </main>
 
 <Footer />
-

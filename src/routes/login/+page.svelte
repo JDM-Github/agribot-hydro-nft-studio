@@ -44,16 +44,16 @@
 			addToast('Passwords do not match.', 'error', 3000);
 			return;
 		}
-		// const strongPasswordRegex =
-		// 	/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
-		// if (!strongPasswordRegex.test(password)) {
-		// 	addToast(
-		// 		'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character.',
-		// 		'error',
-		// 		5000
-		// 	);
-		// 	return;
-		// }
+		const strongPasswordRegex =
+			/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+		if (!strongPasswordRegex.test(password)) {
+			addToast(
+				'Password must be at least 8 characters long and include uppercase, lowercase, number, and special character.',
+				'error',
+				5000
+			);
+			return;
+		}
 		const toastId = addToast('Sending verification code...', 'loading');
 		try {
 			const response = await RequestHandler.fetchData('POST', `user/send-code`, {

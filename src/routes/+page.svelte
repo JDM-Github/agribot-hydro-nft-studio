@@ -78,7 +78,7 @@ const maskRCNNSegmentation: WritableModelArray = writable([]);
 const allPlants: Writable<PlantList> = writable([]);
 const allPlantsTransformed: Writable<PlantListTransformed> = writable({});
 
-userData.subscribe((user) => {
+const unsubscribe = userData.subscribe((user) => {
     if (!user) return;
     yoloObjectDetection.set(user.models?.yoloobjectdetection || []);
     yoloStageClassification.set(user.models?.yolostageclassification || []);
@@ -102,14 +102,20 @@ const filteredDetectedPlantsStore: Readable<DetectedPlantArray> = derived(
 	([$detectedPlants, $searchPlant]) => filterDetectedPlants($detectedPlants, $allPlantsTransformed, $searchPlant)
 );
 
+let handler: (event: BeforeUnloadEvent) => void;
 onMount(() => {
-	const handler = (event: BeforeUnloadEvent) => {
+	handler = (event: BeforeUnloadEvent) => {
 		if (config.isDirty() || scannerState || showSprayModal || showManualPlant) {
 		event.preventDefault();
 		}
 	};
+    if (window !== undefined && window !== null)
 	window.addEventListener('beforeunload', handler);
-	onDestroy(() => window.removeEventListener('beforeunload', handler));
+});
+onDestroy(() => {
+    unsubscribe();
+    if (window !== undefined && window !== null)
+    window.removeEventListener('beforeunload', handler);
 });
 
 beforeNavigate((navigation) => {

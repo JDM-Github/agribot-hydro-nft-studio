@@ -8,6 +8,8 @@
 	import { RefreshCw } from 'lucide-svelte';
 	import { goto } from '$app/navigation';
 	import { Connection } from '../class/connection';
+	import { fade, fly } from 'svelte/transition';
+	import { onDestroy } from 'svelte';
 
 	$: isConnected = Connection.isConnected();
 	export let user: any;
@@ -18,6 +20,7 @@
 	let tsLoading = writable(false);
 
 	let registerModal = false;
+	let renameModal = false;
 	let selectedDevice: any = null;
 	let inputIp = '';
 	let hostName = '';
@@ -27,17 +30,19 @@
 
 	let currentUser: Writable<any> = writable({});
 	let tsDevices: Writable<any[]> = writable<any[]>([]);
-	userData.subscribe((user) => {
+	const unsubscribe = userData.subscribe((user) => {
 		if (!user) return;
 		currentUser.set(user.user);
 		tsDevices.set(user.tailscale_devices || []);
 	});
+	onDestroy(unsubscribe);
 
 	async function fetchDevices() {
 		const toastId = addToast('Fetching devices...', 'loading');
-		if (!$currentUser || !$currentUser.user?.id) {
+		if (!$currentUser || !$currentUser.id) {
 			removeToast(toastId);
-			addToast('Current user does not found.', 'success', 2000);
+			addToast('Current user does not found.', 'error', 2000);
+			return;
 		}
 		try {
 			const response = await RequestHandler.fetchData('POST', `tailscale/get-all`, {
@@ -100,10 +105,10 @@
 		try {
 			const response = await RequestHandler.fetchData('POST', 'tailscale/register', {
 				id: user.id,
-				deviceName: device['device-name'],
 				ip: ip.trim(),
+				deviceName: device['device-name'],
 				hostName: hostName,
-				authkey: device.authkey
+				deviceID: $deviceID
 			});
 			removeToast(toastId);
 			if (response.success) {
@@ -146,6 +151,29 @@
 			removeToast(toastId);
 			console.error('manualRegister error:', err);
 			addToast('Error registering device', 'error', 3000);
+		}
+	}
+	async function renameDevice(oldName: string, newName: string) {
+		const toastId = addToast(`Renaming device...`, 'loading');
+		try {
+			const response = await RequestHandler.fetchData('POST', 'tailscale/rename', {
+				id: user.id,
+				oldName,
+				newName
+			});
+			removeToast(toastId);
+			if (response.success) {
+				addToast('Device renamed successfully!', 'success', 3000);
+				await fetchDevices();
+				renameModal = false;
+				selectedDevice = null;
+			} else {
+				addToast(response.message || 'Failed to rename device', 'error', 3000);
+			}
+		} catch (err) {
+			removeToast(toastId);
+			console.error('renameDevice error:', err);
+			addToast('Error renaming device', 'error', 3000);
 		}
 	}
 	function copyToClipboard(text: string) {
@@ -229,7 +257,16 @@
 					>
 						<div class="flex items-center justify-between">
 							<span class="font-medium text-gray-700 dark:text-gray-200">
-								{device['device-name']}
+								<button
+									on:click={() => {
+										selectedDevice = device;
+										renameModal = true;
+									}}
+									class="rounded bg-purple-500 px-2 py-0.5 text-xs font-medium text-white hover:bg-purple-600"
+								>
+									Rename
+								</button>
+								: {device['device-name']}
 							</span>
 							<span
 								class="text-xs font-semibold {device.isRegistered
@@ -238,6 +275,7 @@
 							>
 								{device.isRegistered ? 'Registered' : 'Pending'}
 							</span>
+							<!-- Add Register button here -->
 						</div>
 						{#if !device.isRegistered}
 							<div class="flex flex-col gap-2">
@@ -329,8 +367,10 @@
 </div>
 
 {#if showModalTutorial && tutorialType !== null}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-		<div class="w-full max-w-2xl rounded-lg bg-white p-5 shadow-lg dark:bg-gray-800">
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+		transition:fade={{ duration: 200 }}>
+		<div class="w-full max-w-4xl rounded-lg bg-white p-5 shadow-lg dark:bg-gray-800"
+			transition:fly={{ y: 30, duration: 250, opacity: 0 }}>
 			<div class="mb-4 flex items-center justify-between">
 				<h2 class="text-lg font-bold text-gray-800 dark:text-gray-100">
 					{tutorialType === 'pc' ? 'PC Setup Tutorial' : 'Android Setup Tutorial'}
@@ -346,6 +386,10 @@
 			</div>
 
 			{#if tutorialType === 'pc'}
+				<p class="mb-3 text-sm text-gray-600 dark:text-gray-400">
+					Follow this tutorial to set up your robot on a Windows or macOS computer.  
+					Ensure you have installed Tailscale and logged into your account before proceeding.
+				</p>
 				<!-- svelte-ignore a11y_missing_attribute -->
 				<iframe
 					class="aspect-video w-full rounded"
@@ -354,6 +398,10 @@
 					allowfullscreen
 				></iframe>
 			{:else if tutorialType === 'android'}
+				<p class="mb-3 text-sm text-gray-600 dark:text-gray-400">
+					This tutorial explains how to connect your Android device using the Tailscale app.  
+					Open the app, sign in, and follow the video instructions to complete registration.
+				</p>
 				<!-- svelte-ignore a11y_missing_attribute -->
 				<iframe
 					class="aspect-video w-full rounded"
@@ -367,8 +415,10 @@
 {/if}
 
 {#if registerModal}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-		<div class="w-full max-w-md rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+		transition:fade={{ duration: 200 }}>
+		<div class="w-full max-w-md rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800"
+			transition:fly={{ y: 30, duration: 250, opacity: 0 }}>
 			<h2 class="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200">Verify Device IP</h2>
 
 			{#if selectedDevice}
@@ -380,25 +430,36 @@
 				<p class="mb-3 text-sm text-gray-600 dark:text-gray-400">
 					Enter the host device, IPv4 and Device Name in your Tailscale app:
 				</p>
+				<p class="text-sm text-gray-600 dark:text-gray-400">
+					Enter Device Name:
+					<input
+						bind:value={deviceName}
+						type="text"
+						placeholder="Enter device name. (Can be anything.)"
+						class="mb-4 w-full rounded-md border border-gray-300 p-2 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+					/>
+				</p>
+
+			{/if}
+			<p class="text-sm text-gray-600 dark:text-gray-400">
+				Enter Host Name:
 				<input
-					bind:value={deviceName}
+					bind:value={hostName}
 					type="text"
-					placeholder="Enter device name. (Can be anything.)"
+					placeholder="e.g. vivo-1906"
 					class="mb-4 w-full rounded-md border border-gray-300 p-2 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
 				/>
-			{/if}
-			<input
-				bind:value={hostName}
-				type="text"
-				placeholder="e.g. vivo-1906"
-				class="mb-4 w-full rounded-md border border-gray-300 p-2 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
-			/>
-			<input
-				bind:value={inputIp}
-				type="text"
-				placeholder="e.g. 100.61.169.48"
-				class="mb-4 w-full rounded-md border border-gray-300 p-2 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
-			/>
+			</p>
+			
+			<p class="text-sm text-gray-600 dark:text-gray-400">
+				Enter IP Device:
+				<input
+					bind:value={inputIp}
+					type="text"
+					placeholder="e.g. 100.61.169.48"
+					class="mb-4 w-full rounded-md border border-gray-300 p-2 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+				/>
+			</p>
 			<div class="flex justify-end gap-2">
 				<button
 					on:click={() => {
@@ -426,18 +487,66 @@
 	</div>
 {/if}
 
+
+{#if renameModal}
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+		transition:fade={{ duration: 200 }}>
+		<div class="w-full max-w-md rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800"
+			transition:fly={{ y: 30, duration: 250, opacity: 0 }}>
+			<h2 class="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200">Rename Device {selectedDevice?.['device-name']}:</h2>
+
+			{#if selectedDevice}
+				<p class="text-sm text-gray-600 dark:text-gray-400">
+					Enter new Device Name:
+					<input
+						bind:value={deviceName}
+						type="text"
+						placeholder="Enter new device name. (Can be anything.)"
+						class="mb-4 w-full rounded-md border border-gray-300 p-2 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+					/>
+				</p>
+			{/if}
+
+			<div class="flex justify-end gap-2">
+				<button
+					on:click={() => {
+						renameModal = false;
+						selectedDevice = null;
+						deviceName = '';
+					}}
+					class="rounded-lg bg-gray-300 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-400 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+				>
+					Cancel
+				</button>
+				<button
+					on:click={() => renameDevice(selectedDevice?.['device-name'], deviceName)}
+					class="rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white shadow-md hover:bg-green-600"
+				>
+					Confirm
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+
 {#if showModal}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-		<div class="w-full max-w-md rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+		transition:fade={{ duration: 200 }}>
+		<div class="w-full max-w-md rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800"
+			transition:fly={{ y: 30, duration: 250, opacity: 0 }}>
 			<h2 class="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200">
 				Request Tailscale Auth Key
 			</h2>
-			<input
-				bind:value={deviceName}
-				type="text"
-				placeholder="Enter device name. (Can be anything.)"
-				class="mb-4 w-full rounded-md border border-gray-300 p-2 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
-			/>
+			<p class="text-sm text-gray-600 dark:text-gray-400">
+				Enter Device Name:
+				<input
+					bind:value={deviceName}
+					type="text"
+					placeholder="Enter new device name. (Can be anything.)"
+					class="mb-4 w-full rounded-md border border-gray-300 p-2 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+				/>
+			</p>
 			<div class="flex justify-end gap-2">
 				<button
 					on:click={() => {
@@ -460,8 +569,10 @@
 {/if}
 
 {#if showKeyModal && generatedKey}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-		<div class="w-full max-w-md rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800">
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+		transition:fade={{ duration: 200 }}>
+		<div class="w-full max-w-md rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800"
+			transition:fly={{ y: 30, duration: 250, opacity: 0 }}>
 			<h2 class="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-200">Auth Key Created</h2>
 			<p class="mb-2 text-sm text-gray-600 dark:text-gray-300">
 				Device: <strong>{generatedKey['device-name']}</strong>

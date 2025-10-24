@@ -1,5 +1,6 @@
 <script lang="ts">
 import { type Writable } from 'svelte/store';
+	import { fade, fly } from 'svelte/transition';
 
 export let schedule: Writable<{
 	frequency: string;
@@ -98,9 +99,11 @@ const removeRun = (index: number) => {
 </script>
 
 {#if showScheduleModal}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+		transition:fade={{ duration: 200 }}>
 		<div
 			class="absolute w-[90vw] max-w-150 rounded-xl border border-gray-300 bg-white p-6 shadow-xl dark:border-gray-700 dark:bg-gray-900"
+			transition:fly={{ y: 30, duration: 250, opacity: 0 }}
 		>
 			<button
 				class="absolute top-4 right-4 text-gray-600 hover:text-red-600 dark:text-gray-300"
