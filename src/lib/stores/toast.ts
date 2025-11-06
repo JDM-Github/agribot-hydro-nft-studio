@@ -8,7 +8,7 @@ interface ToastAction {
 interface Toast {
 	id: string;
 	message: string;
-	type: 'success' | 'error' | 'info' | 'loading' | 'confirm';
+	type: 'success' | 'error' | 'info' | 'loading' | 'loading-non-blocking' | 'confirm';
 	duration?: number;
 	actions?: ToastAction[];
 	blocking?: boolean;
@@ -21,6 +21,7 @@ function generateId() {
 }
 
 export const toasts = writable<Toast[]>([]);
+
 export function addToast(
 	message: string,
 	type: Toast['type'],
@@ -29,18 +30,21 @@ export function addToast(
 ) {
 	const id = generateId();
 
-	if (type === 'loading') {
+	// If it's a loading type, let it persist until manually removed
+	if (type === 'loading' || type === 'loading-non-blocking') {
 		duration = duration ?? undefined;
 	} else {
 		duration = duration ?? 2000;
 	}
+
 	toasts.update((state) => [...state, { id, message, type, duration, actions }]);
+
 	if (duration) {
 		setTimeout(() => removeToast(id), duration);
 	}
+
 	return id;
 }
-
 
 export function removeToast(id: string) {
 	toasts.update((state) => state.filter((toast) => toast.id !== id));

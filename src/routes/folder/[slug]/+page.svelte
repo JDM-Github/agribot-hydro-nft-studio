@@ -6,6 +6,7 @@
 	import { onMount } from 'svelte';
 	import { derived, writable, type Writable } from 'svelte/store';
 	import { getFromDB, saveToDB } from '$root/lib/utils/indexdb';
+	import { addToast, removeToast } from '$root/lib/stores/toast';
 
 	$: slug = page.url.pathname.split('/').pop();
 	let currentData = writable({
@@ -34,11 +35,17 @@
 	let modalOpen = writable(false);
 	let selectedImage = writable<null | { id: number; src: string }>(null);
 	async function fetchFolder(email: string, force_save=false) {
-		if (!slug) return;
+
+		const toastId = addToast("Loading all images...", "loading");
+		if (!slug) {
+			removeToast(toastId);
+			return;
+		}
 		if (!force_save && !isTodaySlug(slug)) {
 			const cached = await getFromDB('images-' + slug);
 			if (cached) {
 				currentData.set(cached.value);
+				removeToast(toastId);
 				return;
 			}
 		}
@@ -52,7 +59,9 @@
 		if (force_save || !isTodaySlug(slug)) {
 			await saveToDB('images-' + slug, data);
 		}
+		removeToast(toastId);
 	}
+
 	onMount(async () => {
 		await fetchFolder($userData.user.email);
 	});

@@ -5,9 +5,10 @@ export default class RequestHandler {
 
 	static isLiveUrl = false;
 	static get baseURL() {
-		return RequestHandler.isLiveUrl
-			? import.meta.env.VITE_REAL_URL
-			: import.meta.env.VITE_LIVE_URL;
+		// return RequestHandler.isLiveUrl
+		// 	? import.meta.env.VITE_REAL_URL
+		// 	: import.meta.env.VITE_LIVE_URL;
+		return "https://agribot-hydro-nft-admin.netlify.app";
 	}
 	static apiLink = '.netlify/functions/api';
 
@@ -21,8 +22,6 @@ export default class RequestHandler {
 	) {
 		if (!baseLink) return [false, { error: 'No base link provided' }];
 		if (!link) return [false, { error: 'No endpoint provided' }];
-
-		console.log(`${baseLink}/${link}`);
 
 		const headers: Record<string, string> = {};
 		if (!(body instanceof FormData)) {

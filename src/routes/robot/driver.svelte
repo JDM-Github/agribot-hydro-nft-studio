@@ -95,7 +95,7 @@
 						? 'Turning Right'
 						: 'Moving';
 
-		activeToastId = addToast(`${actionLabel} at ${speed}% speed...`, 'loading');
+		activeToastId = addToast(`${actionLabel} at ${speed}% speed...`, 'loading-non-blocking');
 		await sendCommand(action, speed);
 	}
 

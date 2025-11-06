@@ -4,6 +4,7 @@
 	import { simpleMode } from '$lib/stores/mode';
 	import { addToast, removeToast } from '$lib/stores/toast';
 
+	export let sprays: any;
 	export let scanning = false;
 	export let isRobotRunning: boolean;
 	let triggerMode = writable(false);
@@ -62,14 +63,13 @@
 </script>
 
 <div
-	class="relative mb-3 flex flex-col gap-3 rounded-2xl border border-gray-200 bg-[#fafffc] p-3 dark:border-gray-700 dark:bg-gray-900"
+	class="relative mb-4 rounded-2xl border border-gray-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-gray-700 dark:bg-gray-800/60"
 >
-	<!-- Header -->
-	<div class="flex items-center justify-between gap-2">
+	<div class="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-gray-700">
 		<div class="flex items-center gap-2">
-			<span class="text-xl sm:text-2xl">💧</span>
-			<h2 class="text-base font-bold text-gray-400 sm:text-lg dark:text-gray-300">
-				SPRAY CONTROLS
+			<span class="text-2xl">💧</span>
+			<h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200">
+				Spray Controls
 			</h2>
 		</div>
 
@@ -83,28 +83,37 @@
 					type="checkbox"
 					bind:checked={$triggerMode}
 					disabled={scanning || isRobotRunning || $allClickedTrigger.length < 0}
-					class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:opacity-30 dark:border-gray-600"
+					class="h-5 w-5 cursor-pointer rounded border-gray-300 text-blue-600 accent-blue-500 focus:ring-2 focus:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-600"
 					title="Enable single-press trigger mode instead of hold mode"
 				/>
 			</div>
 		{/if}
 	</div>
 
-	<!-- Buttons Grid -->
-	<div class="grid w-full grid-cols-4 gap-3">
-		{#each [1, 2, 3, 4] as num}
-			<div class="flex w-full flex-col items-center">
-				<!-- svelte-ignore a11y_label_has_associated_control -->
+	<div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+		{#each sprays.spray as sprayName, i}
+			<div
+				class="flex flex-col items-center rounded-xl border border-gray-100 bg-gray-50 p-3 transition-colors hover:border-blue-300 hover:bg-blue-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-blue-600 dark:hover:bg-gray-800"
+			>
+				<div class="mb-2 text-center text-sm text-gray-700 dark:text-gray-300">
+					<p class="font-semibold">{sprayName}</p>
+					<p>Active: 
+						<span class="{sprays.active[i] ? 'text-green-600 dark:text-green-400' : 'text-gray-500'}">
+							{sprays.active[i] ? 'Yes' : 'No'}
+						</span>
+					</p>
+					<p>Duration: {sprays.duration[i]}s</p>
+				</div>
+
 				<button
-					disabled={scanning || isRobotRunning || $allClickedTrigger.includes(num)}
-					title={`Activate Spray ${num}`}
-					class="w-full rounded-lg bg-blue-500 px-4 py-3 text-sm font-medium text-white hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-500"
-					on:mousedown={() => !$triggerMode && toggleSpray(num, true)}
-					on:mouseup={() => !$triggerMode && toggleSpray(num, false)}
-					on:click={() => $triggerMode && activateSpray(num)}
+					disabled={scanning || isRobotRunning || $allClickedTrigger.includes(i + 1)}
+					title={`Activate Spray ${i + 1}`}
+					class="w-full rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-2 text-sm font-medium text-white shadow hover:from-blue-600 hover:to-blue-700 focus:ring-2 focus:ring-blue-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+					on:mousedown={() => !$triggerMode && toggleSpray(i + 1, true)}
+					on:mouseup={() => !$triggerMode && toggleSpray(i + 1, false)}
+					on:click={() => $triggerMode && activateSpray(i + 1)}
 				>
-					{$triggerMode ? 'TRIGGER SPRAY' : 'HOLD SPRAY'}
-					{num}
+					{$triggerMode ? 'Trigger Spray' : 'Hold Spray'} {i + 1}
 				</button>
 			</div>
 		{/each}

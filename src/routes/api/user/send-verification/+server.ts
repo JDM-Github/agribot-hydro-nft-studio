@@ -7,11 +7,9 @@ import {
     SMTP_USER,
     SMTP_PASS,
     VERIFICATION_CODE_EXPIRY_MIN,
-    VERIFICATION_MAX_ATTEMPTS
 } from '$env/static/private';
 
 const STORE_TTL_MIN = Number(VERIFICATION_CODE_EXPIRY_MIN || 10);
-const MAX_ATTEMPTS = Number(VERIFICATION_MAX_ATTEMPTS || 5);
 
 type Entry = { code: string; expiresAt: number; attempts: number };
 const verificationStore = new Map<string, Entry>();
@@ -98,4 +96,3 @@ export const POST: RequestHandler = async ({ request }) => {
     }
 };
 
-export { verificationStore, MAX_ATTEMPTS };

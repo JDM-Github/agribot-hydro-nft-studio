@@ -241,18 +241,12 @@ onMount(async () => {
 	try	{
 		deviceID.set((await	getDeviceID()) as string);
 		userData.set(await getUserData());
-		// alert(JSON.stringify($userData));
 		console.log($userData);	
 	} catch	(err) {
 		console.error('Failed to get device	ID:', err);
 	}
-	// checkSyncFlags();
-	// syncInterval	= setInterval(checkSyncFlags, 5	* 60 * 1000);
 });
 
-onDestroy(() => {
-	// clearInterval(syncInterval);
-});
 </script>
 
 
@@ -267,6 +261,5 @@ onDestroy(() => {
 
 <main class="bg-white pt-16	dark:bg-gray-800">
 	<Navigation	user={data.user} />
-	<!-- {@render children()} -->
 	<slot/>
 </main>

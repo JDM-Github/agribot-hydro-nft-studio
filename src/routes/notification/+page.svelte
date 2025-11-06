@@ -84,11 +84,12 @@
 
 	async function markAsRead(notif: any) {
 		if (notif.isRead) return;
+
 		try {
 			const response = await RequestHandler.fetchData('post', 'notification/mark-read', {
 				id: $userData.user.id,
 				notifId: notif.id,
-				deviceID: deviceID
+				deviceID: $deviceID
 			});
 			if (response.success) {
 				lastPage.set($currentPage);

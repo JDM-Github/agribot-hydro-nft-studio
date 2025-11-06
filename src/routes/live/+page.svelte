@@ -157,10 +157,6 @@ async function captureImageAndDisplay() {
 		addToast('Cannot upload when performing a scan.', 'error', 3000);
 	}
 
-	if (stopCapture) {
-		addToast('Cannot upload when capturing image.', 'error', 3000);
-	}
-
 	if (robotLive) {
 		addToast('Cannot upload when robot is live.', 'error', 3000);
 	}
@@ -173,9 +169,9 @@ async function captureImageAndDisplay() {
 			addToast('User email not found.', 'error', 3000);
 			return;
 		}
-		const folderName = email.split('@')[0];
 		const [success, data] = await RequestHandler.authFetch(
-			`capture_and_return_blob?folder=${folderName}`
+			`capture_and_return_blob`,
+			"POST"
 		);
 		if (!success) {
 			removeToast(toastId);

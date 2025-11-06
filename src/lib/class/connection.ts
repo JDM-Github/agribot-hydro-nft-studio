@@ -58,6 +58,7 @@ class Connection {
         color_name: "NOT SET"
     });
     private static ultrasonic = writable<number>(0);
+    private static went_dry = writable<number>(0);
 
     public static init() {
         SocketService.init();
@@ -122,6 +123,10 @@ class Connection {
 
         socket.on("camera_info", (data: CameraInfo) => {
             Connection.camerainfo.set({ ...CAMERA_INFO, ...data });
+        });
+
+        socket.on("went-dry", (number) => {
+            Connection.went_dry.set(number);
         });
 
         socket.on("scan_frame", (data: any) => {
@@ -200,6 +205,8 @@ class Connection {
 
     // getters
     public static getTCRT5000(): Writable<TCRT5000> { return Connection.tcrt5000; }
+    public static getWentDry(): Writable<number> { return Connection.went_dry; }
+
     public static getReadings(): Writable<WaterSensorReadings> { return Connection.waterReadings; }
     public static getUltrasonic(): Writable<number> { return Connection.ultrasonic; }
     public static getTCS34725(): Writable<TCS34725> { return Connection.tcs34725; }

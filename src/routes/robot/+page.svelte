@@ -1,5 +1,5 @@
 <script lang="ts">
-	import gsap from "gsap";
+	import gsap from 'gsap';
 	import Footer from '$lib/components/Footer.svelte';
 	import Driver from './driver.svelte';
 	import Watersensor from './watersensor.svelte';
@@ -16,6 +16,7 @@
 	import Stoprobot from '../spray/stoprobot.svelte';
 	import { LiveStreamState, RobotLivestream, RobotState } from '$root/lib/enum';
 	import { onMount } from 'svelte';
+	import { userData } from '$root/lib/stores/connection';
 
 	export let data;
 	$: allState = Connection.getAllState({
@@ -28,6 +29,11 @@
 		robotLive: true,
 		stopCapture: true
 	});
+	$: Connection.getWentDry().subscribe((w) => {
+		if (w === 0) return;
+		addToast(`Water tank ${w} low on water`, 'info', 6000);
+	});
+
 	$: conn = allState.connection;
 	$: rstate = allState.robotrunning;
 	$: sstate = allState.scanningstate;
@@ -125,41 +131,41 @@
 		}
 	}
 
-	onMount(() => {
-		const allButtons = document.querySelectorAll('.header-button');
-		if (!allButtons.length) return;
+	
 
-		gsap.fromTo(
-			allButtons,
-			{ y: 30, scale: 0 },
-			{
-				y: 0,
-				scale: 1,
-				stagger: 0.1,
-				duration: 0.2,
-				delay: 0.3,
-				ease: 'power2.out'
-			}
-		);
+	// onMount(() => {
+	// 	const allButtons = document.querySelectorAll('.header-button');
+	// 	if (!allButtons.length) return;
 
-		const speedControls = document.querySelectorAll('#speed-slider, input[type="number"]');
-		if (speedControls.length) {
-			gsap.fromTo(
-				speedControls,
-				{ opacity: 0, y: 20 },
-				{ opacity: 1, y: 0, duration: 0.5, stagger: 0.1, ease: 'power2.out' }
-			);
-		}
-	});
+	// 	gsap.fromTo(
+	// 		allButtons,
+	// 		{ y: 30, scale: 0 },
+	// 		{
+	// 			y: 0,
+	// 			scale: 1,
+	// 			stagger: 0.1,
+	// 			duration: 0.2,
+	// 			delay: 0.3,
+	// 			ease: 'power2.out'
+	// 		}
+	// 	);
+
+	// 	const speedControls = document.querySelectorAll('#speed-slider, input[type="number"]');
+	// 	if (speedControls.length) {
+	// 		gsap.fromTo(
+	// 			speedControls,
+	// 			{ opacity: 0, y: 20 },
+	// 			{ opacity: 1, y: 0, duration: 0.5, stagger: 0.1, ease: 'power2.out' }
+	// 		);
+	// 	}
+	// });
+	const sprays: any = $userData.user.config.sprays;
 </script>
 
 {#if !isConnected}
 	<NotConnected user={data.user} />
 {:else if liveState}
 	<Stoprobot whatRunning="livestream" />
-	<Footer />
-{:else if performing}
-	<Stoprobot whatRunning="perform scan" />
 	<Footer />
 {:else if scannerState}
 	<Stoprobot whatRunning="scanner" />
@@ -337,7 +343,14 @@
 							title="Run Robot"
 							class="rounded bg-green-500 px-3 py-1 text-xs font-semibold text-white hover:bg-green-600 disabled:opacity-50"
 							on:click={() => controlRobotLivestream('run')}
-							disabled={isRobotBusy || robotLive}
+							disabled={
+								scannerState ||
+								liveState !== LiveStreamState.STOPPED ||
+								!isConnected ||
+								robotScanState ||
+								performing ||
+								stopCapture ||
+								robotLive}
 						>
 							RUN LIVESTREAM
 						</button>
@@ -346,7 +359,14 @@
 							title="Stop Robot"
 							class="rounded bg-red-500 px-3 py-1 text-xs font-semibold text-white hover:bg-red-600 disabled:opacity-50"
 							on:click={() => controlRobotLivestream('stop')}
-							disabled={isRobotBusy || robotLive == RobotLivestream.STOPPED}
+							disabled={
+								scannerState ||
+								liveState !== LiveStreamState.STOPPED ||
+								!isConnected ||
+								robotScanState ||
+								performing ||
+								stopCapture ||
+								robotLive == RobotLivestream.STOPPED}
 						>
 							STOP LIVESTREAM
 						</button>
@@ -392,7 +412,7 @@
 				</div>
 			</div>
 
-			<Relay isRobotRunning={isRobotBusy} />
+			<Relay isRobotRunning={isRobotBusy} sprays={sprays}/>
 		</div>
 	</div>
 	<Footer />
