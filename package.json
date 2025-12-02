@@ -5,6 +5,7 @@
 	"type": "module",
 	"main": "src/electron.mjs",
 	"scripts": {
+		"prebuild": "npx puppeteer browsers install chrome",
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
@@ -64,8 +65,11 @@
 		"vitest": "^3.0.0"
 	},
 	"dependencies": {
+		"@sparticuz/chromium": "^141.0.0",
 		"canvas": "^2.11.2",
 		"chart.js": "^4.4.8",
+		"chrome-aws-lambda": "^10.1.0",
+		"chromium": "^3.0.3",
 		"cloudinary": "^2.6.0",
 		"dotenv": "^16.4.7",
 		"electron-context-menu": "^4.0.5",
@@ -83,7 +87,7 @@
 		"png-chunk-text": "^1.0.0",
 		"png-chunks-encode": "^1.0.0",
 		"png-chunks-extract": "^1.0.0",
-		"puppeteer": "^24.22.0",
+		"puppeteer-core": "^10.4.0",
 		"sharp": "^0.33.5",
 		"socket.io-client": "^4.8.1",
 		"svelte-inview": "^4.0.4",

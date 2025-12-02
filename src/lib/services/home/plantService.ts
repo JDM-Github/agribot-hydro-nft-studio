@@ -24,15 +24,14 @@ export function disablePlant(selectedPlantIndex: number) {
         addToast('Action unavailable while livestreaming.', 'error', 3000);
         return;
     }
-
     config.detectedPlants.update((plants) => {
-        const updated = [...plants];
+        const updated = structuredClone(plants);
         if (updated[selectedPlantIndex]) {
             updated[selectedPlantIndex].disabled = true;
         }
+
         return updated;
     });
-
     addToast('Plant disabled successfully.', 'info', 3000);
 }
 

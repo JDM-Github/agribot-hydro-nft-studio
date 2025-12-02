@@ -1,5 +1,7 @@
 // GeneratePlantImage.ts
-import puppeteer from 'puppeteer';
+// import chromium from 'chrome-aws-lambda';
+import chromium from '@sparticuz/chromium';
+import puppeteer from 'puppeteer-core';
 import type { ConfigType } from '../type';
 
 
@@ -110,8 +112,17 @@ export class PlantImageGenerator {
 </body>
 </html>
 `;
+        // const browser = await puppeteer.launch({
+        //     args: chromium.args,
+        //     executablePath: await chromium.executablePath,
+        //     headless: chromium.headless,
+        // });
+        const browser = await puppeteer.launch({
+            args: chromium.args,
+            executablePath: await chromium.executablePath(),
+            headless: true,
+        });
 
-        const browser = await puppeteer.launch();
         const page = await browser.newPage();
         await page.setContent(html, { waitUntil: 'networkidle0' });
 

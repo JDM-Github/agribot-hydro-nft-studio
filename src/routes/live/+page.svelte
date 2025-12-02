@@ -377,13 +377,6 @@ onDestroy(() => clearInterval(interval));
 								CAMERA INFORMATION
 							</h2>
 						</div>
-
-						<button
-							class="flex h-10 w-10 items-center justify-center rounded-full bg-green-600 text-white shadow-md transition hover:bg-green-700 focus:ring-2 focus:ring-green-300 focus:outline-none dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-400"
-							title="Help"
-						>
-							<span class="text-lg font-bold">?</span>
-						</button>
 					</div>
 
 					<div
